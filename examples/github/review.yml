@@ -7,10 +7,10 @@
 # Adapt: `model`, the prompt (what your reviewers care about), `allow` and `deny`.
 #
 # Security: the model job has a read-only token, and the checkout is a throwaway copy. `allow: bash`
-# lets a command write a file; nothing it writes can be committed, because
-# no job with a model holds a token that can push. The provider key is hidden from the commands
-# the agent runs, but assume a command could read it: use a key with a spend limit. AGENTS.md and
-# CLAUDE.md come from the pull request. Pull requests from forks are skipped.
+# runs every command as it is, outside the sandbox and with the network; nothing it writes can be
+# committed, because no job with a model holds a token that can push. The provider key is hidden
+# from the commands the agent runs, but assume a command could read it: use a key with a spend
+# limit. AGENTS.md and CLAUDE.md come from the pull request. Pull requests from forks are skipped.
 name: llx review
 
 on:

@@ -1,7 +1,8 @@
 # A GitLab CI job: what a change does to the API's clients, on every push to a branch with an open
-# merge request. Copy examples/breaking-changes/ into the repository (as ci/breaking-changes/, say)
+# merge request, compared with the default branch (not the merge request's target). Copy
+# examples/breaking-changes/ into the repository as ci/breaking-changes/ (the path `script` names)
 # and this job into .gitlab-ci.yml. Needs a masked CI variable OPENROUTER_API_KEY, ideally a key
-# with a spend limit; the job has no token that can write.
+# with a spend limit; the job has no token that can push to the repository.
 breaking changes:
   stage: test
   image: debian:bookworm-slim # glibc: the llx Linux build does not run on Alpine (musl)

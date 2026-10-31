@@ -13,17 +13,23 @@ parameters, types, required lists, enums. Many changes that break clients keep t
 
 llx reads the whole change (`git diff`), the spec around it and the code behind the endpoints, and
 answers with JSON: one entry per change, `structural` or `semantic`, breaking or not, why, and
-where. It runs read only.
+where. Its reading commands (`git diff`, `cat`, `rg` and the like) are allowed: they run as they
+are, outside the sandbox, so the check reads even where no sandbox can be set up. A command line
+that would make one of them write a file or run another program (`git diff --output`, `rg --pre`)
+matches no allow rule: it runs as any other command does, in the workspace's sandbox, with no
+network and never writing `.git` (on Linux, in a workspace with a `.git` of its own, it only
+reads), and is refused where no sandbox can be set up (some containers). A patch may change the
+working tree. Run it on a checkout you can throw away, as CI's is.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| [check.sh](check.sh) | The check: `check.sh [SPEC] [BASE]` in the repository. Writes `breaking-changes.json`, prints a line per change, exits 0 (nothing breaks), 1 (something breaks) or 2 (llx could not finish). |
+| [check.sh](check.sh) | The check: `check.sh [SPEC] [BASE]` in the repository. Writes `breaking-changes.json` (`LLX_OUT` names another file), prints a line per change, exits 0 (nothing breaks), 1 (something breaks) or 2 (llx could not finish). |
 | [prompt.md](prompt.md) | The prompt, with `{SPEC}` and `{BASE}` filled in by `check.sh`. Add what your API's clients rely on. |
 | [schema.json](schema.json) | The answer's shape. |
 | [gitlab-ci.yml](gitlab-ci.yml) | A GitLab CI job for a branch with an open merge request. |
-| [demo/](demo) | A small orders API (`spec/`, `src/`), a change with 13 breaking and 3 safe edits (`change.patch`), `run.sh` to check it, and a recorded run: [output.txt](demo/output.txt) and [result.json](demo/result.json). |
+| [demo/](demo) | A small orders API (`spec/`, `src/`), a change with 13 breaking and 3 safe edits (`change.patch`), `run.sh` to check it (its answer replaces `result.json`), and a recorded run: [output.txt](demo/output.txt) and [result.json](demo/result.json). |
 
 ## Run it
 
@@ -33,7 +39,7 @@ The demo, in a throwaway repository (needs llx signed in, `git` and `jq`):
 sh examples/breaking-changes/demo/run.sh
 ```
 
-On your repository, after `git fetch`:
+On your repository, after `git fetch`, with the spec's directory and the branch to compare with:
 
 ```bash
 sh path/to/check.sh src/spec origin/main
@@ -61,30 +67,52 @@ Each entry of `breaking-changes.json` also says why and where:
 
 ### In CI
 
-GitLab: [gitlab-ci.yml](gitlab-ci.yml). The job runs in a branch pipeline when a merge request is
-open (`$CI_OPEN_MERGE_REQUESTS`), so it needs no merge request pipelines. It uses a glibc image:
-the llx Linux build does not run on Alpine.
+Copy this folder into the repository as `ci/breaking-changes/`, and add the provider key as a
+secret (`OPENROUTER_API_KEY`).
 
-GitHub, with the action installing llx:
+GitLab: [gitlab-ci.yml](gitlab-ci.yml), into `.gitlab-ci.yml`, with `OPENROUTER_API_KEY` a masked
+CI variable. The job runs in a branch pipeline when a merge request is open
+(`$CI_OPEN_MERGE_REQUESTS`), so it needs no merge request pipelines; it compares with the default
+branch, not the merge request's target. It uses a glibc image: the llx Linux build does not run on
+Alpine.
+
+GitHub: a workflow in `.github/workflows/`, with the action installing llx. It skips pull requests
+from forks, which get no secrets:
 
 ```yaml
-- uses: actions/checkout@v7
-  with: { fetch-depth: 0 }
-- uses: rsaryev/llx@v0
-  with: { install-only: true }
-- run: sh ci/breaking-changes/check.sh src/spec "origin/${{ github.base_ref }}"
-  env:
-    OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+name: breaking changes
+on: pull_request
+permissions: {}
+jobs:
+  check:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: rsaryev/llx@v0
+        with: { install-only: 'true' }
+      - env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          BASE: ${{ github.base_ref }}
+        run: sh ci/breaking-changes/check.sh src/spec "origin/$BASE"
 ```
+
+The job fails on exit 1, something breaks, and on exit 2, llx could not finish: the step's log says
+which.
 
 To post the answer on the merge or pull request, read `breaking-changes.json` with `jq` in a later
 job that holds the write token and no model key, as the [GitHub examples](../README.md) do.
 
 ## Results
 
-**The demo** ([output.txt](demo/output.txt), [result.json](demo/result.json)): llx found all 13 breaking edits, the 4 semantic ones among them,
-and called the 3 safe ones safe. Two edits to one field (`limit`: a string now, at most 3
-characters) came back as one entry. 38 s, 6 turns, $0.006 with `anthropic/claude-haiku-5.5`.
+**The demo** ([output.txt](demo/output.txt), [result.json](demo/result.json)): llx found all 13
+breaking edits, the 4 semantic ones among them, and called the 3 safe ones safe. Two edits to one
+field (`limit`: a string now, at most 3 characters) came back as one entry. 38 s, 6 turns, $0.006
+with `anthropic/claude-haiku-5.5`.
 
 | Edit | Kind | llx |
 |---|---|---|
@@ -127,4 +155,6 @@ spec (about 1,400 lines in 40 files joined by `$ref`), next to that team's own r
   out of its reach. Say in `prompt.md` what your clients rely on (the SDKs, the validation, the
   consumers you know of).
 - The spec, its descriptions and the code are data to the agent, never instructions; the job holds
-  no token that can write.
+  no token that can push to the repository.
+- The shell that runs `check.sh` holds the provider key as llx does, so assume a command can read
+  it: use a key made for CI, with a spend limit.
