@@ -1,4 +1,4 @@
-import { AGENTS_DOCS, CI_DOCS, DOCS } from '../links';
+import { AGENTS_DOCS, CI_DOCS, DOCS, EXAMPLES_DOCS } from '../links';
 
 /** A word's tone in a panel (the terminal's colours); '' is plain. */
 export type Tone = 'dim' | 'hi' | 'ok' | 'bad' | 'acc' | 'sel' | '';
@@ -35,7 +35,7 @@ export const CARDS: Card[] = [
           [['dim', '1'], ['bad', 'no_data'], ['dim', 'the data missed the schema']],
           [['dim', '2'], 'exhausted', ['dim', 'out of turns, time or money']],
           [['dim', '3'], 'error', ['dim', 'no key, no network, a bad argument']],
-          [['dim', '130'], 'interrupted', ['dim', 'Ctrl-C or SIGTERM (128 + the signal, as shells report it)']],
+          [['dim', '130'], 'interrupted', ['dim', 'Ctrl-C, SIGTERM or SIGHUP']],
         ],
         align: 'rll',
       },
@@ -44,9 +44,10 @@ export const CARDS: Card[] = [
   {
     title: 'A step your pipeline can branch on',
     text: 'llx exec runs one task and prints JSON events; the last one holds the status, your data and the cost. On GitHub, uses: rsaryev/llx@v0 runs the same step and returns the answer, the status and the spend.',
+    link: { href: EXAMPLES_DOCS, label: 'Ready-made workflows' },
     panel: [
       shell(
-        '$ llx exec --json --mode plan --schema @ship.json \\\n    "Safe to ship this diff? Which version bump?" > events.jsonl\n$ echo $?',
+        '$ git diff main... | llx exec --json --mode plan --schema @ship.json \\\n    "Safe to ship this diff? Which version bump?" > events.jsonl\n$ echo $?',
       ),
       out('0', 'ok'),
       shell(
@@ -68,17 +69,17 @@ export const CARDS: Card[] = [
     text: '--max-turns, --timeout (30 minutes by default) and --budget in dollars. A task that runs into one ends with exit 2, exhausted, so a pipeline can tell it from a failure.',
     panel: [
       shell('$ llx exec --timeout 600 --budget 0.50 --max-turns 40 \\\n    "Fix the failing test"\n$ echo $?'),
-      { grid: [[['bad', '2'], ['dim', 'exhausted: out of turns, time or money before a result']]] },
+      { grid: [[['bad', '2'], ['dim', 'exhausted: out of turns, time or money before an answer']]] },
     ],
   },
   {
     title: 'Runs under your rules',
-    text: 'A mode is a set of rules: what runs without asking, what is refused in every mode. They come from your command line and settings, never from the repository. plan runs read-only in the system sandbox.',
+    text: 'A mode is a set of rules and what its commands reach. By default, commands run in the system sandbox, which writes only inside the workspace (never its .git; on Linux, in a workspace with a .git of its own, they only read) and opens no network; what must reach further is asked. Rules come from your command line and settings, never from the repository, and a deny refuses in every mode.',
     link: { href: `${DOCS}/modes`, label: 'Modes and trust' },
     panel: [
       {
         grid: [
-          [['hi', 'default'], ['dim', 'each command is asked']],
+          [['hi', 'default'], ['dim', 'the workspace, in a sandbox; beyond it, asked']],
           [['hi', 'plan'], ['dim', 'read-only, in a sandbox']],
           [['hi', 'bypass'], ['dim', 'everything runs (-y)']],
         ],
@@ -102,7 +103,7 @@ export const CARDS: Card[] = [
           [['acc', '↳ '], ['hi', 'Spawned'], ['', ' mean · mean() on an empty list']],
           [['ok', '● '], ['', 'Agent "median" finished · 6s']],
           [['ok', '● '], ['', 'Agent "mean" finished · 6s']],
-          [['ok', '• '], ['hi', 'Ran'], ['', " python3 - <<'EOF'  "], ['dim', '# stats.py, the median']],
+          [['ok', '• '], ['hi', 'Patched'], ['', ' stats.py']],
           [['', '• Fixed '], ['acc', 'stats.py:15'], ['', ': averages the two middle values.']],
         ],
       },
@@ -110,22 +111,23 @@ export const CARDS: Card[] = [
   },
   {
     title: 'Any provider, any model',
-    text: 'Pick one of 1,000+ models from 200+ providers with /model, from models.dev\'s catalog, refreshed as it grows: a ChatGPT sign-in, OpenRouter, or a key for the provider you use. The reasoning level with ← →, saved for every run after.',
+    text: '1,000+ models from 200+ providers, from models.dev\'s catalog, refreshed as it grows. /login signs in to any of them: a ChatGPT sign-in, OpenRouter, or a key for the provider you use. /model switches among those you are signed in to, the reasoning level with ← →, saved for every run after.',
     panel: [
       {
         ui: [
           [['hi', '[OpenAI 2]'], ['dim', ' · Anthropic 0 · OpenRouter 5 · xAI 0 · DeepSeek 0']],
           [['dim', 'Search: terra▏  7 matches']],
           [['sel', '❯ GPT-6.1 Terra      gpt-6.1-terra      ← low →']],
-          [['', '  GPT-6.1 Terra Pro  gpt-6.1-terra-pro    medium']],
-          [['dim', 'tab provider · ←→ reasoning · enter select']],
-          [['dim', 'Now openai · gpt-6.1-terra · low']],
+          [['', '  GPT-5.6 Terra      gpt-5.6-terra        auto']],
+          [['dim', 'tab provider · ←→ reasoning · enter select · esc clear']],
+          [['dim', 'Now openai · gpt-6.1-terra · low (saved as the default in']],
+          [['dim', '~/.config/llx/settings.json).']],
         ],
       },
     ],
   },
   {
-    title: 'For other agents: decide in a second',
+    title: 'For other agents: decide in about a second',
     text: 'Claude Code, another agent or a script can call llx from its shell. llx decide picks one of the options you give, alone on stdout; llx exec hands a task to a helper on any model.',
     link: { href: AGENTS_DOCS, label: 'llx for other agents' },
     panel: [
@@ -139,7 +141,7 @@ export const CARDS: Card[] = [
   },
   {
     title: 'Five tools, one binary under 4 MB',
-    text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. No plugins, no skills, no servers to run. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
+    text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. No plugins, no skills, no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
     link: { href: DOCS, label: 'The docs' },
     panel: [
       {

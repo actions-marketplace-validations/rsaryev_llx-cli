@@ -9,7 +9,7 @@
 
 ## Install
 
-- `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh` (macOS and Linux x86_64, checked against `SHA256SUMS`).
+- `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh` (macOS and Linux x86_64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/llx llx`.
 - Sign in with `/login` in a session (`llx`), or set the provider's key (for example `OPENROUTER_API_KEY`).
 
 ## Use
@@ -18,8 +18,9 @@
 - `llx exec "<task>"` (or `llx -p "<task>"`) runs one task and exits: the answer alone on stdout.
 - A task ends when the model replies with no tool call; with `--schema`, llx asks once more for `data` matching it (two fixes at most).
 - `llx exec --json` prints one JSON event per line, ending with `run.completed` and its `status`.
-- `llx decide "<question>"` asks the decision model one question about stdin and prints the option it picked (`--choices`, `--expect`).
-- Exit codes: 0 done, 1 no data (`no_data`, `--schema` only), 2 out of turns, time or money (`exhausted`; `--max-turns`, `--timeout`, `--budget`), 3 environment or usage (`error`), 130 interrupted.
+- `llx decide "<question>"` asks the decision model one question about stdin and prints the option it picked (`--choices`; `--expect` exits 1 when another is picked). It needs an OpenRouter key.
+- What a task may do is its mode. By default its commands run in the system's sandbox, which writes only inside the workspace (never its `.git`; on Linux, in a workspace with a `.git` of its own, they only read) and opens no network, and its file changes there are made; what must reach further is asked at the terminal, and refused where there is none (CI, cron). `--mode plan` is read-only, `-y` allows everything, and `--allow 'bash(cargo test *)'` and `--deny 'bash(git push *)'` add rules: https://llx.sh/docs/modes.
+- Exit codes: 0 done, 1 no data (`no_data`, `--schema` only) or, for `decide --expect`, another option picked, 2 out of turns, time or money (`exhausted`; `--max-turns`, `--timeout`, `--budget`), 3 environment or usage (`error`), 130 interrupted (Ctrl-C, SIGTERM or SIGHUP).
 
 ## In CI
 

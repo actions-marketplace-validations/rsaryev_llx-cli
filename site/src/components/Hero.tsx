@@ -15,7 +15,7 @@ export function Hero() {
           lightweight agent runtime for coding and CI
         </h1>
         <p className="lede">
-          <code>llx exec</code> runs one task and ends with a result and an exit code your pipeline can branch on. One
+          <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One
           binary under 4 MB, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. It is
           a minimal agent at your terminal, too.
         </p>

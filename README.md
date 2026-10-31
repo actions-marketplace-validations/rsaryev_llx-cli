@@ -42,7 +42,11 @@ llx is a model in a loop over five tools, on any provider: `bash`, `apply_patch`
 | **You** | `llx` | A minimal agent at your terminal |
 | **Your other agents** | `llx exec` · `llx decide` | Commands they run from their shell: a helper on any model, a quick decision. They extend the agent you use, never replace it |
 
-By default llx works in your project without asking: commands run in the system's sandbox, which writes only inside the workspace (never its `.git`) and opens no network, and file changes there are made; a command that must reach further is asked first. `plan` runs read-only in the same sandbox, `bypass` (`-y`) allows everything, and rules or a mode of your own say the rest ([modes](docs/modes.md)). A task is bounded by `--max-turns`, `--timeout` and `--budget`: the first reached ends it. With an OpenRouter key, a small decision model advises each task at its edges: it picks the reasoning level as a conversation opens (`--reasoning auto`, the default), and takes a second look at an answer that may leave work undone (`--no-advice` turns it off). About 200 model providers: a ChatGPT sign-in, OpenRouter, or a key ([models](MODELS.md)).
+By default llx works in your project without asking: commands run in the system's sandbox, which writes only inside the workspace (never its `.git`; on Linux, in a workspace with a `.git` of its own, they only read) and opens no network, and file changes there are made; what must reach further is asked first, and refused where no one is there to ask. `plan` runs read-only in the same sandbox, `bypass` (`-y`) allows everything, and rules or a mode of your own say the rest ([modes](docs/modes.md)). A task is bounded by `--max-turns`, `--timeout` and `--budget`: the first reached ends it.
+
+It runs on 200+ model providers: a ChatGPT sign-in, OpenRouter, or a key ([models](MODELS.md)). With an OpenRouter key, a small decision model advises each task at its edges: it picks the reasoning level as a conversation opens (`--reasoning auto`, the default), and takes a second look at an answer that may leave work undone (`--no-advice` turns it off).
+
+Every run is saved as a session: `llx -c` goes on with the newest one in this directory, `llx sessions` lists them and `llx resume ID` opens one; `/new` opens another beside it ([sessions](docs/usage.md#sessions-and-the-daemon)).
 
 ## Try it
 
@@ -62,7 +66,15 @@ jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
 ```
 
-On macOS (Apple silicon and Intel) and Linux x86_64; the archive is checked against the release's `SHA256SUMS`, and `LLX_VERSION=0.2.0` before `sh` pins a release. Or `cargo install --locked --path apps/cli` from a clone. `llx doctor` checks the sign-ins, the models and the shell.
+On macOS (Apple silicon and Intel) and Linux x86_64. It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. To pin a release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | LLX_VERSION=0.2.0 sh
+```
+
+Or build it with Rust 1.88 or later: `cargo install --locked --git https://github.com/rsaryev/llx llx`.
+
+Then run `llx` in a project and type `/login`: a ChatGPT sign-in in the browser, an OpenRouter key, or a key for any other provider of the catalog. A provider's key in its variable (`OPENROUTER_API_KEY`) works too, and is what CI uses. `llx doctor` checks the sign-ins, the models and the shell.
 
 ## In CI and scripts
 
@@ -85,7 +97,7 @@ In CI llx is the same agent as at your terminal, given one task. It works throug
       before you report it.
 ```
 
-The answer is `steps.llx.outputs.result`, JSON matching your schema; the status, the spend and the exit code are outputs too.
+The answer is `steps.llx.outputs.result`, JSON matching your schema; the status, the spend and the exit code are outputs too. The action spells the status its own way (`no-data`, `out-of-budget`, `not-ready`): [its outputs](docs/ci.md#outputs).
 
 How a task ends is a contract a pipeline can read. The exit code says it, and `--json` ends with a `run.completed` event carrying the same `status`:
 
@@ -95,19 +107,19 @@ How a task ends is a contract a pipeline can read. The exit code says it, and `-
 | 1 | `no_data` | Only with `--schema`: the data did not match it, after two tries to fix it |
 | 2 | `exhausted` | Turns (`--max-turns`), time (`--timeout`) or money (`--budget`) ran out before the model answered: the first reached ends the task |
 | 3 | `error` | No key, no network, a model error, a bad argument |
-| 130 | `interrupted` | Ctrl-C or SIGTERM |
+| 130 | `interrupted` | Ctrl-C, SIGTERM or SIGHUP |
 
-For a choice among a few options, `llx decide` asks a small decision model about stdin, in under a second for a fraction of a cent:
+For a choice among a few options, `llx decide` asks a small decision model about stdin, in about a second for a fraction of a cent, and prints the option it picked. It needs an OpenRouter key. With `--expect`, it exits 1 when the model picks another option, so a script can gate on it:
 
 ```console
 $ git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 ```
 
-Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml) and [a weekly audit](examples/github/audit.yml): [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
+Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml) and [a weekly audit](examples/github/audit.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
 
 ## In other agents
 
-Claude Code, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` answers a yes or no about some text in a second. See [docs/agents.md](docs/agents.md).
+Claude Code, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` answers a yes or no about some text in about a second. See [docs/agents.md](docs/agents.md).
 
 ## Documentation
 
