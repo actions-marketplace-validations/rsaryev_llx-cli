@@ -183,6 +183,8 @@ eq "install-only: success" 0 "$rc"
 if [ -e "$tmp/run/args" ]; then fail "install-only: llx ran"; else pass "install-only: llx never ran"; fi
 eq "install-only: no outputs" "" "$(names)"
 eq "install-only: no summary" "" "$(summary)"
+run_action INPUT_INSTALL_ONLY=false
+if [ -e "$tmp/run/args" ]; then pass "install-only: false runs llx"; else fail "install-only: false ran nothing"; fi
 
 # Inputs are checked first, and the reason is in the summary.
 for bad in INPUT_PROMPT= INPUT_MAX_TURNS=many INPUT_MAX_TURNS=0 INPUT_MAX_TURNS=10001 INPUT_TIMEOUT=-1 INPUT_TIMEOUT=86401 INPUT_BUDGET=0 INPUT_BUDGET=-1 INPUT_BUDGET=lots \

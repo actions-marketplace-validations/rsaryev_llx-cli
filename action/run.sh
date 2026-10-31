@@ -35,10 +35,13 @@ in_range() {
   [[ $1 =~ ^[0-9]{1,6}$ ]] && [ "$((10#$1))" -ge 1 ] && [ "$((10#$1))" -le "$2" ]
 }
 
+# install-only is on only when it says true: "false" is a value a workflow writes too.
+install_only() { [ "${INPUT_INSTALL_ONLY:-}" = true ]; }
+
 validate() {
   local tool
   for tool in jq perl; do command -v "$tool" >/dev/null || die "needs $tool on PATH"; done
-  [ -n "${INPUT_INSTALL_ONLY:-}${INPUT_PROMPT:-}${INPUT_PROMPT_FILE:-}" ] || die "give prompt or prompt-file"
+  { install_only || [ -n "${INPUT_PROMPT:-}${INPUT_PROMPT_FILE:-}" ]; } || die "give prompt or prompt-file"
   [ -z "${INPUT_MAX_TURNS:-}" ] || in_range "$INPUT_MAX_TURNS" 10000 || die "max-turns is a number from 1 to 10000"
   in_range "${INPUT_TIMEOUT:-900}" 86400 || die "timeout is a number of seconds from 1 to 86400"
   [[ -z ${INPUT_BUDGET:-} || ( $INPUT_BUDGET =~ ^([0-9]+\.?[0-9]*|\.[0-9]+)$ && $INPUT_BUDGET =~ [1-9] ) ]] || die "budget is an amount in dollars above 0"
@@ -109,7 +112,7 @@ prepare() {
   [ -z "${GITHUB_OUTPUT:-}" ] || echo "dir=$dir" >>"$GITHUB_OUTPUT"
   validate
   install_llx
-  [ -z "${INPUT_INSTALL_ONLY:-}" ] || return 0
+  ! install_only || return 0
   : >"$dir/result.txt"
   {
     if [ -n "${INPUT_PROMPT_FILE:-}" ]; then printf '%s\n\n' "$(cat -- "$INPUT_PROMPT_FILE")"; fi
@@ -163,7 +166,7 @@ ended() {
 
 finish() {
   local run=${LLX_RUN:-} code status delim fence answer='' last='{}' error=''
-  if [ -n "${INPUT_INSTALL_ONLY:-}" ] && [ "${PREPARED:-}" = success ]; then exit 0; fi
+  if install_only && [ "${PREPARED:-}" = success ]; then exit 0; fi
   code=$(ended)
   case "$code" in
     0) status="done" ;;
