@@ -1,0 +1,152 @@
+name: llx
+description: Run the llx agent once (llx exec) and hand back its answer, its exit code and what it spent.
+author: rsaryev
+branding:
+  icon: terminal
+  color: gray-dark
+
+# Composite, bash only: no Node, no third-party action, no MCP server. The agent reaches GitHub the
+# way a person does, with gh and git in its shell; the workflow owns the prompt and the posting.
+inputs:
+  prompt:
+    description: >-
+      The task. $NAME and ${NAME} become the value of the environment variable of that name when it is
+      set (the step's env:), and nothing else is expanded: no commands, no other syntax.
+    required: false
+    default: ''
+  prompt-file:
+    description: >-
+      A file whose text comes first, read as it is, then prompt. Relative to working-directory. On a
+      pull request the checkout is the author's: keep this file on the base branch or write it inline.
+    required: false
+    default: ''
+  schema:
+    description: A JSON Schema, inline or @path. The answer is then data matching it.
+    required: false
+    default: ''
+  allow:
+    description: Rules for what runs without asking, one per line, e.g. bash(gh pr view *).
+    required: false
+    default: ''
+  deny:
+    description: Rules that refuse, one per line, e.g. edit. A deny wins in every mode.
+    required: false
+    default: ''
+  mode:
+    description: A mode by name (default, plan, bypass, or one from settings.json).
+    required: false
+    default: ''
+  provider:
+    description: The model catalog's provider id. Sets LLX_PROVIDER.
+    required: false
+    default: ''
+  model:
+    description: The agent's model id. Sets LLX_MODEL.
+    required: false
+    default: ''
+  reasoning:
+    description: How much the model reasons (off to max). Sets LLX_REASONING.
+    required: false
+    default: ''
+  max-turns:
+    description: Model turns for the task (1 to 10000). None by default; the timeout bounds the task.
+    required: false
+    default: ''
+  timeout:
+    description: Seconds the task may take (1 to 86400). A run always has a deadline.
+    required: false
+    default: '900'
+  budget:
+    description: Dollars the task may spend (more than 0, e.g. 0.50), where the provider reports a cost (OpenRouter does, a ChatGPT sign-in does not). None by default.
+    required: false
+    default: ''
+  working-directory:
+    description: Where the agent works. Default is the workspace.
+    required: false
+    default: ''
+  version:
+    description: >-
+      The llx release to install. Default: the one this action's tag is (the version in its Cargo.toml).
+      system uses the llx already on PATH.
+    required: false
+    default: ''
+  args:
+    description: More llx exec arguments, split on blanks and lines. They come from the workflow, so they are trusted.
+    required: false
+    default: ''
+  install-only:
+    description: >-
+      true installs llx, puts it on PATH and runs nothing, for steps that run llx themselves (llx decide).
+      No prompt is needed and the outputs stay empty.
+    required: false
+    default: ''
+
+outputs:
+  result:
+    description: >-
+      The result's summary, or with schema the JSON data (empty when no data matched it). Empty past 900 KB:
+      result-file has it whole.
+    value: ${{ steps.finish.outputs.result }}
+  result-file:
+    description: The path of a file holding the same answer, under RUNNER_TEMP.
+    value: ${{ steps.finish.outputs.result-file }}
+  exit-code:
+    description: llx's exit code, 0, 1, 2, 3 or 130.
+    value: ${{ steps.finish.outputs.exit-code }}
+  status:
+    description: done, no-data, out-of-budget, not-ready or interrupted (failed for any other code).
+    value: ${{ steps.finish.outputs.status }}
+  cost-usd:
+    description: What the run cost, in US dollars, from the run.completed event.
+    value: ${{ steps.finish.outputs.cost-usd }}
+  turns:
+    description: Model turns the run took.
+    value: ${{ steps.finish.outputs.turns }}
+  events-file:
+    description: The path of the run's --json events, one per line.
+    value: ${{ steps.finish.outputs.events-file }}
+
+runs:
+  using: composite
+  steps:
+    # Inputs go in as variables, so no text from a workflow becomes part of a script.
+    - id: prepare
+      shell: bash
+      continue-on-error: true # finish reports it
+      env:
+        INPUT_PROMPT: ${{ inputs.prompt }}
+        INPUT_PROMPT_FILE: ${{ inputs.prompt-file }}
+        INPUT_SCHEMA: ${{ inputs.schema }}
+        INPUT_ALLOW: ${{ inputs.allow }}
+        INPUT_DENY: ${{ inputs.deny }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_REASONING: ${{ inputs.reasoning }}
+        INPUT_MAX_TURNS: ${{ inputs.max-turns }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_BUDGET: ${{ inputs.budget }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_VERSION: ${{ inputs.version }}
+        INPUT_ARGS: ${{ inputs.args }}
+        INPUT_INSTALL_ONLY: ${{ inputs.install-only }}
+      run: bash "$GITHUB_ACTION_PATH/action/run.sh" prepare
+    # llx takes this shell's place: while the agent runs, no other process of the step holds the
+    # step's variables, the provider's key among them.
+    - id: run
+      if: steps.prepare.outputs.ready == 'true'
+      shell: bash
+      continue-on-error: true # finish ends with llx's code
+      env:
+        LLX_RUN: ${{ steps.prepare.outputs.dir }}
+      run: . "$GITHUB_ACTION_PATH/action/run.sh" exec
+    - id: finish
+      if: always()
+      shell: bash
+      env:
+        LLX_RUN: ${{ steps.prepare.outputs.dir }}
+        PREPARED: ${{ steps.prepare.outcome }}
+        RAN: ${{ steps.run.outcome }}
+        INPUT_SCHEMA: ${{ inputs.schema }}
+        INPUT_INSTALL_ONLY: ${{ inputs.install-only }}
+      run: bash "$GITHUB_ACTION_PATH/action/run.sh" finish

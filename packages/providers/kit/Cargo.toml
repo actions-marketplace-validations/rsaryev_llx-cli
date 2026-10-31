@@ -1,0 +1,19 @@
+[package]
+name = "provider-kit"
+description = "What the model providers share: HTTP, PKCE, the sign-in callback, credential files, SSE"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No port and no workspace package: plumbing the provider packages share (rule L3).
+[dependencies]
+base64.workspace = true
+getrandom.workspace = true
+serde_json.workspace = true
+sha2.workspace = true
+ureq.workspace = true
+
+[lints]
+workspace = true

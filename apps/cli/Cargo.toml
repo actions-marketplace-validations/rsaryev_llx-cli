@@ -1,0 +1,45 @@
+[package]
+name = "llx"
+description = "An ultrafast, lightweight agent runtime for coding and CI, and a minimal agent for the terminal"
+homepage = "https://llx.sh"
+repository = "https://github.com/rsaryev/llx"
+keywords = ["agent", "agent-runtime", "coding-agent", "cli", "llm"]
+categories = ["command-line-utilities", "development-tools"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# Documented as the server's library, `llx`, whose name it shares (cargo#6313).
+[[bin]]
+name = "llx"
+path = "src/main.rs"
+doc = false
+
+# The binary (ARCHITECTURE.md D7): the server and the interface it composes, the client the
+# terminal reaches the daemon through, and the protocol the server's `Front` speaks.
+[dependencies]
+server.workspace = true
+tui.workspace = true
+client.workspace = true
+protocol.workspace = true
+log.workspace = true
+
+# The process's hardening, on Linux: a call std has no wrapper for.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc.workspace = true
+
+# The server and the interface again, with what the binary's tests drive them with
+# (`llx::test_support`, `tui::testing`), and what the integration tests read the binary with.
+[dev-dependencies]
+server = { workspace = true, features = ["testing"] }
+tui = { workspace = true, features = ["testing"] }
+crossterm.workspace = true
+insta.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+vt100.workspace = true
+
+[lints]
+workspace = true

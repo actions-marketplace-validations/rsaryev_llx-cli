@@ -1,0 +1,56 @@
+/* The recorded run in a real terminal, almost the page's black, edged by a hairline. Its palette
+   is player.ts's THEME. */
+.film {
+  overflow: hidden;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #090909;
+}
+.film .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* One quiet line under it: the chapters, which jump to a command, and play or pause. */
+.demo-caption {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0.75rem 0.25rem 0;
+  color: var(--muted);
+  font: 400 0.8125rem / 1.5 var(--mono);
+}
+.film-chapters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+}
+.demo-caption button {
+  min-height: 2rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+.demo-caption button:hover,
+.demo-caption button[aria-current] {
+  color: var(--white);
+}
+.demo-caption .film-toggle {
+  min-width: 4.5ch;
+  text-align: right;
+  color: var(--soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.demo-caption button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

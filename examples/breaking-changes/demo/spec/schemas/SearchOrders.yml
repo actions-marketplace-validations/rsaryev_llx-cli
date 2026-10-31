@@ -1,0 +1,10 @@
+type: object
+properties:
+  statuses:
+    type: array
+    items:
+      $ref: "./OrderStatus.yml"
+  skip:
+    type: integer
+  limit:
+    type: number

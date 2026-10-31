@@ -1,0 +1,11 @@
+type: object
+required:
+  - amount
+  - referenceId
+properties:
+  amount:
+    type: number
+  referenceId:
+    type: string
+  status:
+    $ref: "./OrderStatus.yml"

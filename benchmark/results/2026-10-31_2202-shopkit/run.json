@@ -1,0 +1,51 @@
+{
+ "when": "2026-10-31 22:02",
+ "task": "shopkit",
+ "tests": 69,
+ "model": "gpt-6-luna",
+ "provider": "openai",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 1.6,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.2.0",
+   "commit": "f9833d52",
+   "bytes": 2856016,
+   "sha256": "ad15687e29a6"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 43.1,
+   "pass": 69,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 8,
+   "input_tokens": 91337,
+   "cached_tokens": 74496,
+   "output_tokens": 4731,
+   "cost_usd": 0.0048,
+   "cache_pct": 82,
+   "calls": 9,
+   "failed_commands": 2,
+   "patches": 3,
+   "failed_patches": 0,
+   "model_s": 41.8,
+   "advised": 0
+  }
+ ]
+}

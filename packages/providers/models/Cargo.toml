@@ -1,0 +1,27 @@
+[package]
+name = "models"
+description = "The model catalog: models.dev's data, typed; a TOML database built in, models.dev's own on top"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# What is known of models and their providers (rule L3: contracts and the kit only).
+[dependencies]
+contracts.workspace = true
+provider-kit.workspace = true
+serde.workspace = true
+# raw_value: a catalog is read as an index of raw JSON, each model decoded when asked for.
+serde_json = { workspace = true, features = ["raw_value"] }
+miniz_oxide.workspace = true
+
+# The TOML database is read at build time only: nothing of it is in the binary but its data.
+[build-dependencies]
+miniz_oxide.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml = "0.8"
+
+[lints]
+workspace = true

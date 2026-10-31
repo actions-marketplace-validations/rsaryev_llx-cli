@@ -1,0 +1,26 @@
+get:
+  operationId: getTotals
+  summary: Totals for a period
+  parameters:
+    - name: before
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+    - name: after
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+    - name: top
+      in: query
+      required: false
+      description: How many top orders to return
+      schema:
+        type: integer
+        default: 10
+  responses:
+    "200":
+      description: The totals

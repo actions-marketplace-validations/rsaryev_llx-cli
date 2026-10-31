@@ -1,0 +1,25 @@
+post:
+  operationId: searchOrders
+  summary: Search orders
+  requestBody:
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/SearchOrders.yml"
+  responses:
+    "200":
+      description: Matching orders
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - count
+              - items
+            properties:
+              count:
+                type: integer
+              items:
+                type: array
+                items:
+                  $ref: "../schemas/Order.yml"

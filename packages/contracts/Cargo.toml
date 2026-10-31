@@ -1,0 +1,16 @@
+[package]
+name = "contracts"
+description = "llx's contracts: the chat-model, tool, gate, person, decision-model, history and inbox ports"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# Contracts only (rule L1): no loop, no technology.
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

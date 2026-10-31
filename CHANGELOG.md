@@ -1,0 +1,43 @@
+# Changelog
+
+## Unreleased
+
+- Initial release.
+- `--help` says quitting asks while a session works or a monitor or schedule runs (it named a shell too, which is a session's work).
+- Allow rules read a command's program without its quotes and by its name (`'sh' -c`, `/bin/sh -c`), and look through `env`: `env` with an assignment or an option stops an allow, as a leading `VAR=value` does, so `bash(env -i *)` no longer matches.
+- A wrapper the rules cannot look through (`xargs -0`, `time -p`, `command -p`) is never allowed by a pattern, even one that names it: `bash(xargs -0 grep *)` no longer allows `xargs -0 grep x`.
+- Allow rules match `sudo` and `doas` as written: `bash(npm test)` does not allow `sudo npm test`. They never allow one told to run a shell (`-s`, `-i`, `--login`), one followed by an assignment or an `env` option, or one whose command runs another. A wrapper's short options are read as getopt reads them: `sudo -nu root sh -c x` is never allowed, and `sudo -usid ls` is not taken for `-s`. A leading-wildcard rule such as `bash(* --version)` no longer lets `sh -c`, `env sh -c`, `sudo sh -c` or a git command that runs a program through.
+- Deny rules look past `env`, `sudo` and `doas`, and match a command as written, without its quotes, and with its program by name; a rule that names a wrapper still matches it as written. `--deny 'bash(git push *)'` now refuses `/usr/bin/git push`, `'git' push`, `sudo -u root git push` and `sudo -nu root git push`, and `bash(timeout *)` now refuses `timeout 5 make`.
+- A mode in `settings.json` that uses the older `"read_only"` key is an error naming `"reach"` (write `"reach": "read-only"`); it was ignored, and the mode reached anything.
+- `--decision-model` is `llx doctor`'s alone: a session or `exec` refuses it. `LLX_DECISION_MODEL` still sets `llx decide -m` and doctor's flag; the daemon no longer takes it from a client's environment.
+- A session in the daemon takes `LLX_PROVIDER`, `LLX_MODEL`, `LLX_REASONING` and now `LLX_NO_ADVICE` from the client's environment unless its command line gives the option, read as clap reads that line (`-ym x/y` sets the model; a word after `--` sets nothing). A daemon started by hand with these variables set no longer passes them to its sessions.
+- `agents` and `jobs` read only the action names, keys and `context` values their schemas list, in any case: a call that uses another (`start`, `watch`, `prompt`, `context: "new"`) is told what is missing. A call without `action` is still read from its `task`, or its `agent` and `message`.
+- A slash command given as a session's first message (`llx "/status"`) is carried out, as a typed line is, instead of being sent to the model; a first message that starts with `/` (a path such as `/Users/me/x.rs`) is read as a command.
+- `/help` lists the `/models`, `/checkpoint` and `/?` aliases, and no longer says "(unix)" for Ctrl-Z. `llx doctor`'s decision-model warning says how to sign in to OpenRouter.
+- `/diff`'s `git diff` and `llx doctor`'s shell check have a deadline (10 s, 5 s): past it, the command and everything it started are killed, and `/diff` says git did not end.
+- `bash`: a cut output no longer lists the cut part's lines that look like errors; the marker's `sed -n` command and the spill file still read the cut part whole.
+- A patch's diff shows each change as the patch made it, its context lines as the file has them: edits more than about 1,000 lines apart showed only removed lines.
+- `apply_patch`: a call cut off at the output limit and written as JSON (`{"patch": …}`) is answered unrun, as such a call whole already was refused.
+- An old tool output or call argument that quotes the history's elision marker (a read of llx's own source or log) is elided like any other, instead of kept whole.
+- A run is always told how many incoming messages were dropped when its queue overflowed, even when a step took none of them.
+- A session file that is not a session is reported as `session <id> is not a session: …`, not `is unreadable`.
+- OpenAI's own API (a key at api.openai.com) is sent the output limit as `max_completion_tokens`, the field its reasoning models take, and one prompt cache key per conversation instead of one for every session.
+- A ChatGPT sign-in keeps a task's prompt-cache route through steering, agents' answers, a cut-off reply, the advisor's line and `--schema`'s data request; after `/rewind`, a new task no longer takes the old task's route.
+- A ChatGPT sign-in's token refresh is held to the run's `--timeout` and gives up within 60 s; a sign-in server that did not answer held a session's requests for 5 minutes, one answering slowly up to 10. The ID token is no longer kept in `openai.json` (files saved before still load).
+- `--json`: the `tool.result` event's documentation no longer lists `state`, which no tool ever sent; the events and the schema are unchanged.
+- Fixed: with `-v`, a session's turn lines show plain at a colour terminal, not as escape codes; and a model reply with no text and no call no longer shows an empty block.
+- Fixed: `/model` in a session the daemon serves offers the providers signed in through this terminal's environment (a key set only in the client's shell), as `/login` does.
+- Fixed: `/new` (or `/clear`) kept with Tab for after a task says that nothing opened, instead of vanishing.
+- Fixed: a monitor in the workspace's or the read-only sandbox has a scratch `$TMPDIR` of its own, not the client's, where its sandbox let it write nothing.
+- Fixed: `/diff` in a repository with no commit yet shows no colours when git's config asks for them.
+- Fixed: a picture too large to attach is refused with its size rounded up (`9 MB; a picture may be at most 8 MB`), not `8 MB; at most 8 MB`.
+- Fixed: two saves of the same credentials, settings or catalog file at one moment (two sessions of the daemon) could fail, or leave one file holding the other's text.
+- Fixed: the daemon no longer keeps a dead "in the background" entry when a desk ends as its terminal closes, so `llx serve status` stays right and an idle daemon of an older build can be replaced again.
+- Fixed: a question from a session in the background that has header tabs keeps its text once that session is shown.
+- Fixed: at the most sessions, opening one closes an idle session even when the oldest idle one is waiting for your answer.
+- Fixed: Tab (keep for after) while a task works turns typed or dropped file and picture paths into attachments, as Enter does.
+- Fixed: `/copy` with xclip no longer waits 3 seconds and says "No clipboard tool here" although it copied; the message names only this system's tools.
+- Fixed: outside a git repository, `@`'s file list does not follow a linked folder, so a link to `.` no longer fills it with repeated paths.
+- Fixed: a Markdown link whose text spans a hard line break no longer crashes the interface; an HTML block shows as its own lines, not one row with a literal `\n`; a list item that opens with a code block keeps its number or bullet.
+- Fixed: successful calls that read the same stay joined with `↳` while a schedule, a lane waiting for you or a stopped agent shows under the composer; a note between two calls starts a new group.
+- Fixed: an agent's name is escaped in the composer while its view is shown.

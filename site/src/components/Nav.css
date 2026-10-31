@@ -1,0 +1,44 @@
+.nav {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  height: 4.5rem;
+}
+.wordmark {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  font: 800 1.5rem/1 var(--display);
+  letter-spacing: -0.06em;
+}
+.nav-links {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding-inline: 0.75rem;
+  color: var(--soft);
+  font: 500 0.9375rem/1 var(--text);
+  transition: color 160ms ease;
+}
+.nav-link:hover,
+.nav-link[aria-current] {
+  color: var(--white);
+}
+.gh {
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-right: -0.6rem;
+  color: var(--soft);
+  transition: color 160ms ease;
+}
+.gh:hover {
+  color: var(--white);
+}

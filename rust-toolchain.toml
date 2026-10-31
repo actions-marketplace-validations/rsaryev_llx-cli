@@ -1,0 +1,7 @@
+# The latest stable Rust, not a fixed version: the workspace builds on any stable from its
+# rust-version (Cargo.toml, checked by CI's msrv job) on, and a pinned release would only go
+# stale between bumps. The components are the ones the checks in CONTRIBUTING.md run.
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

@@ -1,0 +1,43 @@
+#!/bin/sh
+# Git's pre-push hook (scripts/setup installs it): `scripts/check --fast` on what is pushed, the
+# commits since the remote's (fmt, clippy on the crates changed, the repository's rules, the
+# linters of what changed): seconds, not minutes. The tests, both builds, the size and the site
+# run in CI on every push, and by hand with `scripts/check` (or `--all`) before a change is
+# called done. `git push --no-verify` skips it.
+#
+# The checks read the working tree, so it must be what is pushed: a ref whose commit is not the
+# one checked out is not checked here (CI checks it), and uncommitted changes to tracked files
+# are refused. Git gives the refs on stdin: `<local ref> <local sha> <remote ref> <remote sha>`.
+set -eu
+
+root=$(git rev-parse --show-toplevel)
+head=$(git rev-parse HEAD)
+checked=
+base=
+while read -r local_ref local_sha remote_ref remote_sha; do
+  : "$remote_ref"
+  case $local_sha in
+    *[!0]*) ;;
+    *) continue ;; # a deletion pushes nothing
+  esac
+  if [ "$local_sha" != "$head" ]; then
+    echo "pre-push: $local_ref is not the commit checked out; not checked here" >&2
+    continue
+  fi
+  checked=yes
+  # What the remote has is the base, when this clone knows it; a new branch's is main's.
+  case $remote_sha in
+    *[!0]*) git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$remote_sha ;;
+  esac
+done
+[ -n "$checked" ] || exit 0
+
+dirty=$(git status --porcelain --untracked-files=no)
+if [ -n "$dirty" ]; then
+  echo "pre-push: the checks read the working tree, and it differs from what is pushed;" >&2
+  echo "commit or stash these first (or push with --no-verify):" >&2
+  printf '%s\n' "$dirty" >&2
+  exit 1
+fi
+
+LLX_CHECK_BASE=$base exec "$root/scripts/check" --fast

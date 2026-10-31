@@ -1,0 +1,14 @@
+[package]
+name = "queue"
+description = "One queue for what reaches a session's run from outside its own calls"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No workspace package: a primitive the app composes (rule L3).
+[dependencies]
+
+[lints]
+workspace = true

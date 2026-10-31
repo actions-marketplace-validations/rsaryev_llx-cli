@@ -1,0 +1,21 @@
+[package]
+name = "tools"
+description = "The agent's tools: shell commands, patches to files, questions to the person"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The tool protocol only (rule L3): a tool knows nothing of the loop or the model.
+[dependencies]
+# Images go to the model as base64.
+base64.workspace = true
+contracts.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+# A command's own session and the kill of its process group (setsid, kill).
+libc.workspace = true
+
+[lints]
+workspace = true

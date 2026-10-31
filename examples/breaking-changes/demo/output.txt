@@ -1,0 +1,22 @@
+$ sh examples/breaking-changes/demo/run.sh
+BREAKS  structural  POST /orders: Success response code changed from 201 to 200 for 'Order created'.
+BREAKS  structural  PUT /orders/{orderId} (operationId updateOrder): The whole PUT operation was removed from the path.
+BREAKS  structural  POST /orders (request CreateOrder): New required request property 'currency' (type string) added to CreateOrder.
+BREAKS  structural  Order schema (used by GET /orders/{orderId}, POST /orders response, POST /orders/search items): 'quoteDate' removed from the required list; the property remains, optional.
+BREAKS  semantic    GET /orders/{orderId}, POST /orders (response), POST /orders/search (items): Order.amount meaning changed from major units (e.g. 12.50) to minor units/cents (e.g. 1250). Type stays number.
+BREAKS  structural  GET /orders/{orderId}, POST /orders (request status and response), POST /orders/search (statuses filter and items): Enum value ROLLBACK removed from OrderStatus.
+BREAKS  structural  POST /orders/search (request SearchOrders): 'limit' type changed from number to string with maxLength 3.
+BREAKS  semantic    POST /orders/search: Result ordering reversed: items are now sorted oldest-first by createdAt instead of newest-first.
+BREAKS  semantic    POST /orders/search: 'skip' changed meaning: it was an item offset and is now a page index, so the slice offset is skip * limit.
+BREAKS  structural  GET /reports: Required query parameter 'before' renamed to 'from'.
+BREAKS  structural  GET /stats/totals: Query parameter 'top' changed from optional to required (its default of 10 is now unreachable without sending it).
+BREAKS  semantic    GET /stats/charts: Query parameter 'before' boundary changed from exclusive to inclusive.
+safe    structural  GET /stats/charts: New optional query parameter 'currency' (type string) added.
+safe    semantic    GET /orders/{orderId}: Operation summary reworded from 'Receive an order by id' to 'Get one order by its id'.
+safe    structural  Order schema (GET /orders/{orderId}, POST /orders response, POST /orders/search items): New optional 'note' string property added.
+
+(exit 1: something breaks)
+
+llx on stderr, at the end:
+Worked for 38s · 6 turns · $0.0062
+agent    anthropic/claude-haiku-5.5 · 68,486 in (53,167 cached) · 7,423 out · $0.0062 · 38.7s

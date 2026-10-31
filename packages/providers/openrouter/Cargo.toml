@@ -1,0 +1,19 @@
+[package]
+name = "openrouter"
+description = "A model provider: OpenRouter's chat and decision models, and signing in for a key"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The chat and decision-model ports and the provider kit only (rule L3); HTTP and TLS are the
+# kit's (A7).
+[dependencies]
+contracts.workspace = true
+provider-kit.workspace = true
+serde_json.workspace = true
+log.workspace = true
+
+[lints]
+workspace = true

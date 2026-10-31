@@ -1,0 +1,238 @@
+name: release
+
+# A pushed tag vX.Y.Z (RELEASING.md) builds the archives on each platform and publishes them as
+# the GitHub release vX.Y.Z, with the CHANGELOG section as its notes. A tag with a suffix
+# (v1.0.0-rc.1) becomes a prerelease, so `releases/latest` (install.sh) skips it.
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: read
+
+# Two pushes of one tag never race to create the same release.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Fails before any build when the tag and Cargo.toml disagree or CHANGELOG.md has no section.
+  check:
+    name: check the tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Tag matches the workspace version
+        id: version
+        shell: bash
+        run: |
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match the workspace version $version"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: CHANGELOG.md has the version's notes
+        run: sh scripts/release-notes.sh "${{ steps.version.outputs.version }}" > /dev/null
+
+  # The tests of the tagged commit, on every platform, as CI runs them: a tag on a commit whose CI
+  # was red, or never ran, ships nothing.
+  test:
+    name: test (${{ matrix.os }})
+    needs: check
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # the stable branch, 2026-10-01
+        with:
+          toolchain: stable
+          components: clippy
+      - run: scripts/check --only clippy,test
+
+  build:
+    name: build (${{ matrix.name }})
+    needs: [check, test]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          # arm64 runner; x86_64 is cross-built with Xcode, and dist.sh joins both into universal.
+          - name: macos
+            os: macos-14
+            targets: aarch64-apple-darwin x86_64-apple-darwin
+            smoke: target/aarch64-apple-darwin/release/llx
+          # The oldest supported Ubuntu, for the oldest glibc the binary links against.
+          - name: linux
+            os: ubuntu-22.04
+            targets: x86_64-unknown-linux-gnu
+            smoke: target/x86_64-unknown-linux-gnu/release/llx
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # the stable branch, 2026-10-01
+        with:
+          toolchain: stable
+      # No rust-cache here: a release is built from a clean state, never from a shared cache.
+      - name: Build the archives
+        shell: bash
+        run: sh scripts/dist.sh ${{ matrix.targets }}
+      - name: Smoke test
+        shell: bash
+        run: |
+          "${{ matrix.smoke }}" --version
+          if [ "$RUNNER_OS" = Linux ]; then
+            # The archive, as a user unpacks it, runs in a plain distribution.
+            unpacked="$RUNNER_TEMP/unpacked"
+            mkdir "$unpacked"
+            tar -xzf dist/llx-x86_64-unknown-linux-gnu.tar.gz -C "$unpacked" llx
+            docker run --rm --network none -v "$unpacked:/unpacked:ro" ubuntu:22.04 /unpacked/llx --version
+          fi
+          if [ "$RUNNER_OS" = macOS ]; then
+            # The universal download runs as it was packaged and holds both architectures.
+            tar -xzf dist/llx-universal-apple-darwin.tar.gz -C "$RUNNER_TEMP" llx
+            "$RUNNER_TEMP/llx" --version
+            archs=$(lipo -archs "$RUNNER_TEMP/llx")
+            case "$archs" in *x86_64*arm64* | *arm64*x86_64*) ;; *)
+              echo "::error::universal binary holds only: $archs"; exit 1 ;;
+            esac
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.name }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: publish
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      # A signed statement of which workflow and commit built each archive:
+      # `gh attestation verify llx-<target>.tar.gz --repo rsaryev/llx`.
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: artifacts
+      # Each platform's SHA256SUMS joined into one, then checked against the downloaded archives.
+      - name: Merge the archives and their checksums
+        shell: bash
+        run: |
+          mkdir dist
+          cp artifacts/dist-*/llx-* dist/
+          cat artifacts/dist-*/SHA256SUMS | sort -k 2 > dist/SHA256SUMS
+          (cd dist && sha256sum --check --strict SHA256SUMS)
+          test "$(wc -l < dist/SHA256SUMS)" -eq "$(find dist -name 'llx-*' | wc -l)"
+          # The installers of this version, for `releases/download/vX.Y.Z/install.sh`.
+          cp scripts/install.sh dist/
+          ls -l dist
+      - name: Attest where the archives were built
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/llx-*
+      - name: Release notes
+        run: sh scripts/release-notes.sh "${{ needs.check.outputs.version }}" > notes.md
+      - name: Create the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          prerelease=""
+          case "$VERSION" in *-*) prerelease="--prerelease" ;; esac
+          # shellcheck disable=SC2086 # prerelease is one flag or nothing
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --verify-tag --title "llx $VERSION" --notes-file notes.md $prerelease
+
+  # `uses: rsaryev/llx@v0` follows the releases: once the release exists, the major tag (v0 for
+  # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving
+  # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), and a push made
+  # with the workflow's own token starts no workflow in any case. That token cannot point a tag at
+  # a commit whose .github/workflows differ from the default branch's (main moved on with a
+  # workflow change after the tag): the job then fails and says how to move it by hand.
+  major:
+    name: move the major tag
+    needs: [check, publish]
+    if: ${{ !contains(needs.check.outputs.version, '-') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      VERSION: ${{ needs.check.outputs.version }}
+    steps:
+      - name: Move the major tag to the released commit
+        shell: bash
+        run: |
+          major="v${VERSION%%.*}"
+          # The commit the release tag names (an annotated tag is looked through).
+          sha=$(gh api "repos/$GH_REPO/commits/$GITHUB_REF_NAME" --jq .sha)
+          if gh api "repos/$GH_REPO/git/ref/tags/$major" > /dev/null 2>&1; then
+            move=(--method PATCH "repos/$GH_REPO/git/refs/tags/$major" -f sha="$sha" -F force=true)
+          else
+            move=(--method POST "repos/$GH_REPO/git/refs" -f ref="refs/tags/$major" -f sha="$sha")
+          fi
+          if ! gh api "${move[@]}" > /dev/null; then
+            echo "::error::$major was not moved. By hand: git tag -f $major $sha && git push -f origin $major"
+            exit 1
+          fi
+          echo "$major -> $sha ($GITHUB_REF_NAME)"
+
+  # The npm packages (@localixai/llx and one per platform: scripts/npm-pack.sh) from the same
+  # archives, published after the release exists. Without the NPM_TOKEN secret the job ends here.
+  npm:
+    name: npm
+    needs: [check, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # npm's provenance: a signed link from each package to this workflow run.
+      id-token: write
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - name: Is there a token
+        id: token
+        run: |
+          if [ -n "$NODE_AUTH_TOKEN" ]; then echo "set=yes" >> "$GITHUB_OUTPUT"; fi
+      - uses: actions/checkout@v7
+        if: steps.token.outputs.set == 'yes'
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        if: steps.token.outputs.set == 'yes'
+        with:
+          pattern: dist-*
+          path: artifacts
+      - name: Publish
+        if: steps.token.outputs.set == 'yes'
+        run: |
+          mkdir dist
+          cp artifacts/dist-*/llx-* dist/
+          # shellcheck disable=SC2016 # npm expands ${NODE_AUTH_TOKEN} from its environment, not the shell
+          echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
+          sh scripts/npm-pack.sh --publish

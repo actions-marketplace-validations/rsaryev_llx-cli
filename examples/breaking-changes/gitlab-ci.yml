@@ -1,0 +1,24 @@
+# A GitLab CI job: what a change does to the API's clients, on every push to a branch with an open
+# merge request. Copy examples/breaking-changes/ into the repository (as ci/breaking-changes/, say)
+# and this job into .gitlab-ci.yml. Needs a masked CI variable OPENROUTER_API_KEY, ideally a key
+# with a spend limit; the job has no token that can write.
+breaking changes:
+  stage: test
+  image: debian:bookworm-slim # glibc: the llx Linux build does not run on Alpine (musl)
+  rules:
+    - if: $CI_OPEN_MERGE_REQUESTS # a branch pipeline with a merge request open
+  variables:
+    GIT_DEPTH: 0 # the base must be in the clone
+  before_script:
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl git jq > /dev/null
+    - curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
+    - export PATH="$HOME/.local/bin:$PATH"
+    - git fetch -q origin "$CI_DEFAULT_BRANCH"
+  script:
+    - sh ci/breaking-changes/check.sh src/spec "origin/$CI_DEFAULT_BRANCH"
+  allow_failure:
+    exit_codes: [2] # llx could not finish: say so, do not block the merge request
+  artifacts:
+    when: always
+    paths: [breaking-changes.json]
+  timeout: 10m

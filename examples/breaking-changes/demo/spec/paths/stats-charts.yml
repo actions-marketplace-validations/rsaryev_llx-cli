@@ -1,0 +1,20 @@
+get:
+  operationId: getCharts
+  summary: Chart data for a period
+  parameters:
+    - name: before
+      in: query
+      required: true
+      description: The end of the period, exclusive
+      schema:
+        type: string
+        format: date-time
+    - name: after
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date-time
+  responses:
+    "200":
+      description: The chart points

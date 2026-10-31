@@ -1,0 +1,126 @@
+{
+  "breaking": true,
+  "changes": [
+    {
+      "breaking": true,
+      "change": "Success response code changed from 201 to 200 for 'Order created'.",
+      "endpoint": "POST /orders",
+      "kind": "structural",
+      "where": "spec/paths/orders.yml:11 (was \"201\" on origin/main)",
+      "why": "Clients and generated SDKs that expect 201 (or a typed 201 response) will not match a 200 response; status-code checks fail."
+    },
+    {
+      "breaking": true,
+      "change": "The whole PUT operation was removed from the path.",
+      "endpoint": "PUT /orders/{orderId} (operationId updateOrder)",
+      "kind": "structural",
+      "where": "spec/paths/orders-id.yml (put block removed; formerly origin/main lines 17-43)",
+      "why": "Existing callers of PUT /orders/{orderId} get 404/405 and the generated updateOrder method disappears from SDKs."
+    },
+    {
+      "breaking": true,
+      "change": "New required request property 'currency' (type string) added to CreateOrder.",
+      "endpoint": "POST /orders (request CreateOrder)",
+      "kind": "structural",
+      "where": "spec/schemas/CreateOrder.yml:5 and :7-8",
+      "why": "Requests that were valid without currency are now rejected by strict validation; generated createOrder request type gains a required field."
+    },
+    {
+      "breaking": true,
+      "change": "'quoteDate' removed from the required list; the property remains, optional.",
+      "endpoint": "Order schema (used by GET /orders/{orderId}, POST /orders response, POST /orders/search items)",
+      "endpoints": "GET /orders/{orderId}, POST /orders (response), POST /orders/search (items)",
+      "kind": "structural",
+      "where": "spec/schemas/Order.yml:2-6",
+      "why": "Clients that rely on quoteDate always being present may now receive it absent; generated types change from required to optional, which breaks strictly typed consumers."
+    },
+    {
+      "breaking": true,
+      "change": "Order.amount meaning changed from major units (e.g. 12.50) to minor units/cents (e.g. 1250). Type stays number.",
+      "endpoint": "GET /orders/{orderId}, POST /orders (response), POST /orders/search (items)",
+      "kind": "semantic",
+      "where": "spec/schemas/Order.yml:17 (was 'The total in major units, e.g. 12.50')",
+      "why": "Same field, same type, but values are 100x larger; clients that read or display the amount as major units will misreport totals silently."
+    },
+    {
+      "breaking": true,
+      "change": "Enum value ROLLBACK removed from OrderStatus.",
+      "endpoint": "GET /orders/{orderId}, POST /orders (request status and response), POST /orders/search (statuses filter and items)",
+      "kind": "structural",
+      "where": "spec/schemas/OrderStatus.yml:8 (line removed)",
+      "why": "Responses carrying ROLLBACK no longer match the enum, and generated enums lose the variant (exhaustive switches break); requests that send status ROLLBACK (e.g. a search filter) are now rejected by validation."
+    },
+    {
+      "breaking": true,
+      "change": "'limit' type changed from number to string with maxLength 3.",
+      "endpoint": "POST /orders/search (request SearchOrders)",
+      "kind": "structural",
+      "where": "spec/schemas/SearchOrders.yml:9-11",
+      "why": "A request with a numeric limit (e.g. 50) that was valid is now rejected; generated type changes from number to string. Limits longer than 3 characters are also rejected."
+    },
+    {
+      "breaking": true,
+      "change": "Result ordering reversed: items are now sorted oldest-first by createdAt instead of newest-first.",
+      "endpoint": "POST /orders/search",
+      "kind": "semantic",
+      "where": "src/search.js:7 (was b.createdAt.localeCompare(a.createdAt), '// newest first')",
+      "why": "Same request returns the same items in reverse order; clients that take the first item as the latest will get different data. The spec does not document ordering."
+    },
+    {
+      "breaking": true,
+      "change": "'skip' changed meaning: it was an item offset and is now a page index, so the slice offset is skip * limit.",
+      "endpoint": "POST /orders/search",
+      "kind": "semantic",
+      "where": "src/search.js:8",
+      "why": "The same skip value returns a different page: e.g. skip=1 with limit=10 previously skipped 1 item and now skips 10; pagination loops built on skip break. The spec gives no description for skip, so the change is invisible in the contract."
+    },
+    {
+      "breaking": true,
+      "change": "Required query parameter 'before' renamed to 'from'.",
+      "endpoint": "GET /reports",
+      "kind": "structural",
+      "where": "spec/paths/reports.yml:5 (was 'before')",
+      "why": "Requests with 'before' no longer satisfy the required 'from' parameter and are rejected; generated method signature changes. The meaning of 'from' is not described, so clients cannot assume it equals the old bound."
+    },
+    {
+      "breaking": true,
+      "change": "Query parameter 'top' changed from optional to required (its default of 10 is now unreachable without sending it).",
+      "endpoint": "GET /stats/totals",
+      "kind": "structural",
+      "where": "spec/paths/stats-totals.yml:19 (was required: false)",
+      "why": "Calls that omit 'top' (valid before, using default 10) are now rejected; generated method gains a required argument."
+    },
+    {
+      "breaking": true,
+      "change": "Query parameter 'before' boundary changed from exclusive to inclusive.",
+      "endpoint": "GET /stats/charts",
+      "kind": "semantic",
+      "where": "spec/paths/stats-charts.yml:8 (was 'The end of the period, exclusive')",
+      "why": "The same call now includes records created exactly at 'before', so counts and chart points change for identical requests."
+    },
+    {
+      "breaking": false,
+      "change": "New optional query parameter 'currency' (type string) added.",
+      "endpoint": "GET /stats/charts",
+      "kind": "structural",
+      "where": "spec/paths/stats-charts.yml:12-16",
+      "why": "Optional addition; existing calls remain valid and unchanged. The repo does not contain the chart code, so the filter's effect could not be verified."
+    },
+    {
+      "breaking": false,
+      "change": "Operation summary reworded from 'Receive an order by id' to 'Get one order by its id'.",
+      "endpoint": "GET /orders/{orderId}",
+      "kind": "semantic",
+      "where": "spec/paths/orders-id.yml:3",
+      "why": "Wording only; the meaning and contract are unchanged (only generated doc comments differ)."
+    },
+    {
+      "breaking": false,
+      "change": "New optional 'note' string property added.",
+      "endpoint": "Order schema (GET /orders/{orderId}, POST /orders response, POST /orders/search items)",
+      "kind": "structural",
+      "where": "spec/schemas/Order.yml:7-10",
+      "why": "Purely additive optional response field; clients that ignore unknown fields are unaffected."
+    }
+  ]
+}

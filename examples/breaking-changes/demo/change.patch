@@ -1,0 +1,176 @@
+diff --git a/spec/paths/orders-id.yml b/spec/paths/orders-id.yml
+index 5d5fe77..4f9acdc 100644
+--- a/spec/paths/orders-id.yml
++++ b/spec/paths/orders-id.yml
+@@ -1,6 +1,6 @@
+ get:
+   operationId: getOrder
+-  summary: Receive an order by id
++  summary: Get one order by its id
+   parameters:
+     - name: orderId
+       in: path
+@@ -14,30 +14,3 @@ get:
+         application/json:
+           schema:
+             $ref: "../schemas/Order.yml"
+-
+-put:
+-  operationId: updateOrder
+-  summary: Update an order by id
+-  parameters:
+-    - name: orderId
+-      in: path
+-      required: true
+-      schema:
+-        type: integer
+-  requestBody:
+-    content:
+-      application/json:
+-        schema:
+-          $ref: "../schemas/UpdateOrder.yml"
+-  responses:
+-    "200":
+-      description: Order updated
+-      content:
+-        application/json:
+-          schema:
+-            type: object
+-            required:
+-              - ok
+-            properties:
+-              ok:
+-                type: boolean
+diff --git a/spec/paths/orders.yml b/spec/paths/orders.yml
+index 8d4ee9a..867ef62 100644
+--- a/spec/paths/orders.yml
++++ b/spec/paths/orders.yml
+@@ -8,7 +8,7 @@ post:
+         schema:
+           $ref: "../schemas/CreateOrder.yml"
+   responses:
+-    "201":
++    "200":
+       description: Order created
+       content:
+         application/json:
+diff --git a/spec/paths/reports.yml b/spec/paths/reports.yml
+index c72abac..f763d6d 100644
+--- a/spec/paths/reports.yml
++++ b/spec/paths/reports.yml
+@@ -2,7 +2,7 @@ get:
+   operationId: getReport
+   summary: Orders report for a period
+   parameters:
+-    - name: before
++    - name: from
+       in: query
+       required: true
+       schema:
+diff --git a/spec/paths/stats-charts.yml b/spec/paths/stats-charts.yml
+index 438d12f..c7b45b2 100644
+--- a/spec/paths/stats-charts.yml
++++ b/spec/paths/stats-charts.yml
+@@ -5,10 +5,15 @@ get:
+     - name: before
+       in: query
+       required: true
+-      description: The end of the period, exclusive
++      description: The end of the period, inclusive
+       schema:
+         type: string
+         format: date-time
++    - name: currency
++      in: query
++      required: false
++      schema:
++        type: string
+     - name: after
+       in: query
+       required: true
+diff --git a/spec/paths/stats-totals.yml b/spec/paths/stats-totals.yml
+index f1fde85..2fdfd59 100644
+--- a/spec/paths/stats-totals.yml
++++ b/spec/paths/stats-totals.yml
+@@ -16,7 +16,7 @@ get:
+         format: date-time
+     - name: top
+       in: query
+-      required: false
++      required: true
+       description: How many top orders to return
+       schema:
+         type: integer
+diff --git a/spec/schemas/CreateOrder.yml b/spec/schemas/CreateOrder.yml
+index 73526e1..d38a67a 100644
+--- a/spec/schemas/CreateOrder.yml
++++ b/spec/schemas/CreateOrder.yml
+@@ -2,7 +2,10 @@ type: object
+ required:
+   - amount
+   - referenceId
++  - currency
+ properties:
++  currency:
++    type: string
+   amount:
+     type: number
+   referenceId:
+diff --git a/spec/schemas/Order.yml b/spec/schemas/Order.yml
+index 6ca3136..2f11d27 100644
+--- a/spec/schemas/Order.yml
++++ b/spec/schemas/Order.yml
+@@ -3,16 +3,18 @@ required:
+   - orderId
+   - status
+   - amount
+-  - quoteDate
+   - createdAt
+ properties:
++  note:
++    type: string
++    description: A free-form note
+   orderId:
+     type: integer
+   status:
+     $ref: "./OrderStatus.yml"
+   amount:
+     type: number
+-    description: The total in major units, e.g. 12.50
++    description: The total in minor units (cents), e.g. 1250
+   quoteDate:
+     type: string
+     format: date
+diff --git a/spec/schemas/OrderStatus.yml b/spec/schemas/OrderStatus.yml
+index fafac11..257c8ab 100644
+--- a/spec/schemas/OrderStatus.yml
++++ b/spec/schemas/OrderStatus.yml
+@@ -5,4 +5,3 @@ enum:
+   - SUCCESS
+   - FAILED
+   - CANCELED
+-  - ROLLBACK
+diff --git a/spec/schemas/SearchOrders.yml b/spec/schemas/SearchOrders.yml
+index 4430bc2..a31386d 100644
+--- a/spec/schemas/SearchOrders.yml
++++ b/spec/schemas/SearchOrders.yml
+@@ -7,4 +7,5 @@ properties:
+   skip:
+     type: integer
+   limit:
+-    type: number
++    type: string
++    maxLength: 3
+diff --git a/src/search.js b/src/search.js
+index fd8060a..7986af6 100644
+--- a/src/search.js
++++ b/src/search.js
+@@ -4,6 +4,6 @@ export function searchOrders(store, body) {
+   const limit = Math.min(Number(body.limit ?? 50), 200);
+   const items = store
+     .filter((order) => !body.statuses || body.statuses.includes(order.status))
+-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt)); // newest first
+-  return { count: items.length, items: items.slice(skip, skip + limit) };
++    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
++  return { count: items.length, items: items.slice(skip * limit, skip * limit + limit) };
+ }

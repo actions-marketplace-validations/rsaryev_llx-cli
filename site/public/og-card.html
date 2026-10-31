@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="robots" content="noindex">
+  <title>llx social card</title>
+  <!-- The source of og.png: two llx calls from a shell, rising from the bottom edge as the
+       product shot does on the site. Rendered at 1200×630 by a headless browser. -->
+  <style>
+    @font-face { font-family: 'Display'; src: url(fonts/dm-sans.woff2) format('woff2'); font-weight: 100 1000; }
+    @font-face { font-family: 'Text'; src: url(fonts/inter.woff2) format('woff2'); font-weight: 100 900; }
+    @font-face { font-family: 'Mono'; src: url(fonts/jetbrains-mono.woff2) format('woff2'); font-weight: 100 800; }
+    html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; background: #070707; color: #ededed; }
+    body { position: relative; }
+    .og-head { position: absolute; left: 80px; top: 64px; }
+    .og-name { display: flex; align-items: center; gap: 18px; font: 500 64px/1 'Display', sans-serif; letter-spacing: -0.04em; }
+    .og-name img { width: 56px; height: 56px; }
+    .og-tag { margin-top: 18px; color: #a3a3a3; font: 400 26px/1.35 'Text', sans-serif; letter-spacing: -0.01em; }
+    .og-url { position: absolute; right: 80px; top: 76px; color: #737373; font: 400 20px/1 'Mono', monospace; }
+    .og-term { position: absolute; left: 80px; right: 80px; top: 260px; height: 400px; background: #111; border: 1px solid #262626; border-radius: 16px; }
+    .og-bar { display: flex; gap: 8px; padding: 18px 20px; }
+    .og-bar i { width: 11px; height: 11px; border-radius: 50%; background: #2a2a2a; }
+    pre { margin: 0; padding: 6px 28px; font: 400 19px/1.8 'Mono', monospace; color: #d4d4d4; white-space: pre; }
+    .p { color: #6b6b6b; }
+    .o { color: #8fd19e; }
+    .og-fade { position: absolute; inset: auto 0 0 0; height: 130px; background: linear-gradient(transparent, #070707 85%); }
+  </style>
+</head>
+<body>
+  <div class="og-head">
+    <div class="og-name"><img src="logo.svg" alt="">llx</div>
+    <div class="og-tag">Ultrafast, lightweight agent runtime</div>
+  </div>
+  <div class="og-url">llx.sh</div>
+  <div class="og-term">
+    <div class="og-bar"><i></i><i></i><i></i></div>
+<pre><span class="p">$</span> llx exec "Which file in src/ parses the command line? Its path only."
+<span class="o">src/cli.rs</span>
+<span class="p">$</span> git show --stat | llx decide --choices patch,minor,major "Which version bump?"
+<span class="o">minor</span></pre>
+  </div>
+  <div class="og-fade"></div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+[package]
+name = "server"
+description = "llx's server: the composition root, its sessions, lanes, agents, jobs and modes, served through the protocol"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# The library is `llx`: its log's targets (`llx::session`, `llx::server::hub`), the default
+# filter (`warn,llx=info`) and `RUST_LOG=llx=debug` name it so, as when it was the binary.
+[lib]
+name = "llx"
+path = "src/lib.rs"
+
+# What the binary's tests drive the server with (`llx::test_support`: a desk served in process,
+# gated models, a daemon's socket). Only `apps/cli`'s dev-dependencies turn it on, so the release
+# build never has it.
+[features]
+testing = []
+
+# The composition root (rule L4): the one crate that knows every package but the client (D7).
+[dependencies]
+agent.workspace = true
+contracts.workspace = true
+protocol.workspace = true
+queue.workspace = true
+openai.workspace = true
+models.workspace = true
+openrouter.workspace = true
+provider-kit.workspace = true
+session.workspace = true
+tools.workspace = true
+clap.workspace = true
+serde_json.workspace = true
+log.workspace = true
+unicode-width.workspace = true
+# Signals, the daemon's lock, sockets' and files' modes: calls std has no wrapper for.
+libc.workspace = true
+
+[lints]
+workspace = true

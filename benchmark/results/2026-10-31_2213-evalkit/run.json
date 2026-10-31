@@ -1,0 +1,51 @@
+{
+ "when": "2026-10-31 22:13",
+ "task": "evalkit",
+ "tests": 238,
+ "provider": "openai",
+ "model": "gpt-6-luna",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "Codex's first evalkit run, beside llx's with Jev of the same evening.",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 6,
+ "agents": [
+  {
+   "label": "codex",
+   "kind": "codex",
+   "path": "/Users/okak/.nvm/versions/node/v25.6.1/bin/codex",
+   "version": "codex-cli 0.163.0",
+   "commit": null,
+   "bytes": null,
+   "sha256": null
+  }
+ ],
+ "runs": [
+  {
+   "label": "codex",
+   "kind": "codex",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 148.5,
+   "pass": 197,
+   "fail": 41,
+   "solved": false,
+   "tampered": [],
+   "status": "done",
+   "turns": 23,
+   "input_tokens": 905504,
+   "cached_tokens": 809856,
+   "output_tokens": 14227,
+   "cost_usd": 0.0248,
+   "cache_pct": 89,
+   "calls": 20,
+   "failed_commands": 3,
+   "patches": 6,
+   "failed_patches": 0,
+   "model_s": null,
+   "advised": null
+  }
+ ]
+}

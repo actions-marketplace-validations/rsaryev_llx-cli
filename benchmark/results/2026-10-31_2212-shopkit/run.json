@@ -1,0 +1,51 @@
+{
+ "when": "2026-10-31 22:12",
+ "task": "shopkit",
+ "tests": 69,
+ "provider": "openai",
+ "model": "gpt-6-luna",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "Codex's first run, beside llx's of the same day.",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 12.2,
+ "agents": [
+  {
+   "label": "codex",
+   "kind": "codex",
+   "path": "/Users/okak/.nvm/versions/node/v25.6.1/bin/codex",
+   "version": "codex-cli 0.163.0",
+   "commit": null,
+   "bytes": null,
+   "sha256": null
+  }
+ ],
+ "runs": [
+  {
+   "label": "codex",
+   "kind": "codex",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 50.7,
+   "pass": 69,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 17,
+   "input_tokens": 407305,
+   "cached_tokens": 387072,
+   "output_tokens": 5864,
+   "cost_usd": 0.0088,
+   "cache_pct": 95,
+   "calls": 16,
+   "failed_commands": 0,
+   "patches": 12,
+   "failed_patches": 0,
+   "model_s": null,
+   "advised": null
+  }
+ ]
+}

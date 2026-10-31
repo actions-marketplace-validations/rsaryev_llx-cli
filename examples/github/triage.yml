@@ -1,0 +1,83 @@
+# llx triages each new issue. `llx decide` is one model call that picks one option of a list, with
+# the odds of each: it chooses a kind and a priority among the labels your repository already
+# has (their descriptions tell it what each means), and a second job adds them. No agent loop.
+#
+# Needs: the secret OPENROUTER_API_KEY, and labels: at least two kinds and two priorities. The
+# two patterns below say which labels those are (GitHub's default labels give the kinds; create
+# P1, P2 and P3 for the priorities); with fewer, the run says so and labels nothing.
+# Adapt: the two patterns, the questions, LLX_DECISION_MODEL.
+#
+# Security: the first job reads issues and holds the key; the second writes labels and holds no
+# key. The issue's text reaches the model on stdin, as data (`llx decide` is told never to follow
+# it), never in the question.
+name: llx triage
+
+on:
+  issues:
+    types: [opened]
+
+permissions: {}
+
+jobs:
+  decide:
+    if: github.event.sender.type != 'Bot'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: read
+    outputs:
+      labels: ${{ steps.pick.outputs.labels }}
+    steps:
+      - uses: rsaryev/llx@v0
+        with:
+          install-only: 'true' # puts llx on PATH and runs nothing
+      - id: pick
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          LLX_DECISION_MODEL: '~typesafe/jev-latest' # the decision model
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TITLE: ${{ github.event.issue.title }}
+          BODY: ${{ github.event.issue.body }}
+          KINDS: '^(bug|enhancement|question|documentation)$' # the labels that name a kind
+          PRIORITIES: '^P[0-3]$' # the labels that name a priority
+        run: |
+          set -euo pipefail
+          labels=$(gh label list --limit 200 --json name,description)
+          # The labels a pattern matches, as decide's options: `name=description`, or the name.
+          options() {
+            jq -r --arg pattern "$1" '.[] | select(.name | test($pattern))
+              | if .description == "" then .name else "\(.name)=\(.description)" end' <<< "$labels"
+          }
+          for pattern in "$KINDS" "$PRIORITIES"; do
+            if [ "$(options "$pattern" | grep -c .)" -lt 2 ]; then
+              echo "::notice::llx triage needs at least two labels matching $pattern; create them (Issues > Labels)."
+              exit 0
+            fi
+          done
+
+          picked=()
+          for ask in "What kind of issue is this?|$KINDS" "How urgent is this issue?|$PRIORITIES"; do
+            question=${ask%%|*}
+            choices=()
+            while IFS= read -r option; do choices+=(--choices "$option"); done < <(options "${ask#*|}")
+            answer=$(printf '# %s\n\n%s\n' "$TITLE" "$BODY" | llx decide "$question" "${choices[@]}" --json)
+            picked+=("$(jq -r .choice <<< "$answer")")
+            echo "- $question \`${picked[-1]}\`, odds $(jq -c .probabilities <<< "$answer")" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "labels=$(IFS=,; echo "${picked[*]}")" >> "$GITHUB_OUTPUT"
+
+  label:
+    needs: decide
+    if: needs.decide.outputs.labels != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      issues: write # the only token that can write; this job holds no model key
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.issue.number }}
+          LABELS: ${{ needs.decide.outputs.labels }}
+        run: gh issue edit "$NUMBER" --add-label "$LABELS"

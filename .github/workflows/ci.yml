@@ -1,0 +1,105 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Third-party actions are pinned to a commit: a moved tag or branch cannot change what runs.
+#
+# Each check is a step `scripts/check --only NAME`: the commands live in scripts/checks/run.sh, the
+# same ones the git hooks, Claude Code's Stop hook and `scripts/check --all` run, so CI and a
+# laptop cannot drift. `scripts/check --list` names them.
+#
+# A new push to a pull request supersedes its running checks; on main every commit keeps its own
+# run, so a red commit is never hidden by the one after it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  # A fresh runner gains nothing from debug info or incremental state: both only slow the build.
+  CARGO_PROFILE_DEV_DEBUG: 0
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  # One job, so the dependencies compile once: format, lint, then the tests. Linux only: a macOS runner
+  # costs ten times as much, and the release workflow tests both. Coverage and the MSRV are
+  # checked by hand (`scripts/check --coverage`, `cargo +1.88 check`, RELEASING.md); the binary's
+  # size by the size job.
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # the stable branch, 2026-10-01
+        with:
+          toolchain: stable
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: scripts/check --only fmt
+      - run: scripts/check --only clippy
+      - run: scripts/check --only test
+
+  # The release binary (ARCHITECTURE.md, Budgets): it fails above 5 MiB and warns above 4 MB
+  # (AGENTS.md's goal).
+  size:
+    name: size
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: dtolnay/rust-toolchain@7e38f4b43b4db5c8dd498af069a4f6196df1d067 # the stable branch, 2026-10-01
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      - run: scripts/check --only size
+
+  # The site's types, build and prerender, as the site workflow builds it before it publishes.
+  site:
+    name: site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - run: npm ci
+        working-directory: site
+      - run: scripts/check --only site
+
+  # The GitHub Action and its example workflows, with no model and no network but the pinned
+  # linters' downloads (scripts/checks/tools.sh), each checked against its hash. action/test.sh
+  # runs the action's script on a stub llx; shellcheck reads every shell script of the repository.
+  # actionlint reads the workflows and the examples as they are, then the examples again on this
+  # checkout's action.yml (`uses: ./`), which checks each input and output they name against it.
+  # The examples' schemas must parse, every job has a time limit, every llx step names its model,
+  # and each action is used at one version in all of them. Then scripts/check's own tests and the
+  # Markdown's relative links.
+  action:
+    name: action
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: scripts/check --only shellcheck
+      - run: scripts/check --only action
+      - run: scripts/check --only actionlint
+      - name: The examples' schemas, limits, models and versions
+        run: scripts/check --only examples
+      - run: scripts/check --only check-test,mdlinks

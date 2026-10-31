@@ -1,0 +1,9 @@
+#!/bin/sh
+# Points git at the repository's hooks (scripts/hooks): pre-commit runs `scripts/check --fast` on
+# what a commit stages, pre-push `scripts/check --fast` on what is pushed (CI runs the rest).
+# Once per clone; `--no-verify` skips a hook. Claude Code's Stop hook needs no setup: it is in
+# .claude/settings.json.
+set -eu
+cd "$(dirname "$0")/.."
+git config core.hooksPath scripts/hooks
+echo "git hooks: scripts/hooks (pre-commit: scripts/check --fast --staged; pre-push: scripts/check --fast)"

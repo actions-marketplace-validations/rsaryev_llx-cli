@@ -1,0 +1,18 @@
+post:
+  operationId: createOrder
+  summary: Create an order
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "../schemas/CreateOrder.yml"
+  responses:
+    "201":
+      description: Order created
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/Order.yml"
+    "409":
+      description: An order with this reference already exists

@@ -1,0 +1,169 @@
+/* A page's text, from the repository's markdown: soft body, white headings and code, the
+   landing's hairlines. Code blocks and tables scroll inside their frames, never the page. */
+.prose {
+  color: var(--soft);
+  font-size: 1.0625rem;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+}
+.prose > :first-child {
+  margin-top: 0;
+}
+.prose :is(p, ul, ol, .code, .table) {
+  margin: 0 0 1.2rem;
+}
+.prose :is(h2, h3, h4) {
+  color: var(--white);
+  scroll-margin-top: 1.5rem;
+}
+.prose h2 {
+  margin: 3.25rem 0 1.1rem;
+  padding-top: 2.25rem;
+  border-top: 1px solid var(--line);
+  font: 700 1.625rem/1.15 var(--display);
+  letter-spacing: -0.035em;
+}
+.prose h3 {
+  margin: 2.25rem 0 0.8rem;
+  font: 600 1.125rem/1.35 var(--text);
+  letter-spacing: -0.01em;
+}
+.prose .hash {
+  margin-left: 0.45rem;
+  color: var(--faint);
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.prose :is(h2, h3):hover .hash {
+  opacity: 1;
+}
+.prose strong {
+  color: var(--white);
+  font-weight: 600;
+}
+.prose a {
+  color: var(--white);
+  text-decoration: underline;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 3px;
+  transition: text-decoration-color 160ms ease;
+}
+.prose a:hover {
+  text-decoration-color: var(--white);
+}
+.prose :is(ul, ol) {
+  padding-left: 1.3rem;
+}
+.prose li {
+  margin: 0.4rem 0;
+  padding-left: 0.2rem;
+}
+.prose li::marker {
+  color: var(--muted);
+}
+.prose li > :is(ul, ol, .code) {
+  margin: 0.6rem 0 0.4rem;
+}
+.prose li > p {
+  margin: 0;
+}
+.prose :not(pre) > code {
+  padding: 0.1em 0.38em;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--card);
+  color: var(--white);
+  font-size: 0.84em;
+}
+.prose a > code {
+  text-decoration: inherit;
+}
+.prose .nobr {
+  white-space: nowrap;
+}
+@media (min-width: 80rem) {
+  .prose .contents {
+    display: none;
+  }
+}
+
+.prose .code {
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: #0b0b0d;
+}
+.code-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 2.25rem;
+  padding: 0 0.4rem 0 1.1rem;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font: 500 0.75rem/1 var(--mono);
+}
+.code-copy {
+  padding: 0.4rem 0.65rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--soft);
+  font: 500 0.75rem/1 var(--text);
+  cursor: pointer;
+  transition: color 160ms ease, background-color 160ms ease;
+}
+.code-copy:hover {
+  background: var(--raised);
+  color: var(--white);
+}
+.prose pre {
+  margin: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  color: var(--soft);
+  font: 400 0.8125rem/1.7 var(--mono);
+  tab-size: 2;
+}
+.prose pre code {
+  font: inherit;
+}
+
+.prose .table {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+}
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+.prose :is(th, td) {
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.prose th {
+  background: var(--card);
+  color: var(--white);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.prose tr:last-child td {
+  border-bottom: 0;
+}
+/* Up to three columns share a phone's width, the longest text taking the most; four or more
+   keep readable columns and scroll in their frame instead. */
+.prose table:has(th:nth-child(4)) td {
+  min-width: 9rem;
+}
+@media (max-width: 40rem) {
+  .prose :is(th, td) {
+    padding-inline: 0.7rem;
+  }
+}

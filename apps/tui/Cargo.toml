@@ -1,0 +1,34 @@
+[package]
+name = "tui"
+description = "llx's terminal interface: what a person sees and types, speaking to the server only through the protocol and the client"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+# What the binary's tests drive the interface with (`tui::testing`: a person at the `App`, a
+# window drawn into a vt100 terminal). Only `apps/cli`'s dev-dependencies turn it on, so the
+# release build never has it.
+[features]
+testing = ["dep:vt100"]
+
+# The interface (ARCHITECTURE.md L7): the protocol and the client among the workspace's crates,
+# and the terminal's libraries.
+[dependencies]
+client.workspace = true
+protocol.workspace = true
+crossterm.workspace = true
+pulldown-cmark.workspace = true
+ratatui.workspace = true
+unicode-width.workspace = true
+# The terminal's modes, signals and size: calls std has no wrapper for.
+libc.workspace = true
+vt100 = { workspace = true, optional = true }
+
+[dev-dependencies]
+insta.workspace = true
+vt100.workspace = true
+
+[lints]
+workspace = true

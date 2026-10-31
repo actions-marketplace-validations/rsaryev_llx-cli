@@ -1,0 +1,16 @@
+[package]
+name = "agent"
+description = "The agent: a chat model reaches a goal through tools and answers"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# Contracts only (rule L2): no tool, no provider, no technology.
+[dependencies]
+contracts.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

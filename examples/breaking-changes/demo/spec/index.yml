@@ -1,0 +1,29 @@
+openapi: 3.0.3
+info:
+  title: Orders
+  version: 1.4.0
+paths:
+  /orders:
+    $ref: "./paths/orders.yml"
+  /orders/search:
+    $ref: "./paths/orders-search.yml"
+  /orders/{orderId}:
+    $ref: "./paths/orders-id.yml"
+  /reports:
+    $ref: "./paths/reports.yml"
+  /stats/totals:
+    $ref: "./paths/stats-totals.yml"
+  /stats/charts:
+    $ref: "./paths/stats-charts.yml"
+components:
+  schemas:
+    Order:
+      $ref: "./schemas/Order.yml"
+    OrderStatus:
+      $ref: "./schemas/OrderStatus.yml"
+    CreateOrder:
+      $ref: "./schemas/CreateOrder.yml"
+    UpdateOrder:
+      $ref: "./schemas/UpdateOrder.yml"
+    SearchOrders:
+      $ref: "./schemas/SearchOrders.yml"

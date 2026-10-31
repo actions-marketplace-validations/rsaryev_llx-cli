@@ -1,0 +1,1 @@
+I implemented all four modules in `src/`, but the acceptance suite is **not passing yet**. The latest `bun test` run reports 215 passing and 23 failing tests, mostly in unified diff/patch and SQL parsing/evaluation, with a few expression edge cases remaining. I can’t claim the requested completion while those tests still fail.

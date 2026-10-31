@@ -1,0 +1,16 @@
+name: Feature request
+description: Something llx should do, or do differently.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: What you are trying to do
+      description: The task or pipeline that is hard today, not the feature you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: today
+    attributes:
+      label: What you do today
+      description: The command or workaround, and what is wrong with it. llx has five tools on purpose; a new capability is usually an action of one of them, or a shell command.

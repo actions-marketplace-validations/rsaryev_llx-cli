@@ -1,0 +1,196 @@
+# llx: an ultrafast, lightweight agent runtime: bash, apply_patch, ask, agents and jobs on any model.
+#
+# Packages and apps, dependencies pointing inward only (ARCHITECTURE.md, rules L1-L10):
+#   packages/contracts      ports only: chat model, catalog, tools, advice, gate, person, decision
+#                           model, history, inbox
+#   packages/agent          the agent: a chat model's loop over tools
+#   packages/tools          the tools: bash, apply_patch, ask, the workspace
+#   packages/providers/     the models' providers, a package each, and the kit they share:
+#     kit                   no port: HTTP, PKCE, the sign-in callback, credential files, SSE
+#     openrouter            OpenRouter's chat and decision models, its key
+#     openai                OpenAI's models through a ChatGPT sign-in (the Responses API)
+#     models                the model catalog: a TOML database built in, models.dev on top
+#   packages/client         the interface's side of the seam: one client, in process or over a socket
+#   packages/protocol       what the interface and the server say to each other: wire types only
+#   packages/queue          one queue for what reaches a run from outside its calls, each entry
+#                           with its own policy (agents' answers, monitors, schedules, ...)
+#   packages/session        a history store: sessions as JSON files
+#   apps/server             the composition root (its library is `llx`): sessions, lanes,
+#                           agents, jobs, modes, the command line, served through the protocol
+#   apps/tui                the terminal interface: keys and drawing, through the client only
+#   apps/cli                the `llx` binary: the process, the terminal's wiring, the daemon's
+#                           client side, and the integration tests
+[workspace]
+resolver = "3"
+members = [
+    "packages/agent",
+    "packages/client",
+    "packages/contracts",
+    "packages/protocol",
+    "packages/queue",
+    "packages/session",
+    "packages/tools",
+    "packages/providers/*",
+    "apps/*",
+]
+
+[workspace.package]
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.88"
+license = "MIT"
+
+# The workspace's lints, taken by every crate (ARCHITECTURE.md S4). Hard: a lint is set aside only
+# in place, by an `expect` with its `reason`, never turned off here. Tests may unwrap, panic and
+# print (clippy.toml); working code may not.
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+# The tightest visibility that compiles (L9): `pub` only for what another crate uses.
+unreachable_pub = "deny"
+unused_qualifications = "deny"
+
+[workspace.lints.clippy]
+# A panic is a bug (R4): no unwrap, expect, panic or unreachable in working code; an error is
+# handled, returned or shown.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"
+# A string sliced inside a character panics.
+string_slice = "deny"
+# A number cut short by `as` is a silent bug: `try_from`, or a reason.
+cast_possible_truncation = "deny"
+# What reaches the terminal goes through the interface and the output; the process ends in
+# `main.rs` only, with the exit-code contract (K6).
+dbg_macro = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+exit = "deny"
+mem_forget = "deny"
+# Shared state is Mutex or atomics (R2); the rest of the banned API is in clippy.toml.
+disallowed_methods = "deny"
+disallowed_types = "deny"
+# Small functions, as small files (S1): at most 100 lines, a bounded complexity.
+too_many_lines = "deny"
+cognitive_complexity = "deny"
+# Explicit where it matters.
+clone_on_ref_ptr = "deny"
+redundant_clone = "deny"
+match_wildcard_for_single_variants = "deny"
+# Our own enums are matched exhaustively (S10): a variant added is placed in every match, never
+# swallowed by a `_`. A foreign enum's `_` arm is an `expect` that names it.
+wildcard_enum_match_arm = "deny"
+wildcard_imports = "deny"
+unused_self = "deny"
+# Rust's anti-patterns (ARCHITECTURE.md R6-R10, P4-P6, S11): a lost error cause, a guard held
+# where it blocks, time that underflows, a cast that changes sign, flags instead of a state.
+map_err_ignore = "deny"
+unwrap_in_result = "deny"
+unused_result_ok = "deny"
+significant_drop_in_scrutinee = "deny"
+unchecked_time_subtraction = "deny"
+cast_sign_loss = "deny"
+cast_possible_wrap = "deny"
+fn_params_excessive_bools = "deny"
+struct_excessive_bools = "deny"
+option_option = "deny"
+unnecessary_wraps = "deny"
+needless_collect = "deny"
+format_collect = "deny"
+# `write!` into the String, not a `format!` allocated to be appended.
+format_push_string = "deny"
+# A default built only when it is needed: `unwrap_or_else`, `map_or_else`, `or_else`.
+or_fun_call = "deny"
+# A method that returns a changed copy is `#[must_use]`: dropping the copy loses the change.
+return_self_not_must_use = "deny"
+# A clone into a value already there reuses its allocation: `clone_from`.
+assigning_clones = "deny"
+# Primitives sort unstably: equal ones cannot be told apart, and it needs no buffer.
+stable_sort_primitive = "deny"
+# One module layout: `x.rs` beside its directory `x/`, never `x/mod.rs` (S6).
+mod_module_files = "deny"
+# What a function only reads it borrows; a value it takes it keeps, or moves on.
+needless_pass_by_value = "deny"
+# A struct is all public, or its fields say how far they reach (P3, L9): another crate reads
+# a private field through a method.
+partial_pub_fields = "deny"
+iter_over_hash_type = "deny"
+fallible_impl_from = "deny"
+mutex_atomic = "deny"
+mutex_integer = "deny"
+rc_mutex = "deny"
+rc_buffer = "deny"
+try_err = "deny"
+get_unwrap = "deny"
+verbose_file_reads = "deny"
+lossy_float_literal = "deny"
+mixed_read_write_in_expression = "deny"
+infinite_loop = "deny"
+empty_drop = "deny"
+error_impl_error = "deny"
+panic_in_result_fn = "deny"
+rest_pat_in_fully_bound_structs = "deny"
+trivially_copy_pass_by_ref = "deny"
+large_types_passed_by_value = "deny"
+inefficient_to_string = "deny"
+implicit_clone = "deny"
+create_dir = "deny"
+filetype_is_file = "deny"
+# Every unsafe block says why it is sound, one operation each (S11).
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+# A lint set aside says why, and is an `expect`: an exemption that no longer applies fails the
+# build, so none outlives its reason.
+allow_attributes_without_reason = "deny"
+allow_attributes = "deny"
+
+[workspace.dependencies]
+agent = { path = "packages/agent" }
+client = { path = "packages/client" }
+contracts = { path = "packages/contracts" }
+protocol = { path = "packages/protocol" }
+models = { path = "packages/providers/models" }
+openai = { path = "packages/providers/openai" }
+openrouter = { path = "packages/providers/openrouter" }
+queue = { path = "packages/queue" }
+provider-kit = { path = "packages/providers/kit" }
+server = { path = "apps/server" }
+session = { path = "packages/session" }
+tools = { path = "packages/tools" }
+tui = { path = "apps/tui" }
+base64 = "0.23.1"
+clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "env"] }
+# The one native-tls (through ureq) builds: one copy in the tree.
+getrandom = "0.4"
+# The few unix calls std has no wrapper for.
+libc = "0.2"
+# The terminal UI: crossterm and ratatui, with only the features it uses.
+crossterm = { version = "0.29", default-features = false, features = ["bracketed-paste", "events"] }
+pulldown-cmark = { version = "0.13", default-features = false }
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm", "scrolling-regions", "unstable-backend-writer"] }
+unicode-width = "0.2"
+# Tests of what the terminal shows (dev only): snapshots, and a terminal emulator the tests draw
+# into.
+insta = "1.46"
+vt100 = "0.16.2"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+# Already in the tree through crossterm: the facade the log is written through.
+log = "0.4"
+# Already in the tree through ureq's gzip: the built-in model catalog, kept deflated.
+miniz_oxide = "0.9.1"
+sha2 = "0.11.1"
+ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
+
+# A small, self-contained binary: TLS is the OS's,
+# and the code is optimized for size ("z"): the time goes to the network and the model, not here.
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+# A panic unwinds: the daemon serves many terminals, and one command's panic must end only that
+# command (ARCHITECTURE.md W8), not every session in the process.
+panic = "unwind"
+strip = true

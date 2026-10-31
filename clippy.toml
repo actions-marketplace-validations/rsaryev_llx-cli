@@ -1,0 +1,34 @@
+# The workspace's lints are in Cargo.toml; this is their configuration (ARCHITECTURE.md S4).
+
+# Tests may unwrap, panic, print and index: a failed test is the panic's job (R4).
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+too-many-lines-threshold = 100
+cognitive-complexity-threshold = 25
+# An option is an enum, a struct of several flags a state (P4). The goal is one bool per function
+# and two per struct; each threshold is tightened as the hits left are fixed, never loosened.
+max-fn-params-bools = 2
+max-struct-bools = 3
+
+disallowed-methods = [
+    { path = "std::process::exit", reason = "the process ends in main.rs, with the exit-code contract (exit.rs)" },
+    { path = "std::env::set_var", reason = "the environment is the session's: pass the value instead" },
+    { path = "std::env::remove_var", reason = "the environment is the session's: pass the value instead" },
+    { path = "std::env::set_current_dir", reason = "the directory is the session's, and lanes share the process" },
+    { path = "std::thread::spawn", reason = "it panics when the OS refuses a thread (R8): thread::Builder, named, its failure an error" },
+    { path = "std::thread::Scope::spawn", reason = "unnamed, and it panics when the OS refuses a thread (R8): thread::Builder, named, then spawn_scoped, its failure an error" },
+    { path = "std::thread::sleep", reason = "wait on an event (R9): Condvar, recv_timeout, a deadline; a backoff allows it in place" },
+    { path = "std::sync::mpsc::channel", reason = "bounded (R3): sync_channel; an unbounded one allows it in place, saying why it cannot grow" },
+    { path = "std::process::Command::output", reason = "a child process has a deadline and a stop (R10)" },
+    { path = "std::process::Command::status", reason = "a child process has a deadline and a stop (R10)" },
+]
+disallowed-types = [
+    { path = "std::cell::RefCell", reason = "state shared across threads is a Mutex or an atomic (R2)" },
+    { path = "std::cell::Cell", reason = "state shared across threads is a Mutex or an atomic (R2)" },
+    { path = "std::rc::Rc", reason = "ports are Send + Sync (R2): Arc" },
+]

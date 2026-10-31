@@ -1,0 +1,78 @@
+use std::time::Instant;
+
+use super::*;
+use crate::test_support::in_session as from;
+use protocol::Event;
+
+fn plain(lines: &[Line<'static>]) -> Vec<String> {
+    let text = |line: &Line| {
+        line.spans
+            .iter()
+            .map(|span| span.content.as_ref())
+            .collect()
+    };
+    lines.iter().map(text).collect()
+}
+
+fn ended() -> Event {
+    Event::TaskEnded {
+        status: "done".into(),
+        millis: 10,
+        turns: 1,
+        cost: 0.0,
+    }
+}
+
+/// Lanes `ids` open, the first shown; `worked` of them have finished a task.
+fn lanes(ids: &[&str], worked: &[&str]) -> App {
+    let now = Instant::now();
+    let mut app = App::new(80, 20, vec![]);
+    for id in ids {
+        let (id, name) = (id.to_string(), "a task".to_string());
+        app.event(Event::LaneStarted { id, name }, now);
+    }
+    for id in worked {
+        app.frame(from(id, Event::TaskStarted("x".into())), now);
+        app.frame(from(id, ended()), now);
+    }
+    app
+}
+
+#[test]
+fn a_session_with_a_task_says_how_to_resume_it() {
+    let app = lanes(&["s1"], &["s1"]);
+    assert_eq!(
+        plain(&app.farewell(Leaving::Quit)),
+        ["Resume this session: llx resume s1"]
+    );
+}
+
+#[test]
+fn an_empty_session_says_nothing() {
+    let app = lanes(&["s1"], &[]);
+    assert!(app.farewell(Leaving::Quit).is_empty());
+}
+
+#[test]
+fn every_session_with_tasks_is_said_the_shown_one_first() {
+    let mut app = lanes(&["a", "b", "c"], &["a", "c"]);
+    app.show("c");
+    assert_eq!(
+        plain(&app.farewell(Leaving::Quit)),
+        [
+            "Resume this session: llx resume c",
+            "Resume this session: llx resume a"
+        ]
+    );
+}
+
+#[test]
+fn moving_to_the_background_says_how_to_come_back() {
+    let app = lanes(&["s1"], &["s1"]);
+    let said = plain(&app.farewell(Leaving::Background));
+    assert_eq!(said.len(), 1);
+    assert!(
+        said[0].contains("background") && said[0].contains("llx"),
+        "{said:?}"
+    );
+}

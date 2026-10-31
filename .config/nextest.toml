@@ -1,0 +1,8 @@
+# cargo nextest: each test in a process of its own. A flaky run gets one retry; a test still
+# running after 60 s is reported as slow, and ended after three such periods.
+
+[profile.default]
+retries = 1
+slow-timeout = { period = "60s", terminate-after = 3 }
+fail-fast = false
+

@@ -1,0 +1,8 @@
+#!/bin/sh
+# Git's pre-commit hook (scripts/setup installs it): `scripts/check --fast --staged`, the cheap
+# checks for what this commit stages: fmt, clippy on the crates it touches, the repository's
+# rules, and the linters of the files it changes. Seconds on a warm build. What is pushed is
+# checked the same way before a push (pre-push), and whole in CI. `git commit --no-verify`
+# skips it.
+set -eu
+exec "$(git rev-parse --show-toplevel)/scripts/check" --fast --staged

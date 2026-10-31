@@ -1,0 +1,22 @@
+type: object
+required:
+  - orderId
+  - status
+  - amount
+  - quoteDate
+  - createdAt
+properties:
+  orderId:
+    type: integer
+  status:
+    $ref: "./OrderStatus.yml"
+  amount:
+    type: number
+    description: The total in major units, e.g. 12.50
+  quoteDate:
+    type: string
+    format: date
+    description: The date the price was quoted
+  createdAt:
+    type: string
+    format: date-time

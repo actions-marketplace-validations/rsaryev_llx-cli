@@ -1,0 +1,51 @@
+{
+ "when": "2026-10-31 21:48",
+ "task": "evalkit",
+ "tests": 238,
+ "model": "gpt-6-luna",
+ "provider": "openai",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "Jev on by default from now: the first evalkit run with the advisor.",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 2.5,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.2.0",
+   "commit": "60c718f3",
+   "bytes": 2856016,
+   "sha256": "ad15687e29a6"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 594.9,
+   "pass": 238,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 158,
+   "input_tokens": 22523958,
+   "cached_tokens": 22156928,
+   "output_tokens": 52086,
+   "cost_usd": 0.2843,
+   "cache_pct": 98,
+   "calls": 157,
+   "failed_commands": 28,
+   "patches": 73,
+   "failed_patches": 6,
+   "model_s": 569.6,
+   "advised": 2
+  }
+ ]
+}

@@ -1,0 +1,229 @@
+#!/bin/sh
+# The repository's checks from one entry point: the same commands locally, in the git hooks
+# (scripts/hooks), in Claude Code's Stop hook and in CI (.github/workflows/ci.yml), so the four
+# cannot drift apart.
+#
+#   scripts/check               the checks a change needs: the branch since its merge base with
+#                               main, plus the working tree (staged, unstaged and untracked)
+#   scripts/check --fast        the cheap part of those, for hooks: fmt, clippy on the crates
+#                               changed, the repository's rules, the linters of what changed
+#   scripts/check --staged      what the index holds instead of the branch (the pre-commit hook)
+#   scripts/check --all         every check CI runs, in its order, on the whole workspace
+#   scripts/check --coverage    adds the line coverage (scripts/coverage.sh) to any of these
+#   scripts/check --only a,b    the named checks alone, workspace-wide (what CI's jobs call)
+#   scripts/check --plan        prints the plan for the paths on stdin and runs nothing
+#   scripts/check --list        names every check and what it runs
+#   -v, --verbose               streams each check's output (the default when $CI is set)
+#
+# It prints the plan (each check, its scope, why), runs it in one fixed order, stops at the first
+# failure with that check's output, and ends with one summary line. Exit 0: all passed; 1: one
+# failed; 2: a usage error. The plan depends on the paths alone (scripts/checks/plan.awk, its
+# examples in scripts/checks/check_test.sh); the only network is a pinned linter's first download
+# (scripts/checks/tools.sh). A passing run of the changed set, --fast or --all stamps the tree
+# (scripts/checks/tree.sh), so the Stop hook does not check the same tree again.
+set -eu
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root"
+# shellcheck source=scripts/checks/tools.sh
+. scripts/checks/tools.sh
+# shellcheck source=scripts/checks/plan.sh
+. scripts/checks/plan.sh
+# shellcheck source=scripts/checks/tree.sh
+. scripts/checks/tree.sh
+# shellcheck source=scripts/checks/run.sh
+. scripts/checks/run.sh
+
+tab=$(printf '\t')
+
+usage() {
+  sed -n '2,/^set -eu$/p' "$0" | sed '$d; s/^# \{0,1\}//'
+}
+
+usage_error() {
+  echo "check: $1 (scripts/check --help)" >&2
+  exit 2
+}
+
+list_checks() {
+  for list_name in $CHECKS; do
+    printf '%-16s %s\n' "$list_name" "$(describe "$list_name")"
+  done
+}
+
+mode=changed
+from=branch
+coverage=0
+only=
+verbose=0
+if [ -n "${CI:-}" ]; then verbose=1; fi
+while [ $# -gt 0 ]; do
+  case $1 in
+    --fast) mode=fast ;;
+    --all) mode=all ;;
+    --staged) from=staged ;;
+    --coverage) coverage=1 ;;
+    --only)
+      [ $# -ge 2 ] || usage_error "--only needs check names"
+      mode=only
+      only=$2
+      shift
+      ;;
+    --only=*)
+      mode=only
+      only=${1#--only=}
+      ;;
+    --plan) from=stdin ;;
+    --list)
+      list_checks
+      exit 0
+      ;;
+    -v | --verbose) verbose=1 ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) usage_error "unknown argument: $1" ;;
+  esac
+  shift
+done
+if [ "$mode" = only ]; then
+  only=$(printf '%s' "$only" | tr ',' ' ')
+  [ -n "$only" ] || usage_error "--only needs check names"
+  for only_name in $only; do
+    case " $CHECKS " in
+      *" $only_name "*) ;;
+      *) usage_error "no check named $only_name" ;;
+    esac
+  done
+fi
+
+work=$(mktemp -d)
+trap 'rm -rf "$work"' EXIT
+logs="$root/target/llx-check/logs"
+
+# The paths, then the plan. (All and only need no paths.)
+case "$mode/$from" in
+  all/* | only/*) : >"$work/paths" ;;
+  */stdin) sed '/^$/d' | LC_ALL=C sort -u >"$work/paths" ;;
+  *) changed_paths "$from" >"$work/paths" ;;
+esac
+with_state <"$work/paths" | plan "$mode" "$coverage" "$only" >"$work/plan"
+if [ "$from" = stdin ]; then
+  cat "$work/plan"
+  exit 0
+fi
+
+# A commit is checked on the working tree: a staged file with unstaged edits would be checked
+# as it is on disk, not as it is committed.
+if [ "$from" = staged ]; then
+  git -c core.quotepath=off diff --name-only | LC_ALL=C sort -u >"$work/unstaged"
+  partial=$(LC_ALL=C comm -12 "$work/paths" "$work/unstaged")
+  if [ -n "$partial" ]; then
+    echo "check: these staged files have unstaged edits too, and the checks read the working tree;"
+    echo "stage them (or stash the edits) first, or commit with --no-verify:"
+    printf '  %s\n' "$partial"
+    exit 1
+  fi
+fi
+
+# Git hands its hooks variables that point at this repository; the checks' own git calls (the
+# tests make repositories of their own) must not inherit them.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX GIT_COMMON_DIR GIT_OBJECT_DIRECTORY \
+  GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_QUARANTINE_PATH
+
+fingerprint=
+case "$mode/$from" in
+  fast/branch | changed/branch | all/*) fingerprint=$(tree_fingerprint) ;;
+esac
+
+paths=$(wc -l <"$work/paths" | tr -d ' ')
+case "$mode/$from" in
+  all/*) echo "check: every check (--all)" ;;
+  only/*) echo "check: the checks asked for (--only)" ;;
+  */staged) echo "check: $mode plan for the $paths paths staged" ;;
+  *)
+    base=$(merge_base)
+    echo "check: $mode plan for the $paths paths changed since ${base:+$(git rev-parse --short "$base") }(the merge base with main) and in the working tree"
+    ;;
+esac
+# A plan line's three fields. (Not `read` with IFS=tab: a tab is IFS white space, so the empty
+# scope between two tabs would vanish.)
+split_plan_line() {
+  name=${1%%"$tab"*}
+  why=${1#*"$tab"}
+  scope=${why%%"$tab"*}
+  why=${why#*"$tab"}
+}
+
+if [ ! -s "$work/plan" ]; then
+  echo "check: nothing to check"
+  if [ -n "$fingerprint" ]; then stamp pass "$fingerprint"; fi
+  exit 0
+fi
+while IFS= read -r line; do
+  split_plan_line "$line"
+  printf '  %-16s %s(%s)\n' "$name" "${scope:+$scope  }" "$why"
+done <"$work/plan"
+
+# A failed check's output: whole when short, else its head (the first error) and its tail (a
+# test run's summary), with where the rest is.
+show_log() {
+  show_lines=$(wc -l <"$1" | tr -d ' ')
+  if [ "$show_lines" -le 400 ]; then
+    cat "$1"
+  else
+    head -n 60 "$1"
+    printf '\n[... %s lines; the whole output is in %s ...]\n\n' "$((show_lines - 300))" "$1"
+    tail -n 240 "$1"
+  fi
+}
+
+mkdir -p "$logs"
+# A log is read later, by a person or an agent: no colour codes in it.
+if [ "$verbose" = 0 ]; then
+  CARGO_TERM_COLOR=never
+  export CARGO_TERM_COLOR
+fi
+check_notes="$work/notes"
+started=$(date +%s)
+passed=0
+skipped=0
+while IFS= read -r line <&3; do
+  split_plan_line "$line"
+  echo "==> $name${scope:+ $scope}"
+  log="$logs/$name.log"
+  : >"$check_notes"
+  check_started=$(date +%s)
+  if [ "$verbose" = 1 ]; then
+    (run_check "$name" "$scope") </dev/null && status=0 || status=$?
+  else
+    (run_check "$name" "$scope") </dev/null >"$log" 2>&1 && status=0 || status=$?
+  fi
+  took=$(($(date +%s) - check_started))
+  case $status in
+    0)
+      passed=$((passed + 1))
+      printf '    ok %s (%ss)\n' "$name" "$took"
+      sed 's/^/       /' "$check_notes"
+      ;;
+    "$SKIPPED")
+      skipped=$((skipped + 1))
+      printf '    skipped %s' "$name"
+      if [ "$verbose" = 0 ]; then printf ': %s' "$(tail -n 1 "$log")"; fi
+      echo
+      ;;
+    *)
+      printf '    FAILED %s (%ss)\n\n' "$name" "$took"
+      if [ "$verbose" = 0 ]; then show_log "$log"; fi
+      echo
+      echo "check: FAILED at $name after $(($(date +%s) - started))s ($passed passed before it)"
+      exit 1
+      ;;
+  esac
+done 3<"$work/plan"
+
+if [ -n "$fingerprint" ]; then stamp pass "$fingerprint"; fi
+skipped_text=
+if [ "$skipped" -gt 0 ]; then skipped_text=", $skipped skipped"; fi
+echo "check: $passed passed$skipped_text in $(($(date +%s) - started))s"

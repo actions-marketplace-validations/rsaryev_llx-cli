@@ -1,0 +1,51 @@
+{
+ "when": "2026-10-31 17:13",
+ "task": "evalkit",
+ "tests": 238,
+ "model": "gpt-6-luna",
+ "provider": "openai",
+ "reasoning": "low",
+ "timeout_s": 1500,
+ "repeat": 1,
+ "note": "Before the cleanup: evalkit's calibration, on a machine busy with builds.",
+ "machine": "Darwin arm64 26.6.2",
+ "load": "?",
+ "advice": false,
+ "agents": [
+  {
+   "label": "base",
+   "kind": "llx",
+   "path": "llx-baseline",
+   "version": "llx 0.2.0",
+   "commit": "e554ec72",
+   "bytes": 2855744,
+   "sha256": "e3fd7d9af5b0"
+  }
+ ],
+ "runs": [
+  {
+   "label": "base",
+   "kind": "llx",
+   "run": 0,
+   "exit": 2,
+   "wall_s": 1500.3,
+   "pass": 224,
+   "fail": 14,
+   "solved": false,
+   "tampered": [],
+   "status": "exhausted",
+   "turns": 240,
+   "input_tokens": 40181403,
+   "cached_tokens": 39703424,
+   "output_tokens": 64670,
+   "cost_usd": 0.4772,
+   "cache_pct": 99,
+   "calls": 242,
+   "failed_commands": 15,
+   "patches": 191,
+   "failed_patches": 19,
+   "model_s": 844.7,
+   "advised": 1
+  }
+ ]
+}

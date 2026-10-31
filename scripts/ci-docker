@@ -1,0 +1,78 @@
+#!/bin/sh
+# CI's jobs in Docker, as the runner runs them: `scripts/ci-docker [JOB...]` (every job of
+# .github/workflows/ci.yml when none is named, in its order). Each job's `run` steps are read from
+# ci.yml itself, so this cannot drift from CI; the `uses` steps (Rust, Node) are
+# the image's (scripts/docker/Dockerfile).
+#
+# It checks the working tree, copied into the container (tracked and untracked files git does not
+# ignore, and .git): CI checks a clean checkout of a commit. Nothing in the tree is written.
+#
+# LLX_CI_PLATFORM is the image's platform: linux/amd64, the runner's, by default (Docker
+# emulates it on Apple silicon); linux/arm64 builds faster there. CARGO_BUILD_JOBS (2) keeps an
+# emulated build within a small Docker memory. Builds and downloads stay in volumes between runs.
+set -u
+cd "$(dirname "$0")/.." || exit 1
+root=$(pwd)
+platform=${LLX_CI_PLATFORM:-linux/amd64}
+arch=${platform#linux/}
+jobs_wanted=$*
+if [ -z "$jobs_wanted" ]; then
+  jobs_wanted=$(awk '/^jobs:/ { on = 1; next } /^[^ #]/ { on = 0 }
+    on && /^  [a-z][a-z0-9_-]*:$/ { sub(/:$/, ""); print $1 }' .github/workflows/ci.yml)
+fi
+
+command -v docker >/dev/null 2>&1 || { echo "ci-docker: docker is not installed" >&2; exit 2; }
+docker info >/dev/null 2>&1 || { echo "ci-docker: the Docker daemon is not running" >&2; exit 2; }
+
+echo "ci-docker: the image llx-ci-$arch ($platform)"
+docker build -q --platform "$platform" -t "llx-ci-$arch" scripts/docker >/dev/null || exit 1
+
+# What runs in the container: the tree copied in, then the job's `run` steps from ci.yml, each in
+# GitHub's shell (bash -e -o pipefail) and its working directory, stopping at the first failure.
+# shellcheck disable=SC2016 # expanded by the container's shell, not this one
+inner='
+set -u
+cd /src || exit 1
+git ls-files -z -co --exclude-standard | tar -c --null --ignore-failed-read -T - -f - 2>/dev/null |
+  tar -x -C /llx || exit 1
+cp -a /src/.git /llx/.git || exit 1
+cd /llx || exit 1
+. scripts/checks/tools.sh
+yq_bin=$(tool yq) || exit 1
+"$yq_bin" -o=json -I=0 "[.jobs.\"$JOB\".steps[] | select(has(\"run\")) |
+  {\"name\": (.name // .run), \"run\": .run, \"dir\": (.\"working-directory\" // \".\")}] | .[]" \
+  .github/workflows/ci.yml >/tmp/steps || exit 1
+while IFS= read -r step; do
+  name=$(printf "%s" "$step" | jq -r .name | head -1)
+  echo "::: $JOB: $name"
+  (cd "$(printf "%s" "$step" | jq -r .dir)" && bash -e -o pipefail -c "$(printf "%s" "$step" | jq -r .run)") ||
+    { echo "::: $JOB: FAILED at: $name"; exit 1; }
+done </tmp/steps
+'
+
+failed=''
+for job in $jobs_wanted; do
+  echo
+  echo "ci-docker: job $job"
+  if docker run --rm --platform "$platform" \
+    -e JOB="$job" -e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}" \
+    --mount "type=bind,src=$root,dst=/src,readonly" \
+    -v "llx-ci-target-$arch:/llx/target" \
+    -v "llx-ci-cargo-$arch:/root/.cargo/registry" \
+    -v "llx-ci-tools-$arch:/root/.cache/llx/tools" \
+    -v "llx-ci-npm-$arch:/root/.npm" \
+    "llx-ci-$arch" bash -c "$inner"; then
+    echo "ci-docker: job $job passed"
+  else
+    echo "ci-docker: job $job FAILED"
+    failed="$failed $job"
+  fi
+done
+
+echo
+if [ -n "$failed" ]; then
+  echo "ci-docker: failed:$failed"
+  exit 1
+fi
+echo "ci-docker: every job passed ($jobs_wanted)" | tr '\n' ' '
+echo

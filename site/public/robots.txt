@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Sitemap: https://llx.sh/sitemap.xml
+Disallow: /og-card.html

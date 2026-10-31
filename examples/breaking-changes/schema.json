@@ -1,0 +1,10 @@
+{"type": "object", "required": ["breaking", "changes"], "properties": {
+  "breaking": {"type": "boolean", "description": "Whether any change can break an existing client."},
+  "changes": {"type": "array", "items": {"type": "object",
+    "required": ["endpoint", "change", "kind", "breaking", "why", "where"], "properties": {
+      "endpoint": {"type": "string", "description": "METHOD /path affected, or the schema name and the endpoints that use it."},
+      "change": {"type": "string", "description": "What changed, in one line."},
+      "kind": {"enum": ["structural", "semantic"], "description": "structural: visible in the spec's structure; semantic: the same structure with another meaning or behaviour."},
+      "breaking": {"type": "boolean"},
+      "why": {"type": "string", "description": "Which client request or response breaks, and how; or why it is safe."},
+      "where": {"type": "string", "description": "The file and line that show it."}}}}}}

@@ -1,0 +1,101 @@
+#!/bin/sh
+# Claude Code's Stop hook (.claude/settings.json): before an agent working in this repository
+# ends its turn, `scripts/check --fast` runs on its change, and a failure keeps it working. The
+# hook then exits 2, and Claude Code hands its stderr (the failing check's output) to the agent
+# as the reason to go on (the hooks reference, "Stop decision control").
+#
+# Free when nothing changed: the working tree's fingerprint (scripts/checks/tree.sh) is compared
+# with the stamp the last check left. A tree a check passed costs a few git calls; scripts/check
+# stamps it too, so an agent that ran the checks itself is not checked twice. A tree that failed
+# here once and is unchanged since goes through with a note to the person rather than a second
+# block, so an agent that cannot fix it is never held in a loop (and Claude Code ends a run of
+# eight continuations anyway): `stop_hook_active` needs no reading.
+#
+# It changes no file: the checks read the tree and build under target/. A watchdog stops them
+# after $LLX_STOP_CHECK_TIMEOUT seconds (default 240, under settings.json's 300), and the stop then
+# goes through unchecked. LLX_STOP_CHECK=off turns the hook off; so does Claude Code's
+# `disableAllHooks`.
+set -u
+
+input=$(cat)
+[ "${LLX_STOP_CHECK:-on}" != off ] || exit 0
+
+# The checkout the session works in (a worktree has its own), else the one this file is in.
+root=$(cd "$(dirname "$0")/../.." && pwd)
+cwd=$(printf '%s' "$input" | sed -n 's/.*"cwd"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+if [ -n "$cwd" ] && top=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) &&
+  [ -x "$top/scripts/hooks/claude-stop" ]; then
+  root=$top
+fi
+cd "$root" || exit 0
+# shellcheck source=scripts/checks/tree.sh
+. scripts/checks/tree.sh
+
+say() {
+  printf '{"systemMessage": "%s"}\n' "$1"
+}
+
+fingerprint=$(tree_fingerprint) || exit 0
+case "$(stamped)" in
+  "$fingerprint pass") exit 0 ;;
+  "$fingerprint fail")
+    say "scripts/check --fast still fails on this tree, unchanged since it blocked a stop: see target/llx-check/stop.log"
+    exit 0
+    ;;
+esac
+
+# Every process under a pid, deepest last: the checks start cargo, which starts the rest.
+tree_of() {
+  ps -A -o pid= -o ppid= | awk -v top="$1" '
+    { kids[$2] = kids[$2] " " $1 }
+    END {
+      queue[1] = top; n = 1
+      for (i = 1; i <= n; i++) {
+        m = split(kids[queue[i]], child, " ")
+        for (j = 1; j <= m; j++) queue[++n] = child[j]
+      }
+      for (i = 1; i <= n; i++) print queue[i]
+    }'
+}
+
+mkdir -p target/llx-check
+log=target/llx-check/stop.log
+late=target/llx-check/stop.late
+finished=target/llx-check/stop.finished
+rm -f "$late" "$finished"
+limit=${LLX_STOP_CHECK_TIMEOUT:-240}
+# Each in a subshell whose children alone are stopped: the subshells end by themselves, so no
+# shell reports a job killed.
+(scripts/check --fast </dev/null >"$log" 2>&1) &
+check=$!
+(
+  sleep "$limit" && [ ! -e "$finished" ] && {
+    : >"$late"
+    # shellcheck disable=SC2046 # one pid per word
+    kill -TERM $(tree_of "$check" | sed 1d) 2>/dev/null
+  }
+) </dev/null >/dev/null 2>&1 &
+watchdog=$!
+wait "$check"
+status=$?
+: >"$finished"
+# shellcheck disable=SC2046 # one pid per word
+kill -TERM $(tree_of "$watchdog" | sed 1d) 2>/dev/null || true
+wait "$watchdog" 2>/dev/null || true
+rm -f "$finished"
+
+if [ -e "$late" ]; then
+  rm -f "$late"
+  say "scripts/check --fast did not finish within ${limit}s; this stop is unchecked (target/llx-check/stop.log)"
+  exit 0
+fi
+[ "$status" -ne 0 ] || exit 0
+stamp fail "$fingerprint"
+{
+  echo "scripts/check --fast fails on your change. Fix it before you finish; it runs again when you stop."
+  echo
+  tail -n 150 "$log"
+  echo
+  echo "(the whole output: $root/$log)"
+} >&2
+exit 2

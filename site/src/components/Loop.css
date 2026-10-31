@@ -1,0 +1,121 @@
+/* The steps as a stack: each card sticks under the bar and the next slides over it, a little
+   lower, so the edges of those under it show. Words on the left, what llx printed on the right. */
+.loop {
+  padding-block: clamp(2rem, 4vw, 4rem) clamp(3rem, 6vw, 6rem);
+}
+.loop h2 {
+  margin: 0 0 clamp(2rem, 4vw, 3rem);
+  font: 700 var(--step-3) / 1.05 var(--display);
+  letter-spacing: -0.04em;
+  text-align: center;
+}
+.loop-stack {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+}
+.loop-card {
+  position: sticky;
+  top: calc(5.5rem + var(--n) * 0.85rem);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  min-height: clamp(19rem, 17vw, 24rem);
+  padding: clamp(1.25rem, 3vw, 2.25rem);
+  border: 1px solid var(--line-strong);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 -24px 60px -30px rgb(0 0 0 / 0.9);
+}
+.loop-text h3 {
+  margin: 0;
+  font: 600 clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem) / 1.1 var(--display);
+  letter-spacing: -0.035em;
+}
+.loop-text p {
+  max-width: 30em;
+  margin: 1rem 0 0;
+  color: var(--soft);
+  line-height: 1.55;
+}
+.loop-link {
+  display: inline-block;
+  margin-top: 1.25rem;
+  color: var(--white);
+  font: 500 0.9375rem / 1.4 var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 4px;
+}
+.loop-link:hover {
+  text-decoration-color: currentColor;
+}
+.loop-panel {
+  align-self: start;
+  margin: 0;
+  overflow-x: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #090909;
+  color: #e6e6e6;
+  font: 400 clamp(0.72rem, 0.66rem + 0.22vw, 0.84rem) / 1.7 var(--mono);
+}
+.loop-row {
+  display: block;
+  white-space: pre;
+}
+.t-dim { color: var(--tk-dim); }
+.t-hi { color: #fff; font-weight: 600; }
+.t-ok { color: var(--tk-ok); }
+.t-bad { color: var(--tk-bad); }
+.t-acc { color: var(--tk-var); }
+.t-sel { color: #fff; font-weight: 600; }
+
+/* A table: the grid holds the columns, each row takes them over, so they line up. */
+.loop-grid {
+  display: grid;
+  column-gap: 2ch;
+  width: max-content;
+}
+.loop-grid + .loop-row,
+.loop-row + .loop-grid {
+  margin-top: 0.6rem;
+}
+.loop-cells {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+}
+.loop-cells .r {
+  text-align: right;
+}
+
+@media (min-width: 60rem) {
+  .loop-card {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: clamp(2rem, 4vw, 4rem);
+  }
+}
+
+/* A card's lines come in one after another once it is seen. */
+.loop-card[data-reveal] .loop-row {
+  transition:
+    opacity 420ms var(--ease-out),
+    transform 420ms var(--ease-out);
+  transition-delay: calc(var(--i) * 110ms + 120ms);
+}
+.loop-card[data-reveal='wait'] .loop-row {
+  opacity: 0;
+  transform: translateY(6px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .loop-card {
+    position: relative;
+    top: 0;
+  }
+  .loop-card[data-reveal] .loop-row {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}

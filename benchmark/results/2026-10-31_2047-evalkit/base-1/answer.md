@@ -1,0 +1,1 @@
+I was unable to complete the implementation, and `bun test` does not pass. `src/query.ts` remains syntactically invalid, and the cron, diff, and expression modules still have failing tests. I changed only files in `src/`; I did not modify the tests, `package.json`, or `tsconfig.json`.

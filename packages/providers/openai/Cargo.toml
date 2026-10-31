@@ -1,0 +1,21 @@
+[package]
+name = "openai"
+description = "A model provider: OpenAI's models through a ChatGPT sign-in, over the Responses API"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The chat port and the provider kit only (rule L3).
+[dependencies]
+contracts.workspace = true
+log.workspace = true
+provider-kit.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+base64.workspace = true
+
+[lints]
+workspace = true

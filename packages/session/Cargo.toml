@@ -1,0 +1,17 @@
+[package]
+name = "session"
+description = "A history store: sessions of tasks as JSON files"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The history port only (rule L3).
+[dependencies]
+contracts.workspace = true
+getrandom.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

@@ -1,0 +1,18 @@
+[package]
+name = "protocol"
+description = "What the interface and the server say to each other: wire types only"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No workspace package: the wire is a leaf (ARCHITECTURE.md L6).
+[dependencies]
+serde = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+
+[lints]
+workspace = true
