@@ -6,7 +6,7 @@ llx extends the agent you already use (Claude Code, another agent, a script of y
 | --- | --- | --- |
 | **helpers** | A whole task handed to an agent on any provider and model, in the background and in parallel, with an answer in your JSON shape | `llx exec` |
 | **decide** | A quick, cheap choice about some text: yes or no, or one of your options | `llx decide` |
-| **sessions** | The same helper again, with its conversation | `llx exec resume ID` |
+| **sessions** | The same helper again: a new conversation, told each earlier task, how it ended and its answer | `llx exec resume ID` |
 
 ## Helpers on any model
 
@@ -14,13 +14,13 @@ llx extends the agent you already use (Claude Code, another agent, a script of y
 
 ```sh
 llx exec --provider openrouter -m deepseek/deepseek-chat "List the public functions in src/ that have no test"
-llx exec --schema @answer.json "Summarize the failing CI log in ci.log"
+llx exec --schema @schema.json "Summarize the failing CI log in ci.log"
 llx exec --allow 'bash(cargo test *)' "Run the tests and say which fail and why"
 ```
 
-- With no rule it only reads: commands and file changes are refused. `--allow` and `--deny` say what it may do ([modes and rules](modes.md)).
-- `--json` prints its events; the last, `run.completed`, has the answer, the session id, the cost and the time. `exec resume ID "…"` goes on with the same helper.
-- Several at once: start each in the background and read their answers when they end.
+- With no rule it works in the workspace, in the `default` mode: its commands run in the sandbox, which writes only inside the workspace (never its `.git`; on Linux, in a workspace with a `.git` of its own, they only read) and opens no network, and its patches of the workspace's files are made. What must reach further is asked at the terminal when there is one, else refused. `--mode plan` keeps it read-only; `--allow` runs what a rule names as it is, outside the sandbox (in `plan`, still read-only), and `--deny` refuses it ([modes and rules](modes.md)).
+- `--json` prints its events; the last, `run.completed`, has the answer, the session id, the cost and the time ([reference](reference.md#json-events)). `exec resume ID "…"` goes on in that session: a new conversation, told the earlier tasks and their answers, not what the helper read.
+- Several at once: start each in the background with its stdout to a file of its own, then wait for each and read the files: `llx exec "…" > a.md & a=$!; llx exec "…" > b.md & b=$!; wait $a; wait $b`. `wait PID` gives that helper's exit code ([reference](reference.md#exit-codes)); each stops at `--timeout`, 30 minutes by default.
 - Check what a helper says before you act on it, as you would a colleague's.
 
 ## decide

@@ -11,4 +11,4 @@
 
 ## Rules touched
 
-<!-- Rule ids from ARCHITECTURE.md (L, C, P, A, K, W, R, S), or "none". -->
+<!-- Rule ids from ARCHITECTURE.md (L, C, P, A, K, W, B, R, S), or "none". -->

@@ -4,7 +4,9 @@ How a task ends, the exit codes, the `--json` events and `llx decide`. Both the 
 
 ## Exit codes
 
-A task ends when the model replies with a message and no tool call: that message is the `answer`. With `--schema`, llx then asks the same model once more, on the same conversation, for the `result` call (`tool_choice` forced to it), and the `answer` is its data. Data that does not match the schema goes back to be fixed, up to two times.
+A task ends when the model replies with a message and no tool call: that message is the `answer`. A reply the output limit cut off is not one: the model goes on from it, and a fourth in a row that did nothing ends the task with `error` (exit 3). An answer given while an agent's answer, or in `exec` a monitor's lines, is still to come waits for it.
+
+With `--schema`, llx then asks the same model once more, on the same conversation, for the `result` call (`tool_choice` forced to it). Its data is what stdout and `-o` get, and `run.completed`'s `data`; the answer goes to stderr. Data that does not match the schema goes back to be fixed, up to two times; then the run ends `no_data`.
 
 | Code | Meaning |
 | --- | --- |
@@ -12,13 +14,13 @@ A task ends when the model replies with a message and no tool call: that message
 | 1 | Only with `--schema`: no data matched it |
 | 2 | Turns, time or budget ran out before the model answered |
 | 3 | The environment or the command line is not ready: no key, no network, a model error, a bad argument |
-| 130 | Interrupted: Ctrl-C (or SIGTERM) |
+| 130 | Interrupted: Ctrl-C, SIGTERM or SIGHUP |
 
-With `--json`, a closed stdout (`llx --json ... | head -1`) ends the run quietly at its next turn, with exit 0. Without it nothing is written to stdout until the answer, so the run goes on to its end and then exits 0.
+With `--json`, a closed stdout (`llx exec --json ... | head -1`) ends the run quietly at its next turn, with status `interrupted` and exit 0. Without it nothing is written to stdout until the answer, so the run goes on to its end and then exits 0.
 
 ## JSON events
 
-`--json` (with `exec` or `-p`) prints one event per line on stdout, in the order things happen. Every event has a `type`, and `ms` is the time since the task started.
+`--json` (with `exec` or `-p`) prints one event per line on stdout, in the order things happen. Every event has a `type`; `tool.call`, `tool.result` and `turn` also have `ms`, the time since the task started.
 
 | Event | Fields |
 | --- | --- |
@@ -26,9 +28,9 @@ With `--json`, a closed stdout (`llx --json ... | head -1`) ends the run quietly
 | `tool.call` | `id`, `name`, `arguments` |
 | `tool.result` | `id`, `name`, `failed`, `fatal`, `output` |
 | `turn` | One model turn: `model`, `input_tokens`, `cached_tokens`, `output_tokens`, `cost_usd`, `model_ms` |
-| `run.completed` | `status` (`done`, `no_data`, `exhausted`, `error`, `interrupted`), `exit_code`, `answer`, `data` or `data_error`, `error`, `session`, `usage` {`agent`, `cost_usd`}, `duration_ms` |
+| `run.completed` | `status` (`done`, `no_data`, `exhausted`, `error`, `interrupted`), `exit_code`, `answer`, `data` or `data_error` (with `--schema`), `error`, `session`, `usage` {`agent` {`model`, `calls`, `input_tokens`, `cached_tokens`, `output_tokens`, `cost_usd`, `ms`}, `cost_usd`}, `duration_ms` |
 
-The exit codes and these events are a public contract. A breaking change bumps `schema` and is listed in [CHANGELOG.md](../CHANGELOG.md).
+The turns of the agents a task starts come as `turn` events too, and count in `usage`. A breaking change to the events or the exit codes bumps `schema` and is listed in [CHANGELOG.md](../CHANGELOG.md).
 
 ## llx decide
 

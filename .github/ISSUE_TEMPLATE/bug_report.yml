@@ -37,5 +37,5 @@ body:
     attributes:
       label: Output
       description: >-
-        The terminal output, ideally with `-v` (each result and model turn). `llx doctor` helps with setup problems.
+        The terminal output, ideally with `-v` (each result and model turn), and the lines of `~/.config/llx/logs/llx.log` from when it happened: every llx process writes there, the daemon too. Remove keys and anything private. `llx doctor` helps with setup problems.
       render: text

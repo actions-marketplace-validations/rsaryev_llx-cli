@@ -33,7 +33,7 @@ bun benchmark/run.ts --agent base=llx:/path/to/old/llx --agent llx   # two build
 `--agent [label=]kind[:path]` names an agent: `llx` (this repository's `target/release/llx`) or
 `codex` (the `codex` on the `PATH`, signed in to ChatGPT), with a label where two of a kind run
 together. Each run copies `project/` into a fresh git repository in a temporary directory (outside
-this one) and starts the agent there on `gpt-6-luna`, reasoning `low`, every effect allowed:
+this one) and starts the agent there, every effect allowed:
 
 - llx: `llx exec -y`, with `apply_patch` denied on the tests, `package.json` and `tsconfig.json`,
   and with its advisor (Jev, ARCHITECTURE.md C9: when the model says it is done, it judges whether
@@ -43,7 +43,17 @@ this one) and starts the agent there on `gpt-6-luna`, reasoning `low`, every eff
   person's `config.toml` left out, the sign-in kept). It has no deny rule; the prompt says the
   same to both.
 
-After it, the fixed files are put back from the pristine copy, so an edit through the shell
+What the agents think with, and how a run is bounded:
+
+- `--provider`, `--model` and `--reasoning`: default `openai`, `gpt-6-luna`, `low`; Codex takes
+  the model and the level alone;
+- `--timeout S`: each run's limit, 1200 s by default (llx's `--timeout`; both agents are killed
+  60 s past it, which is Codex's only bound);
+- `--parallel N`: at most N runs at once (4);
+- `--repeat N`: N runs of each agent (1);
+- `--no-advice`: llx without Jev.
+
+After a run, the fixed files are put back from the pristine copy, so an edit through the shell
 cannot help, and a change to them is noted as tampered; then `bun test` is the score. It needs
 `bun` and `git` on the `PATH`, and `codex` for Codex.
 
@@ -53,7 +63,7 @@ The task as a whole, from the prompt to the agent's last word:
 
 - **solved**: every test passed (and how many did, of how many);
 - **wall s**: the seconds the task took, split for llx into the model's (`model s`) and the rest
-  (llx and the tools: the commands, `bun test`);
+  (`the rest s`: llx and the tools, the commands, `bun test`);
 - **turns**: the model's requests;
 - **Jev**: how often llx's advisor sent the model back to work;
 - **cost $**: what the run would cost at the model's price in the catalog (a ChatGPT sign-in pays

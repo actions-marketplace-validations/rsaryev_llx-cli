@@ -7,7 +7,7 @@ Thanks for helping. llx is meant to stay small and fast: five tools (`bash`, `ap
 ## Before you start
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) and [AGENTS.md](AGENTS.md). ARCHITECTURE.md is binding:
-it fixes the layers, what may know what, and every rule by id (L, C, P, A, K, W, R, S).
+it fixes the layers, what may know what, and every rule by id (L, C, P, A, K, W, B, R, S).
 AGENTS.md says what each file is, with the behaviour and code rules. They apply to people as
 much as to coding agents, and the tests in `apps/cli/tests/suite/repo/` check the layering and
 the size budgets. A change that does not fit a rule is redesigned, or the rule is changed first,
@@ -18,7 +18,10 @@ For a larger change, open an issue first to agree on the shape.
 ## Setup
 
 The toolchain is the latest stable Rust (`rust-toolchain.toml` installs it with rustfmt and
-clippy); the code also builds on the workspace's `rust-version`.
+clippy); the code also builds on the workspace's `rust-version` (1.88). Run `scripts/setup` once
+per clone for the git hooks. Two checks need more than the toolchain: the site's build needs
+`npm ci` in `site/` (it is skipped without it), and the coverage needs `cargo install
+cargo-llvm-cov cargo-nextest`.
 
 ## Checks
 
@@ -33,24 +36,27 @@ scripts/check --list   # each check and the command it runs
 ```
 
 It prints its plan first (which checks, and why), stops at the first failure with its output, and
-ends with one line. After `scripts/setup`, a commit runs `scripts/check --fast` on what it stages
-and a push runs `scripts/check` (everything when pushing main); `--no-verify` skips them. Agents
-in Claude Code run `scripts/check --fast` when they end a turn (`.claude/settings.json`).
+ends with one line. After `scripts/setup`, a commit runs `scripts/check --fast --staged` on what
+it stages (a staged file with unstaged edits is refused) and a push runs `scripts/check --fast` on
+what is pushed; the tests, the size and the site run in CI, and by hand with `scripts/check` before
+a change is called done. `--no-verify` skips the hooks. Agents in Claude Code run
+`scripts/check --fast` when they end a turn (`.claude/settings.json`).
 
 Under it are the usual commands, which you can still run alone: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets -- -D warnings` (then, on libraries and binaries,
 `-D unused_crate_dependencies`), `cargo test --workspace`, the release binary's size (under 5 MiB, warned above
 4 MB), the site's build, the action's tests, and the linters: shellcheck, actionlint, the example
 workflows' conventions and the Markdown's relative links, at pinned versions it downloads once.
-Run these yourself before a release: the minimum Rust version
-(`cargo +1.88 check --workspace --all-targets --locked`) and the line coverage
-(`scripts/check --only coverage`, or `scripts/coverage.sh`).
+Two checks CI does not run; run them yourself before a release ([RELEASING.md](RELEASING.md)):
+the minimum Rust version (`cargo +1.88 check --workspace --all-targets --locked`) and the line
+coverage, at least 85% (`scripts/check --all --coverage`, or `scripts/coverage.sh` alone).
 The code stays under 50,000 lines of working code and 300 per file (ARCHITECTURE.md S1, S2).
-
 
 ## Code
 
-- Small, focused modules; new files stay under 300 lines; rustfmt defaults.
+- Small, focused modules: every file holds at most 300 lines of working code (blanks, comments
+  and test files do not count), and one about to pass it is split by what it does first; rustfmt
+  defaults.
 - Doc comments and comments explain why, not what.
 - Unit tests never live inline: `x.rs` ends with
 
