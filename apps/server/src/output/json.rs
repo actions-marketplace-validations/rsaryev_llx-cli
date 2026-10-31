@@ -1,5 +1,5 @@
-//! `--json`: the run as JSON lines, one event each, in the order they happen. `ms` is the time
-//! since the task started. Every event has a `type`:
+//! `--json`: the run as JSON lines, one event each, in the order they happen. `ms` (on a
+//! call, its result and a turn) is the time since the task started. Every event has a `type`:
 //! - `run.started`: `schema`, `goal`, `session`, `model`, `workspace`
 //! - `tool.call`: `id`, `name`, `arguments`
 //! - `tool.result`: `id`, `name`, `failed`, `fatal`, `output`

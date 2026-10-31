@@ -1,4 +1,4 @@
-//! The sandbox on Linux: Landlock (5.13 and later) keeps the command from writing anywhere but
+//! The sandbox on Linux: Landlock (its ABI 3: Linux 6.2 and later) keeps the command from writing anywhere but
 //! `/dev/null` and its scratch directory, and from tracing a process outside its domain; a seccomp
 //! filter refuses it every socket (`socket`, and `io_uring`, which can open one). Both are set
 //! between fork and exec, after `no_new_privs` (so no setuid program lifts them), and everything

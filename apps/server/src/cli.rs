@@ -26,17 +26,19 @@ and exits, with the answer alone on stdout: for scripts, CI and pipes. A task en
 agent's final message; with `--schema`, the data is then asked for as a `result` call, forced. \
 The exit code says how it ended.
 
-To sign in, type /login in a session: choose a provider (OpenAI, signed in with ChatGPT in \
-your browser, or OpenRouter, with a key), then one of its models and a reasoning level that \
-model takes (left/right in the model list, Enter confirms both). The choice is saved as the \
-default for later sessions and for exec. `llx decide`'s decision model runs on OpenRouter, so it \
+To sign in, type /login in a session: choose a provider of the catalog, found by typing \
+(OpenAI signs in with ChatGPT in your browser or with a key, OpenRouter with a key or in the \
+browser, the others with a key), then one of its models and a reasoning level that model takes \
+(left/right in the model list, Enter confirms both). The choice is saved as the default for \
+later sessions and for exec. `llx decide`'s decision model runs on OpenRouter, so it \
 needs an OpenRouter key.
 
 Rules decide what runs without asking: a deny refuses, an allow runs it as it is, and what the \
 mode's sandbox does not cover is asked at the terminal (1 yes, 2 always for this tool, 3 no; \
 outside a session y, a or n), or refused with no one to ask. A mode (--mode) is a named set of \
 rules: default (commands run without asking in the system's sandbox, which writes only inside \
-the workspace, never its .git, and opens no network; file changes there are made; a command the \
+the workspace, never its .git (on Linux, in a workspace with a .git of its own, it only reads), \
+and opens no network; file changes there are made; a command the \
 model escalates, or a change inside .git, is asked), plan (read-only: commands run without \
 asking in the sandbox, where writing a file, opening a socket or reaching another program \
 fails), bypass (-y, everything allowed), or your own from \
@@ -45,7 +47,8 @@ bash(cargo test *), jobs. In a session, /mode switches it and Shift+Tab goes rou
 (after the task if working); the mode is always shown under the prompt, and /status shows it \
 too. Markdown tables wrap their cells \
 to the terminal width. Tab completes a slash command \
-(with a space for commands taking an argument); Enter executes the typed command. Pasted text \
+(with a space for commands taking an argument); Enter runs the typed command when it is a whole \
+one, else the one marked. Pasted text \
 is shown as [Paste] until sent; pasted file paths become file or image marks.
 
 Sessions run side by side: /new opens another and shows it while the one before goes on in the \
@@ -116,8 +119,8 @@ pub(crate) struct Cli {
 pub(crate) enum Command {
     /// Run one task without a session and exit; the answer alone goes to stdout.
     ///
-    /// Given a prompt, stdin that is not a terminal is read to its end and added in a <stdin>
-    /// block (`</dev/null` skips it); `-` reads the prompt itself from stdin.
+    /// Given a prompt, stdin that is not a terminal is read (up to 256 KiB) and added in a
+    /// <stdin> block (`</dev/null` skips it); `-` reads the prompt itself from stdin.
     #[command(visible_alias = "e", args_conflicts_with_subcommands = true)]
     Exec(Box<ExecArgs>),
     /// Ask the decision model one question about stdin; the option it picked alone goes to stdout.
@@ -135,7 +138,8 @@ pub(crate) enum Command {
     Resume(Box<ResumeArgs>),
     /// List saved sessions, newest first.
     Sessions,
-    /// Forget every saved sign-in: the ChatGPT tokens and the OpenRouter key.
+    /// Forget every saved sign-in: the ChatGPT tokens and each provider's saved key. A key still
+    /// set in the environment is named, to unset.
     Logout,
     /// Check the sign-ins, both models and the shell.
     Doctor(DoctorArgs),
@@ -312,7 +316,8 @@ pub(crate) struct RunOptions {
         aliases = ["yolo", "dangerously-skip-permissions"])]
     pub yes: bool,
     /// A named set of rules on what runs without asking: default (work in the workspace, in the
-    /// sandbox; what reaches further is asked), plan (file changes refused), bypass (everything
+    /// sandbox; what reaches further is asked), plan (read-only: commands in the read-only
+    /// sandbox, file changes refused), bypass (everything
     /// runs, as -y), or your own from `modes` in
     /// ~/.config/llx/settings.json. Also accepted as --permission-mode.
     #[arg(
@@ -325,15 +330,16 @@ pub(crate) struct RunOptions {
     pub mode: Option<String>,
     /// Run what RULE names without asking, where the mode would ask or, with no one to ask,
     /// refuse: `bash(cargo test *)` (every part of the command must match), `apply_patch(docs/**)`, `jobs`.
-    /// Repeat it. Plan mode stays read-only. The syntax is Claude Code's; what a
-    /// pattern covers, and what it never does, is in docs/modes.md#rules.
+    /// Repeat it. An allowed command runs as it is, outside the sandbox, with the network; plan
+    /// mode keeps it read-only. The syntax is Claude Code's; what a pattern covers, and what it
+    /// never does, is in docs/modes.md#rules.
     #[arg(long, value_name = "RULE", help_heading = "Approvals")]
     pub allow: Vec<String>,
     /// Refuse what RULE names in every mode, -y included: `bash(git push *)`. Repeat it.
     #[arg(long, value_name = "RULE", help_heading = "Approvals")]
     pub deny: Vec<String>,
 
-    /// Print events as JSON lines on stdout: run.started, tool.call, tool.result, step, turn,
+    /// Print events as JSON lines on stdout: run.started, tool.call, tool.result, turn,
     /// run.completed. With `exec` or -p.
     #[arg(long, help_heading = "Output")]
     pub json: bool,
@@ -353,15 +359,17 @@ pub(crate) struct RunOptions {
     #[arg(long, value_name = "N", help_heading = "Limits",
         value_parser = RangedU64ValueParser::<usize>::new().range(1..=10_000))]
     pub max_turns: Option<usize>,
-    /// Seconds one task may take, up to a day; it stops at the first model turn past them, or
-    /// while it waits on its monitors or agents.
+    /// Seconds one task may take, up to a day; at the limit a command or agent running is
+    /// killed, and the task stops at its next model turn, or while it waits on its monitors or
+    /// agents.
     #[arg(long, value_name = "SECONDS", default_value_t = 1800, help_heading = "Limits",
         value_parser = RangedU64ValueParser::<u64>::new().range(1..=86_400))]
     pub timeout: u64,
     /// Dollars one task may spend (more than 0, e.g. 0.50); it stops at the next model turn
-    /// once its turns (and the decision model's advice) have cost that. Counted where the
-    /// provider reports a cost: OpenRouter does, a ChatGPT sign-in does not. The first of --max-turns, --timeout and --budget
-    /// reached ends the task with exit 2.
+    /// once its turns, its agents' and the decision model's advice have cost that. A turn the
+    /// provider reports no cost for is priced from the catalog (a ChatGPT sign-in's at its API
+    /// price); a model the catalog has no price for counts nothing. The first of --max-turns,
+    /// --timeout and --budget reached ends the task with exit 2.
     #[arg(long, value_name = "USD", help_heading = "Limits", value_parser = dollars)]
     pub budget: Option<f64>,
 

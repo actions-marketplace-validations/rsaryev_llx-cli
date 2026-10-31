@@ -130,7 +130,7 @@ main() {
 
   say ""
   say "Next steps:"
-  say "  llx           # a session: type /login to sign in (ChatGPT or OpenRouter)"
+  say "  llx           # a session: type /login to sign in (ChatGPT, OpenRouter or a key)"
   say "  llx doctor    # check the sign-ins and the models"
 }
 

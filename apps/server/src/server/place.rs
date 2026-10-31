@@ -1,4 +1,4 @@
-//! Where a client is, as the sessions it opens take it (docs/daemon.md, step 2): the workspace at
+//! Where a client is, as the sessions it opens take it (ARCHITECTURE.md D2): the workspace at
 //! its directory, whose commands run with its environment (its `PATH`, a virtualenv, its keys,
 //! less the app's hidden ones). In process the place is the process's own; over a socket,
 //! each client's.
