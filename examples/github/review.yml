@@ -113,17 +113,18 @@ jobs:
           gh api "repos/$GH_REPO/pulls/$PR/comments" --paginate --jq '
             .[] | select(.body | startswith("<!-- llx:finding -->")) | "\(.path):\(.line // .original_line)"' > said.txt
 
-          # New findings only: none within 3 lines of an earlier comment or of a more severe one
-          # (a moved line is the same finding). `inline` says whether the diff shows its line.
+          # New findings only: none on the line of an earlier comment (GitHub moves a comment's
+          # line with the code; the agent read them and leaves out what they said), none within 3
+          # lines of a more severe one of this push. `inline` says whether the diff shows its line.
           jq -c --rawfile shown shown.txt --rawfile said said.txt '
-            def spot: capture("^(?<path>.*):(?<line>[0-9]+)$") | .line |= tonumber;
             def near($a; $b): $a.path == $b.path and (($a.line - $b.line) | fabs) <= 3;
             ($shown | split("\n")) as $lines
-            | ($said | split("\n") | map(select(length > 0) | spot)) as $old
+            | ($said | split("\n")) as $old
             | [.findings[] | . + {inline: ("\(.path):\(.line)" as $k | $lines | index($k) != null)}]
+            | map(select("\(.path):\(.line)" as $k | $old | index($k) == null))
             | sort_by({high: 0, medium: 1, low: 2}[.severity])
             | reduce .[] as $f ([]; . as $kept
-                | if any(($old + $kept)[]; near($f; .)) then $kept else $kept + [$f] end)' <<<"$RESULT" > fresh.json
+                | if any($kept[]; near($f; .)) then $kept else $kept + [$f] end)' <<<"$RESULT" > fresh.json
 
           if [ "$(jq 'map(select(.inline)) | length' fresh.json)" -gt 0 ]; then
             jq -n --arg commit "$HEAD" --slurpfile f fresh.json '{

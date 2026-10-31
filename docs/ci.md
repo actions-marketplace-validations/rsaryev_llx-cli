@@ -180,7 +180,7 @@ Each is one file to copy into `.github/workflows/`, with the key as a secret. Th
 | [describe.yml](../examples/github/describe.yml) | Writes a summary, the risk and the testing below the author's text. |
 | [release.yml](../examples/github/release.yml) | Picks the version bump and writes the notes in one answer, and drafts a release. |
 | [gate.yml](../examples/github/gate.yml) | Checks a rule you state (here, that what the docs name exists in the code), daily and read-only, and fails the job when it is not met. |
-| [audit.yml](../examples/github/audit.yml) | Explores the repository weekly, runs its tests and linters, and opens or updates one issue. |
+| [audit.yml](../examples/github/audit.yml) | Explores the repository weekly, runs its tests and linters, and keeps one issue as its latest report. |
 
 ## Rules in CI
 

@@ -22,7 +22,7 @@ test repository before it was published.
 | [describe.yml](github/describe.yml) | a pull request opens or is marked ready for review | writes a summary, each change, the risk and the testing below the author's text, in a block it replaces | |
 | [release.yml](github/release.yml) | run by hand | picks the version bump and writes the notes in one answer; drafts a release a person publishes | tags like `v1.2.3`; with none, the first draft is `v0.1.0` |
 | [gate.yml](github/gate.yml) | daily, or by hand | checks a rule you state (here, that what the docs name exists in the code), read-only, and fails the job when the listed data shows it is not met | |
-| [audit.yml](github/audit.yml) | weekly, or by hand | explores the repository, runs its tests and linters, and opens or updates one issue labeled `llx-audit` when it finds something worth a maintainer's time | |
+| [audit.yml](github/audit.yml) | weekly, or by hand | explores the repository, runs its tests and linters, and keeps one issue labeled `llx-audit` as its latest report: opened or rewritten when it finds something worth a maintainer's time, closed when nothing of it holds | |
 
 ## Beyond GitHub workflows
 
@@ -81,7 +81,8 @@ where you can read it, and so is what gets posted.
 - `gh pr view --comments` needs `checks: read`; the prompts use
   `gh pr view "$PR" --json title,body,comments,reviews`, which does not.
 - Pin the action to a release (`@v0.x.y`) or a commit where the key matters; `@v0` follows every
-  0.x release.
+  0.x release. GitHub's own actions (`actions/checkout@v7`) go by their major tag, as llx's own
+  workflows name them; pin them to a commit too where your policy asks for it.
 - On a self-hosted runner, replace `ubuntu-latest` with its labels; the action needs `jq` and
   `perl` there. It installs the Linux x86_64 and macOS builds: elsewhere (Linux arm64, say), build
   llx on the runner (`cargo install`, as the [README](../README.md#install) says) and give the
