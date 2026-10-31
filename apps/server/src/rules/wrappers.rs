@@ -21,12 +21,23 @@ pub(super) fn privileged(command: &str) -> Option<(&str, bool)> {
     Some((skip(after, count), shell))
 }
 
-/// `part` past its leading assignments and wrappers, and whether an allow stops before it: an
-/// assignment, or an option of `env` (`-C` changes where it runs, `-S` splits a string into a
-/// command). A wrapper with nothing after it is the command itself (`env`).
-pub(super) fn unwrapped(part: &str) -> (String, bool) {
+/// What stands before a command once its wrappers are looked through, for an allow.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Before {
+    /// Nothing an allow must weigh.
+    Nothing,
+    /// `xargs`, which adds the words it reads to the command.
+    Fed,
+    /// An assignment, or an option of `env` (`-C` changes where it runs, `-S` splits a string
+    /// into a command): an allow stops before it.
+    Stop,
+}
+
+/// `part` past its leading assignments and wrappers, and what stood before it. A wrapper with
+/// nothing after it is the command itself (`env`).
+pub(super) fn unwrapped(part: &str) -> (String, Before) {
     let mut rest = part.trim();
-    let mut assigned = false;
+    let (mut assigned, mut fed) = (false, false);
     while let Some((word, after)) = words::first(rest) {
         let after = after.trim_start();
         let program = name(&word);
@@ -38,7 +49,10 @@ pub(super) fn unwrapped(part: &str) -> (String, bool) {
             _ if after.is_empty() => break,
             "time" | "nohup" | "builtin" | "noglob" => 0,
             "command" if !after.starts_with("-v") && !after.starts_with("-V") => 0,
-            "xargs" if !after.starts_with('-') => 0,
+            "xargs" if !after.starts_with('-') => {
+                fed = true;
+                0
+            }
             "timeout" | "nice" | "stdbuf" => own(program, after).0,
             "env" => {
                 assigned |= after.starts_with('-');
@@ -48,7 +62,12 @@ pub(super) fn unwrapped(part: &str) -> (String, bool) {
         };
         rest = skip(after, count);
     }
-    (rest.to_string(), assigned)
+    let before = match (assigned, fed) {
+        (true, _) => Before::Stop,
+        (false, true) => Before::Fed,
+        (false, false) => Before::Nothing,
+    };
+    (rest.to_string(), before)
 }
 
 /// `text` past its first `count` words.

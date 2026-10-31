@@ -1,7 +1,8 @@
 //! What a git command line can run besides git: a program named by an option, by config given on
-//! the command line, or by a remote's address. A rule that allows `git push *` allows pushing, not
-//! `git push --receive-pack='sh -c …'`, so such a line is never allowed by a pattern: it is
-//! asked, or refused with no one to ask.
+//! the command line, or by a remote's address; and a file it is told to write, wherever it is. A
+//! rule that allows `git push *` allows pushing, not `git push --receive-pack='sh -c …'`, nor
+//! `git log --output=~/.bashrc`, so such a line is never allowed by a pattern: the mode decides,
+//! as for a command no rule names.
 
 /// Global options (before the subcommand) that take the next word as their value.
 const VALUED: [&str; 8] = [
@@ -17,28 +18,34 @@ const VALUED: [&str; 8] = [
 
 /// Long options, of any subcommand, that hand git a program to run: the remote's `git-*-pack`
 /// (`push`, `fetch`, `pull`, `ls-remote`, `archive`, `send-pack`), a tool (`difftool`) or a pager
-/// (`grep`), and `clone`'s config. Git takes any unambiguous start of a long option, so `--rece`
-/// is `--receive-pack`: the start of a name counts.
-const LONG: [&str; 6] = [
+/// (`grep`), and `clone`'s config; or a file to write: the diff's (`diff`, `log`, `show`) and
+/// `archive`'s `--output`, `format-patch`'s directory. Git takes any unambiguous start of a long
+/// option, so `--rece` is `--receive-pack`: the start of a name counts.
+const LONG: [&str; 8] = [
     "receive-pack",
     "upload-pack",
     "exec",
     "extcmd",
     "open-files-in-pager",
     "config",
+    "output",
+    "output-directory",
 ];
 
 /// Short options that do the same, where a letter means that: `clone -u` (upload-pack) and `-c`
-/// (config), `rebase -x` and `difftool -x` (a command), `grep -O` (a pager). `push -u` and
-/// `cherry-pick -x` mean something else and are left alone.
-const SHORT: [(&str, &str); 4] = [
+/// (config), `rebase -x` and `difftool -x` (a command), `grep -O` (a pager), `archive -o` and
+/// `format-patch -o` (where to write). `push -u`, `cherry-pick -x` and `grep -o` mean something
+/// else and are left alone.
+const SHORT: [(&str, &str); 6] = [
     ("clone", "uc"),
     ("rebase", "x"),
     ("difftool", "x"),
     ("grep", "O"),
+    ("archive", "o"),
+    ("format-patch", "o"),
 ];
 
-/// Whether `part`, a command that starts with `git`, can run another program.
+/// Whether `part`, a command that starts with `git`, can run another program or write a file.
 pub(super) fn runs_another(part: &str) -> bool {
     let words = super::words::words(part);
     let args = words.get(1..).unwrap_or_default();
@@ -60,7 +67,7 @@ pub(super) fn runs_another(part: &str) -> bool {
         return true;
     }
     let sub = command.first().map_or("", String::as_str);
-    let mut options = command.iter().skip(1).take_while(|word| *word != "--");
+    let mut options = super::words::options(command).iter().skip(1);
     command.iter().any(|word| transport(word))
         || options.any(|word| program(sub, word))
         || runs_what_follows(sub, command)
@@ -80,7 +87,7 @@ fn runs_what_follows(sub: &str, command: &[String]) -> bool {
     )
 }
 
-/// Whether an option of `sub` names a program to run.
+/// Whether an option of `sub` names a program to run, or a file to write.
 fn program(sub: &str, word: &str) -> bool {
     if let Some(long) = word.strip_prefix("--") {
         let name = long.split('=').next().unwrap_or_default();

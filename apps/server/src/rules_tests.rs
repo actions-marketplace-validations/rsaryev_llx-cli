@@ -245,6 +245,217 @@ fn a_shell_told_to_run_a_command_or_find_told_to_write_is_never_allowed() {
 }
 
 #[test]
+fn ripgrep_told_a_program_to_run_is_never_allowed() {
+    // `--pre` runs its program on every file searched, `--hostname-bin` once: not what was allowed.
+    for command in [
+        "rg --pre ./x foo",
+        "rg --pre=./x foo",
+        "rg '--pre=sh' foo",
+        "rg -i --pre ./x --pre-glob '*.pdf' foo",
+        "rg --hostname-bin=./x foo",
+        "rg --hostname-bin ./x foo",
+        "/opt/homebrew/bin/rg --pre ./x foo",
+        "timeout 9 rg --pre ./x foo",
+        "rg foo src && rg --pre ./x foo",
+    ] {
+        assert_eq!(
+            rules(&["bash(rg *)"], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    // `-z` runs the system's decompressors, which the model does not name.
+    for command in [
+        "rg -n foo src",
+        "rg -z foo logs",
+        "rg --search-zip foo logs",
+        "rg --no-pre foo",
+        "rg --pre-glob '*.pdf' foo",
+        "rg -- --pre src",
+    ] {
+        assert!(allowed("bash(rg *)", command), "{command}");
+    }
+    assert!(denied("bash(rg *)", "rg --pre ./x foo"));
+}
+
+#[test]
+fn an_allow_never_covers_a_git_command_told_to_write_a_file() {
+    // Where it writes is the command's word, not the workspace's: `~/.bashrc` as well.
+    for command in [
+        "git diff --output=/tmp/x",
+        "git diff --output /tmp/x",
+        "git log --format=%s --output=$HOME/.bashrc -1",
+        "git show HEAD '--output=x'",
+        "git log --outp=x",
+        "git format-patch -o /tmp/p HEAD~1",
+        "git format-patch --output-directory=/tmp/p HEAD~1",
+        "git archive -o /tmp/a.tar HEAD",
+        "git archive --output=/tmp/a.tar HEAD",
+        "git -C sub diff --output=x",
+    ] {
+        assert_eq!(
+            rules(&["bash(git *)"], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    for command in [
+        "git diff --output-indicator-new=+ HEAD",
+        "git grep -o foo",
+        "git archive HEAD",
+        "git format-patch --stdout HEAD~1",
+        "git diff -- --output=x",
+        "git log --grep=--output=x",
+    ] {
+        assert!(allowed("bash(git *)", command), "{command}");
+    }
+    assert!(denied("bash(git diff *)", "git diff --output=x"));
+}
+
+#[test]
+fn a_double_dash_taken_as_an_options_value_does_not_end_the_options() {
+    // git and ripgrep take the word after an option that wants a value as that value, `--` too,
+    // so what follows is still an option: each of these runs a program or writes a file.
+    for (rule, command) in [
+        ("bash(rg *)", "rg -e -- --pre sh foo"),
+        ("bash(rg *)", "rg -g -- --pre=sh foo"),
+        ("bash(git *)", "git push -o -- --receive-pack=x ../bare"),
+        (
+            "bash(git *)",
+            "git format-patch --subject-prefix -- -o /tmp/p HEAD~1",
+        ),
+    ] {
+        assert_eq!(
+            rules(&[rule], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    for (rule, command) in [
+        ("bash(rg *)", "rg -e foo -- --pre src"),
+        ("bash(rg *)", "rg --glob=*.rs -- --pre src"),
+        ("bash(git *)", "git log --grep=x -- --output=x"),
+    ] {
+        assert!(allowed(rule, command), "{command}");
+    }
+}
+
+#[test]
+fn words_xargs_reads_from_its_input_are_never_allowed_where_an_option_could_run_another() {
+    // `xargs` adds what it reads to the command: `--pre sh` from a file, `--output=` from a log.
+    for (rule, command) in [
+        (
+            "bash(rg *)",
+            "rg -oN -e '\\-\\-pre' -e sh notes | xargs rg foo",
+        ),
+        ("bash(rg *)", "xargs timeout 9 rg foo"),
+        (
+            "bash(git *)",
+            "git log -1 --format=--output=x | xargs git diff",
+        ),
+        ("bash(find *)", "xargs find ."),
+        ("bash(sudo *)", "sudo xargs rg foo"),
+    ] {
+        assert_eq!(
+            rules(&[rule], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    let both = rules(&["bash(rg *)", "bash(grep *)"], &[]);
+    assert_eq!(
+        both.judge("bash", "rg -l foo | xargs grep bar"),
+        Ruling::Allowed
+    );
+}
+
+#[test]
+fn a_word_the_shell_builds_by_expansion_is_never_allowed() {
+    // The shell, not the line, decides these words: each one is `--pre sh` or `--pre=sh` to rg.
+    for command in [
+        "rg ${X:-'--pre=sh'} foo",
+        "rg $'--pre'=sh foo",
+        "rg {--pre=sh,} foo",
+        "rg {--pre=sh,\"a b\"} foo",
+        "rg {--pre=sh,\\ } foo",
+        "rg {\"--pre=sh\",x} foo",
+        "rg --pre$IFS./x foo",
+        "rg \"--pre$@\" sh foo",
+        "rg --p\\\nre=sh foo",
+        "rg \"--p\\\nre=sh\" foo",
+    ] {
+        assert_eq!(
+            rules(&["bash(rg *)"], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    for command in [
+        "rg 'a$' src",
+        "rg \"foo$\" src",
+        "rg 'x{1,2}' src",
+        "rg foo$ src",
+    ] {
+        assert!(allowed("bash(rg *)", command), "{command}");
+    }
+    assert!(allowed("bash(git *)", "git show HEAD@{1}"));
+    assert!(denied("bash(rg *)", "rg ${X:-'--pre=sh'} foo"));
+}
+
+#[test]
+fn a_glob_the_shell_could_expand_into_an_option_is_never_allowed_where_an_option_runs_another() {
+    // The shell puts the workspace's file names in place of `*`, and a pull request can add one
+    // named `--pre=sh`, `--output=x` or `-delete`: each would be an option to the program.
+    for (rule, command) in [
+        ("bash(rg *)", "rg foo *"),
+        ("bash(rg *)", "rg foo ?"),
+        ("bash(rg *)", "rg foo [-a]*"),
+        ("bash(rg *)", "rg foo -* src"),
+        ("bash(rg *)", "rg --p* foo"),
+        ("bash(rg *)", "rg -e -- * foo"),
+        ("bash(rg *)", "timeout 9 rg foo *"),
+        ("bash(sudo *)", "sudo rg foo *"),
+        ("bash(git *)", "git diff *"),
+        ("bash(git diff *)", "git diff HEAD *.rs"),
+        ("bash(find *)", "find *"),
+        ("bash(find *)", "find . -name *.rs"),
+        ("bash(find *)", "find -- *"),
+        ("bash(sh *)", "sh *"),
+        ("bash(sudo *)", "sudo -* 'rm -rf ~'"),
+        ("bash(sudo *)", "sudo *"),
+        ("bash(doas *)", "doas b* x"),
+        ("bash(timeout *)", "timeout 9 *"),
+    ] {
+        assert_eq!(
+            rules(&[rule], &[]).judge("bash", command),
+            Ruling::Unsettled,
+            "{command}"
+        );
+    }
+    // Quoted, escaped, after `--`, after a name a file must start with, or for a program whose
+    // options run nothing, a glob stays allowed.
+    for (rule, command) in [
+        ("bash(ls *)", "ls *"),
+        ("bash(cat *)", "cat *.md"),
+        ("bash(grep *)", "grep foo *"),
+        ("bash(sudo *)", "sudo grep foo *"),
+        ("bash(rg *)", "rg 'a*' src"),
+        ("bash(rg *)", "rg \"x?\" src"),
+        ("bash(rg *)", "rg a\\* src"),
+        ("bash(rg *)", "rg foo -- *"),
+        ("bash(rg *)", "rg foo src/*.rs ./*"),
+        ("bash(rg *)", "rg --glob=*.rs foo"),
+        ("bash(git *)", "git diff -- *.rs"),
+        ("bash(find *)", "find . -name '*.rs'"),
+        ("bash([ *)", "[ -f x ]"),
+    ] {
+        assert!(allowed(rule, command), "{command}");
+    }
+    assert!(denied("bash(rg *)", "rg foo *"));
+    assert!(denied("bash(find *)", "find *"));
+}
+
+#[test]
 fn wrappers_are_looked_through_but_an_assignment_stops_an_allow() {
     assert!(allowed("bash(npm test *)", "timeout 30 npm test"));
     assert!(allowed("bash(npm test *)", "nice -n 5 npm test"));
