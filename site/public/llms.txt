@@ -9,7 +9,7 @@
 
 ## Install
 
-- `npm install -g @localixai/llx`, or `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh` (macOS and Linux x86_64, checked against `SHA256SUMS`).
+- `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh` (macOS and Linux x86_64, checked against `SHA256SUMS`).
 - Sign in with `/login` in a session (`llx`), or set the provider's key (for example `OPENROUTER_API_KEY`).
 
 ## Use

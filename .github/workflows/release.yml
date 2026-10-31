@@ -201,38 +201,3 @@ jobs:
             exit 1
           fi
           echo "$major -> $sha ($GITHUB_REF_NAME)"
-
-  # The npm packages (@localixai/llx and one per platform: scripts/npm-pack.sh) from the same
-  # archives, published after the release exists. Without the NPM_TOKEN secret the job ends here.
-  npm:
-    name: npm
-    needs: [check, publish]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      # npm's provenance: a signed link from each package to this workflow run.
-      id-token: write
-    env:
-      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-    steps:
-      - name: Is there a token
-        id: token
-        run: |
-          if [ -n "$NODE_AUTH_TOKEN" ]; then echo "set=yes" >> "$GITHUB_OUTPUT"; fi
-      - uses: actions/checkout@v7
-        if: steps.token.outputs.set == 'yes'
-        with:
-          persist-credentials: false
-      - uses: actions/download-artifact@v8
-        if: steps.token.outputs.set == 'yes'
-        with:
-          pattern: dist-*
-          path: artifacts
-      - name: Publish
-        if: steps.token.outputs.set == 'yes'
-        run: |
-          mkdir dist
-          cp artifacts/dist-*/llx-* dist/
-          # shellcheck disable=SC2016 # npm expands ${NODE_AUTH_TOKEN} from its environment, not the shell
-          echo '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}' > "$HOME/.npmrc"
-          sh scripts/npm-pack.sh --publish

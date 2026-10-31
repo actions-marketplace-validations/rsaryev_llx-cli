@@ -273,7 +273,7 @@ Install llx and run `llx exec` yourself. On a runner that is a script step:
       </dev/null > review.json
 ```
 
-Or `npm install -g @localixai/llx`. `LLX_VERSION=0.2.0` before `sh` pins a release.
+`LLX_VERSION=0.2.0` before `sh` pins a release.
 
 Two details matter on a runner:
 

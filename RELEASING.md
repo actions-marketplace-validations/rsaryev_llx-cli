@@ -44,12 +44,6 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
    workflow's token cannot move it onto a commit whose `.github/workflows` differ from `main`'s
    (when `main` gained a workflow change after the tag); the job then fails with the two `git`
    commands that move it by hand.
-6. **npm**, when the `NPM_TOKEN` secret is set (an npm automation token that may publish
-   `@localixai/*`): `scripts/npm-pack.sh --publish` makes one package per platform with the binary
-   from the archives, then the wrapper
-   `@localixai/llx`, with provenance. A version with a suffix goes out under the `next` tag.
-   `scripts/npm-pack.sh` alone builds them into `dist/npm/` without publishing, to try with
-   `npm install dist/npm/*.tgz`.
 
 `scripts/install.sh` reads `releases/latest` (or `LLX_VERSION`) and
 verifies the archive against `SHA256SUMS`, so a release is installable as soon as it is published.

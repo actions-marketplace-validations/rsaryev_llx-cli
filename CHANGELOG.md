@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Initial release.
+- llx is installed with the curl installer (`scripts/install.sh`) or `cargo install`; the npm packages (`@localixai/llx`) are no longer published.
 - `--help` says quitting asks while a session works or a monitor or schedule runs (it named a shell too, which is a session's work).
 - Allow rules read a command's program without its quotes and by its name (`'sh' -c`, `/bin/sh -c`), and look through `env`: `env` with an assignment or an option stops an allow, as a leading `VAR=value` does, so `bash(env -i *)` no longer matches.
 - A wrapper the rules cannot look through (`xargs -0`, `time -p`, `command -p`) is never allowed by a pattern, even one that names it: `bash(xargs -0 grep *)` no longer allows `xargs -0 grep x`.
