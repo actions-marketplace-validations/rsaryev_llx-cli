@@ -21,9 +21,8 @@ export type Card = { title: string; text: string; panel: Block[]; link?: { href:
 const shell = (text: string): Block => ({ lang: 'shell', text });
 const out = (text: string, tone: Tone = 'hi'): Block => ({ out: text, tone });
 
-/** The exit codes are exit.rs; the benchmark has a section of its own (Benchmarks.tsx); the cost
- *  in the pipeline card is an illustration; the rules card uses llx's own wording of a refusal
- *  (packages/tools/src/lib.rs). */
+/** The exit codes are exit.rs; the cost in the pipeline card is an illustration; the rules card
+ *  uses llx's own wording of a refusal (packages/tools/src/lib.rs). */
 export const CARDS: Card[] = [
   {
     title: 'Ends every task with an exit code',
