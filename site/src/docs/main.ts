@@ -1,12 +1,6 @@
-// The docs pages' styles and their only script. The pages are whole HTML from the build, with no
-// React in the browser: this adds the code blocks' Copy and marks the section being read in the
-// table of contents. Without it a page reads the same.
-import '../styles/global.css';
-import '../styles/syntax.css';
-import '../components/Nav.css';
-import '../components/Footer.css';
-import './docs.css';
-import './prose.css';
+// The docs pages' only script (their styles are docs.html's links). The pages are whole HTML from
+// the build, with no React in the browser: this adds the code blocks' Copy and marks the section
+// being read in the table of contents. Without it a page reads the same.
 
 for (const button of document.querySelectorAll<HTMLButtonElement>('.code-copy')) {
   const code = button.closest('.code')?.querySelector('pre');
