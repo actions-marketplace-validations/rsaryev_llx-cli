@@ -64,7 +64,20 @@ html {
   /* Everything is in rem, so a wide monitor scales the page up rather than leaving it a column. */
   font-size: clamp(100%, 0.5rem + 0.5vw, 140%);
   scroll-padding-top: 1rem;
+  /* The scrollbar's room is kept on a short page too, so going between pages never shifts the
+     column sideways. */
+  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
+}
+/* Each docs page is a document of its own: the browser cross-fades one into the next instead of
+   blanking the window between them. */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
 }
 /* The footer stays at the bottom of the window however short the page is. */
 body {
