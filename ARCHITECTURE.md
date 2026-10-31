@@ -6,8 +6,9 @@ fit, the change is wrong, not the rules: fix the design, or change this file fir
 commit that says why. An exception is never made in code.
 
 Each rule has an id. Cite it in a review or a commit when a change touches it. A rule marked
-_checked_ fails a test (`apps/cli/tests/suite/repo/`) when broken; a rule is checked as soon as a
-test can state it, and the test comes with the rule.
+_checked_ fails the checks when broken: a test (`apps/cli/tests/suite/repo/`, or the tests of the
+behaviour the rule names) or a workspace lint (`Cargo.toml`, `clippy.toml`); a rule is checked as
+soon as a test or a lint can state it, and the check comes with the rule.
 
 Sources: matklad's ARCHITECTURE.md and "Large Rust Workspaces", rust-analyzer's architecture and
 style guides, the Rust Design Patterns' anti-patterns, corrode.dev, BurntSushi on unwrap,
@@ -165,7 +166,7 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
   inside the workspace, its patches of the workspace's files are made without asking, and what
   must reach further (B6) is asked; `plan`, read-only: its commands run without asking, in the
   read-only sandbox of B3, and its patches are refused (B5); `bypass`, everything allowed) and the
-  person's, from `<config>/llx/settings.json`, where one may replace a built-in. `--allow` and `--deny` add
+  person's, from `~/.config/llx/settings.json`, where one may replace a built-in. `--allow` and `--deny` add
   to the mode's. A deny refuses in every mode; an allow runs without asking, as it is (in a
   read-only mode, still in its sandbox); what no rule settles and the reach does not cover
   is asked of the person, or refused when no one is there. Rules come from the command line and
@@ -179,14 +180,20 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 ## Protocol rules (the seam between interface and server)
 
-- **W1**: newline-delimited JSON frames shaped as JSON-RPC 2.0: a request has an `id` and gets
-  exactly one response (a cancelled one too, with its error); a notification has none.
-- **W2**: methods are `resource/verb` with a singular resource (`session/open`,
-  `request/answer`); payloads are `*Params`, `*Response`, `*Notification`; unions are tagged
-  (`type`); ids are strings; times are `*_at` milliseconds since the epoch.
-- **W3**: `initialize` comes first and once: versions and capabilities both ways. The protocol
-  grows by optional fields and new methods; both sides ignore what they do not know. A breaking
-  change is a new protocol version, and a build mismatch restarts an idle daemon.
+- **W1**: newline-delimited JSON frames, each `{method, params}` (`protocol`'s `frame.rs`): a
+  call (`command/call`) carries an `id` and gets exactly one `command/done` with that id (a failed
+  one too, `Failed` with why); a question (`person/ask`) has an id its `person/reply` and
+  `person/resolved` name; every other frame is a notification, with no id.
+- **W2**: methods are `resource/verb` with a singular resource (`command/call`, `person/reply`,
+  `session/event`); a frame's params hold protocol types (`Command`, `Done`, `Event`, `Asked`,
+  `Reply`); unions are tagged (`type`); a frame's id is a number, a session's a string; times are
+  `*_at` milliseconds since the epoch.
+- **W3**: `initialize` comes first and once on a connection that opens sessions (`status` and
+  `shutdown`, the daemon's own, need none): the client's version, place and build; the server's
+  version and what it offers. The protocol grows by optional fields, new commands and new events:
+  a side ignores a field it does not know, a client drops an event it cannot read, and a command
+  the server cannot read is answered `Failed`. A breaking change is a new protocol version, and a
+  build mismatch restarts an idle daemon.
 - **W4**: one client interface, two transports: in process (channels) and the socket, with the
   same frames, so every in-process test covers the daemon's path.
 - **W5**: a question the server asks a person belongs to the session: sent to every attached
@@ -346,8 +353,10 @@ command is cut.
   Ready-made workflows live in `examples/`, each run for real before it is published.
 - **A history stage:** a `Stage` in `agent/src/history.rs`, placed by its value in
   `Pipeline::default`, with a test, the long-dialogue simulation still passing.
-- **A protocol method:** its `*Params`/`*Response` in `protocol`, served in the server, called
-  through `client`; a test through the client only.
+- **A protocol method:** a request to the server is a `Command` variant, and what it comes to a
+  `Done` one, in `protocol`'s `command.rs`; served in the server (`server/serve.rs`), called
+  through `client` (`Client::call`); a test through the client only. What the server says
+  unasked is an `Event` variant (`event.rs`).
 - **A rule:** here, with an id, and its test in the same commit when a test can state it.
 
 ## The daemon's steps (docs/daemon.md)
