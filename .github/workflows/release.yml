@@ -169,10 +169,10 @@ jobs:
 
   # `uses: rsaryev/llx@v0` follows the releases: once the release exists, the major tag (v0 for
   # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving
-  # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), and a push made
-  # with the workflow's own token starts no workflow in any case. That token cannot point a tag at
-  # a commit whose .github/workflows differ from the default branch's (main moved on with a
-  # workflow change after the tag): the job then fails and says how to move it by hand.
+  # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), so it releases
+  # nothing again. The workflow's own token cannot point a tag at a commit whose .github/workflows
+  # differ from the default branch's (main moved on with a workflow change after the tag): the job
+  # then fails and says how to move it by hand.
   major:
     name: move the major tag
     needs: [check, publish]
