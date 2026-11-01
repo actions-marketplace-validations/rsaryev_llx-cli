@@ -31,7 +31,8 @@
 # The token in the flow can start this workflow: only people you trust should edit the flow.
 #
 # Note: the workflows a pull request made with the workflow's token starts wait for a person to
-# approve them; a GitHub App's token in the post job runs them at once.
+# approve them. With a GitHub App (the variable LLX_APP_ID and the secret LLX_APP_KEY, docs/ci.md
+# says how), the post job pushes and opens the pull request with its token, and they run at once.
 # Adapt: `model`, the prompt, `allow` and `deny`; `jira-task` here and in the flow.
 #
 # Security: the work item's text is written by others: the agent reads it from a file, as data.
@@ -172,12 +173,23 @@ jobs:
       contents: write # pushes the change
       pull-requests: write # opens the draft pull request
     steps:
+      # A GitHub App's token, when one is set up: what it pushes and opens runs the workflows at
+      # once, where the workflow's own token's waits for a person to approve them.
+      - id: app
+        if: vars.LLX_APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.LLX_APP_ID }}
+          private-key: ${{ secrets.LLX_APP_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
       - if: needs.work.outputs.answered == 'true'
         uses: actions/checkout@v7
         with:
           # The branch to push to when its pull request is open, else the default branch to
           # branch from.
           ref: ${{ needs.prepare.outputs.pr && needs.prepare.outputs.branch || '' }}
+          token: ${{ steps.app.outputs.token || github.token }}
       - if: needs.work.outputs.answered == 'true'
         uses: actions/download-artifact@v8
         with:
@@ -185,7 +197,7 @@ jobs:
           path: ${{ runner.temp }}/llx
       - name: Apply the change and tell Jira
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
           GH_REPO: ${{ github.repository }}
           KEY: ${{ needs.prepare.outputs.key }}
           URL: ${{ github.event.client_payload.url }}

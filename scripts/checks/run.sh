@@ -29,7 +29,7 @@ describe() {
     check-test) echo "scripts/checks/check_test.sh: the plan's examples, the link checker's" ;;
     shellcheck) echo "shellcheck (pinned) on every shell script" ;;
     actionlint) echo "actionlint (pinned) on the workflows and examples, the examples against action.yml" ;;
-    examples) echo "the example workflows' schemas, time limits, models and versions" ;;
+    examples) echo "the example workflows' schemas, time limits, models, versions and two-job split" ;;
     mdlinks) echo "relative links and anchors in every Markdown file" ;;
     secrets) echo "gitleaks (pinned) on every commit and on the working tree's changes" ;;
   esac
@@ -158,6 +158,18 @@ check_examples() {
     "$yq_bin" -e '[.jobs[].steps[] | select(.uses == "rsaryev/llx@v0" and
       .with.install-only == null and .with.model == null)] | length == 0' "$example" \
       >/dev/null || { echo "$example: an llx step names no model"; return 1; }
+    # The two-job split, as each example keeps it: no permission by default, no job that runs the
+    # model may write, and no job that may write holds a model's key.
+    examples_split=$("$yq_bin" -o=json . "$example" | "$jq_bin" -r '
+      def writes: [.permissions // {} | if type == "object" then to_entries[] | select(.value == "write") | .key else . end];
+      def model: [.steps[]? | select(.uses == "rsaryev/llx@v0" and .with["install-only"] == null)] | length > 0;
+      def key: tostring | test("secrets\\.[A-Z_]*API_KEY");
+      if .permissions != {} then "the workflow does not start from permissions: {}" else empty end,
+      (.jobs | to_entries[] | select(.value | model) | select(.value | writes | length > 0)
+        | "the job \(.key) runs the model and may write"),
+      (.jobs | to_entries[] | select(.value | writes | length > 0) | select(.value | key)
+        | "the job \(.key) may write and holds a model key")')
+    [ -z "$examples_split" ] || { echo "$example: $examples_split"; return 1; }
   done
   examples_twice=$(grep -ho 'uses: [^ ]*@[^ ]*' examples/github/*.yml | sort -u |
     sed 's/@.*//' | uniq -d)

@@ -1,7 +1,9 @@
 # @llx on an issue or a pull request: a question is answered, a change is made. Someone who may
 # write (owner, member, collaborator) mentions @llx in a comment, in a review thread, or in a new
 # issue, or labels an issue `llx`. Three jobs:
-#   ack   (write, no model)  an eyes reaction on what asked, and whether llx may work on it;
+#   ack   (write, no model)  whether the asker may write to the repository (GitHub's own answer, not
+#                            author_association), an eyes reaction on what asked, and whether llx
+#                            may work on it;
 #   work  (read only, model) the agent reads the thread with gh, answers, or edits the checkout and
 #                            runs the tests; it cannot commit or push, it has no token that could;
 #   post  (write, no model)  posts the reply where it was asked; applies the change: on a pull
@@ -11,8 +13,9 @@
 # Needs: the secret OPENROUTER_API_KEY; for an issue's draft pull request, "Allow GitHub Actions
 # to create and approve pull requests" (Settings > Actions > General); the label `llx` to use it.
 # Note: the workflows a push or a pull request made with the workflow's token starts wait for a
-# person to approve them, so your tests run on llx's change once someone does (or pushes to it),
-# or at once with a GitHub App's token instead of github.token in the post job.
+# person to approve them, so your tests run on llx's change once someone does (or pushes to it).
+# With a GitHub App (the variable LLX_APP_ID and the secret LLX_APP_KEY, docs/ci.md says
+# how), the post job pushes and opens pull requests with its token instead, and they run at once.
 # Adapt: `model`, the prompt, `allow` and `deny`.
 #
 # Security: only people with write access can ask. The model job's token reads and nothing else;
@@ -53,6 +56,7 @@ jobs:
       issues: write
       pull-requests: write # reactions; reading the pull request
     outputs:
+      allowed: ${{ steps.ctx.outputs.allowed }}
       pr: ${{ steps.ctx.outputs.pr }}
       branch: ${{ steps.ctx.outputs.branch }}
       note: ${{ steps.ctx.outputs.note }}
@@ -65,8 +69,16 @@ jobs:
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
           ON_PR: ${{ github.event.issue.pull_request.url || github.event.pull_request.url }}
           COMMENT: ${{ github.event.comment.id }}
+          ASKER: ${{ github.event.comment.user.login || github.event.sender.login }}
         run: |
           set -euo pipefail
+          # author_association says how someone relates to the repository's owner, not what they
+          # may do here: a member or a collaborator may only read. GitHub's own answer decides.
+          level=$(gh api "repos/$GH_REPO/collaborators/$ASKER/permission" --jq .permission 2>/dev/null || echo none)
+          case "$level" in
+            admin | write) echo "allowed=true" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::notice::$ASKER may not write to $GH_REPO ($level), so llx does not work for them."; exit 0 ;;
+          esac
           case "$EVENT" in
             issue_comment) target="issues/comments/$COMMENT" ;;
             pull_request_review_comment) target="pulls/comments/$COMMENT" ;;
@@ -96,7 +108,7 @@ jobs:
 
   work:
     needs: ack
-    if: needs.ack.outputs.note == ''
+    if: needs.ack.outputs.allowed == 'true' && needs.ack.outputs.note == ''
     runs-on: ubuntu-latest
     timeout-minutes: 30
     concurrency:
@@ -108,6 +120,8 @@ jobs:
       pull-requests: read
     outputs:
       status: ${{ steps.llx.outputs.status }}
+      cost: ${{ steps.llx.outputs.cost-usd }}
+      turns: ${{ steps.llx.outputs.turns }}
       answered: ${{ steps.collect.outputs.answered }}
     steps:
       - uses: actions/checkout@v7
@@ -116,6 +130,40 @@ jobs:
           ref: ${{ needs.ack.outputs.pr == 'true' && format('refs/pull/{0}/head', github.event.issue.number || github.event.pull_request.number) || needs.ack.outputs.branch }}
           fetch-depth: 0
           persist-credentials: false
+      # The request as it was when it was made (an edit since cannot change it), and its pictures:
+      # their addresses in the rendered body are signed for a few minutes, so they are fetched now.
+      - id: request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EVENT: ${{ github.event_name }}
+          NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
+          COMMENT: ${{ github.event.comment.id }}
+          REQUEST: ${{ github.event.comment.body || github.event.issue.body }}
+        run: |
+          set -euo pipefail
+          dir=$RUNNER_TEMP/llx-request
+          mkdir -p "$dir"
+          printf '%s\n' "$REQUEST" > "$dir/request.md"
+          case "$EVENT" in
+            issue_comment) target="issues/comments/$COMMENT" ;;
+            pull_request_review_comment) target="pulls/comments/$COMMENT" ;;
+            *) target="issues/$NUMBER" ;;
+          esac
+          html=$(gh api -H 'Accept: application/vnd.github.full+json' "repos/$GH_REPO/$target" --jq '.body_html // ""')
+          pictures=()
+          while IFS= read -r url; do
+            file="$dir/picture-$((${#pictures[@]} + 1))"
+            curl -fsSL --max-filesize 10000000 --max-time 30 -o "$file" "$url" || continue
+            case "$(file -b --mime-type "$file")" in
+              image/png | image/jpeg | image/gif | image/webp) pictures+=("$file") ;;
+              *) rm -f "$file" ;;
+            esac
+          done < <(grep -oE 'https://private-user-images\.githubusercontent\.com/[^"]+' <<< "$html" | sed 's/&amp;/\&/g' | head -n 4)
+          echo "file=$dir/request.md" >> "$GITHUB_OUTPUT"
+          if [ "${#pictures[@]}" -gt 0 ]; then
+            echo "args=--image $(IFS=,; echo "${pictures[*]}")" >> "$GITHUB_OUTPUT"
+          fi
       - id: llx
         uses: rsaryev/llx@v0
         continue-on-error: true # an answer that says why it could not be done is still posted
@@ -128,8 +176,10 @@ jobs:
           EVENT: ${{ github.event_name }}
           COMMENT: ${{ github.event.comment.id }}
           ASKER: ${{ github.event.comment.user.login || github.event.sender.login }}
+          REQUEST_FILE: ${{ steps.request.outputs.file }}
         with:
           model: anthropic/claude-haiku-5.5
+          args: ${{ steps.request.outputs.args }}
           allow: |
             bash
           deny: |
@@ -140,10 +190,11 @@ jobs:
             $KIND's code (a pull request's head; for an issue, the branch of the draft an earlier
             request opened if it is still open, else the default branch). gh is signed in, read only.
 
-            Read what they asked and its context. The event is $EVENT:
-              issue_comment: gh api repos/$GH_REPO/issues/comments/$COMMENT
-              pull_request_review_comment: gh api repos/$GH_REPO/pulls/comments/$COMMENT, and the
-                thread around it in gh api repos/$GH_REPO/pulls/$NUMBER/comments
+            What they asked is in $REQUEST_FILE, as they wrote it (the pictures it holds, if any, are
+            attached). Read its context. The event is $EVENT:
+              issue_comment: the comment is what they ask
+              pull_request_review_comment: the thread around it, in
+                gh api repos/$GH_REPO/pulls/$NUMBER/comments
               issues: the issue is what they ask
             and the $KIND itself: gh issue view $NUMBER --json title,body,comments, or for a pull
             request gh pr view $NUMBER --json title,body,comments,reviews and gh pr diff $NUMBER.
@@ -187,7 +238,7 @@ jobs:
 
   post:
     needs: [ack, work]
-    if: always() && needs.ack.result == 'success'
+    if: always() && needs.ack.result == 'success' && needs.ack.outputs.allowed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -195,12 +246,24 @@ jobs:
       issues: write
       pull-requests: write
     steps:
+      # A GitHub App's token, when one is set up: what it pushes and opens runs the workflows at
+      # once, where the workflow's own token's waits for a person to approve them.
+      - id: app
+        if: vars.LLX_APP_ID != ''
+        uses: actions/create-github-app-token@v3
+        with:
+          app-id: ${{ vars.LLX_APP_ID }}
+          private-key: ${{ secrets.LLX_APP_KEY }}
+          permission-contents: write
+          permission-issues: write
+          permission-pull-requests: write
       - if: needs.work.outputs.answered == 'true'
         uses: actions/checkout@v7
         with:
           # The branch to push to (a pull request's, an issue's open draft's), else the default
           # branch to branch from.
           ref: ${{ needs.ack.outputs.branch || github.event.repository.default_branch }}
+          token: ${{ steps.app.outputs.token || github.token }}
       - if: needs.work.outputs.answered == 'true'
         uses: actions/download-artifact@v8
         with:
@@ -208,7 +271,7 @@ jobs:
           path: ${{ runner.temp }}/llx
       - name: Post the reply and apply the change
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
           GH_REPO: ${{ github.repository }}
           EVENT: ${{ github.event_name }}
           NUMBER: ${{ github.event.issue.number || github.event.pull_request.number }}
@@ -220,6 +283,8 @@ jobs:
           NOTE: ${{ needs.ack.outputs.note }}
           ANSWERED: ${{ needs.work.outputs.answered }}
           STATUS: ${{ needs.work.outputs.status }}
+          COST: ${{ needs.work.outputs.cost }}
+          TURNS: ${{ needs.work.outputs.turns }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -233,7 +298,7 @@ jobs:
               gh api --method POST "repos/$GH_REPO/issues/$NUMBER/comments" -f body="$1" > /dev/null
             fi
           }
-          footer="<sub>llx · [run]($RUN)</sub>"
+          footer="<sub>llx · ${TURNS:-0} turns · \$${COST:-0} · [run]($RUN)</sub>"
           if [ -n "$NOTE" ]; then say "$NOTE"; exit 0; fi
           if [ "$ANSWERED" != true ]; then say "llx could not finish (${STATUS:-failed}): [run]($RUN)"; exit 0; fi
 
