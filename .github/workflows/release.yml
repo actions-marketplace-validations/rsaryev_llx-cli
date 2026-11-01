@@ -71,7 +71,7 @@ jobs:
         include:
           # arm64 runner; x86_64 is cross-built with Xcode, and dist.sh joins both into universal.
           - name: macos
-            os: macos-14
+            os: macos-15
             targets: aarch64-apple-darwin x86_64-apple-darwin
             smoke: target/aarch64-apple-darwin/release/llx
           # The oldest supported Ubuntu, for the oldest glibc the binary links against.

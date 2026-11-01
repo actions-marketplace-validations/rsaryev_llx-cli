@@ -31,7 +31,7 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
    section; otherwise nothing is built.
 2. **test**: clippy and the tests on macOS, Linux x86_64 and Linux arm64.
 3. **build**, one job per platform, each running `scripts/dist.sh` from a clean state (no cache):
-   - macOS (`macos-14`): `aarch64-apple-darwin`, `x86_64-apple-darwin`, and
+   - macOS (`macos-15`): `aarch64-apple-darwin`, `x86_64-apple-darwin`, and
      `universal-apple-darwin` joined with `lipo`;
    - Linux (`ubuntu-22.04`, for an older glibc): `x86_64-unknown-linux-gnu`;
    - Linux arm64 (`ubuntu-22.04-arm`): `aarch64-unknown-linux-gnu`.
