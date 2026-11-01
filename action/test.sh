@@ -32,6 +32,15 @@ echo "$0" >"$STUB_DIR/which"
 echo "$$" >"$STUB_DIR/pid"
 cat >"$STUB_DIR/prompt"
 { pwd; echo "$LLX_PROVIDER|$LLX_MODEL|$LLX_REASONING|$LLX_NO_DAEMON|$LLX_MODELS_REFRESH"; } >"$STUB_DIR/env"
+env >"$STUB_DIR/fullenv"
+if [ -n "${STUB_PROBE:-}" ]; then # what a command llx runs could do: sudo, docker's socket
+  {
+    grep '^NoNewPrivs' /proc/self/status
+    if sudo -n true 2>/dev/null; then echo "sudo works"; else echo "sudo refused"; fi
+    for s in /var/run/docker.sock /run/docker.sock; do [ ! -S "$s" ] || { [ -w "$s" ] && echo "$s writable" || echo "$s refused"; }; done
+  } >"$STUB_DIR/probe" 2>&1
+fi
+[ -z "${STUB_EVENTS_FILE:-}" ] || { cat "$STUB_EVENTS_FILE"; exit "${STUB_CODE:-0}"; }
 while [ $# -gt 0 ]; do [ "$1" = -o ] && out=$2; shift; done
 [ -n "${STUB_ANSWER_FILE:-}" ] && cp "$STUB_ANSWER_FILE" "$out"
 [ -z "${STUB_ANSWER_FILE:-}" ] && printf '%s' "${STUB_ANSWER-the answer}" >"$out"
@@ -40,6 +49,7 @@ echo 'trace: a line on stderr' >&2
 echo '{"type":"run.started","model":"m"}'
 printf '{"type":"run.completed","status":"x","exit_code":%s,"answer":"event answer","error":%s,"usage":{"agent":{"model":"acme/model","calls":4},"cost_usd":0.0123},"duration_ms":14500}\n' \
   "${STUB_CODE:-0}" "${STUB_ERROR:-null}"
+[ -z "${STUB_LEAK:-}" ] || printf '{"type":"tool.result","output":"%s"}\n' "$STUB_LEAK"
 exit "${STUB_CODE:-0}"
 STUB
 chmod +x "$tmp/bin/llx"
@@ -57,7 +67,8 @@ run_action() {
       GITHUB_STEP_SUMMARY="$tmp/run/summary" GITHUB_PATH="$tmp/run/path" \
       GITHUB_ACTION_PATH="$tmp/run/act" INPUT_PROMPT=go INPUT_PROMPT_FILE= INPUT_SCHEMA= INPUT_ALLOW= INPUT_DENY= \
       INPUT_MODE= INPUT_PROVIDER= INPUT_MODEL= INPUT_REASONING= INPUT_MAX_TURNS= INPUT_TIMEOUT=900 INPUT_BUDGET= \
-      INPUT_WORKING_DIRECTORY= INPUT_VERSION=system INPUT_ARGS= INPUT_INSTALL_ONLY= "$@" bash -c '
+      INPUT_WORKING_DIRECTORY= INPUT_VERSION=system INPUT_ARGS= INPUT_INSTALL_ONLY= INPUT_PRIVILEGES=keep \
+      INPUT_INSTRUCTIONS_FROM= "$@" bash -c '
         script=$1 out=$2 prepared=$3
         if GITHUB_OUTPUT=$prepared bash "$script" prepare; then outcome=success; else outcome=failure; fi
         dir=$(sed -n "s/^dir=//p" "$prepared") ran=skipped
@@ -198,9 +209,156 @@ has "a number with a leading zero is decimal" "$(args)" "--timeout"$'\001'"0900"
 run_action INPUT_MAX_TURNS=0
 has "the reason reaches the summary" "$(summary)" "max-turns is a number from 1 to 10000"
 
+# action.yml: no expression is ever part of a script; every input reaches one as a variable.
+action_yml=$here/../action.yml
+if grep -nE '^ *run:.*\$\{\{' "$action_yml"; then fail "action.yml: an expression in a run: line"; else pass "action.yml: no expression in a run: line"; fi
+while IFS= read -r input; do
+  var="INPUT_$(tr 'a-z-' 'A-Z_' <<<"$input")"
+  has "action.yml: $input reaches prepare as $var" "$(cat "$action_yml")" "$var: \${{ inputs.$input }}"
+done < <(sed -n '/^inputs:/,/^outputs:/s/^  \([a-z-]*\):$/\1/p' "$action_yml")
+
+# A secret of the step's variables that the answer or the events quote is replaced, everywhere.
+key=$(printf "fake-%s-%s" provider 0123456789abcdef) # a value as long as a key, made here so no scanner takes it for one
+run_action OPENROUTER_API_KEY="$key" GH_TOKEN=short STUB_ANSWER="the key is $key, short stays" STUB_LEAK="$key"
+eq "redacted: the result" "the key is ***, short stays" "$(output result)"
+eq "redacted: the result file" "the key is ***, short stays" "$(cat "$(output result-file)")"
+if grep -q "$key" "$(output events-file)"; then fail "redacted: the events still hold the key"; else pass "redacted: the events"; fi
+has "redacted: the summary says so" "$(summary)" "2 secrets"
+if grep -q "$key" "$tmp/run/summary"; then fail "redacted: the summary holds the key"; else pass "redacted: not in the summary"; fi
+run_action OPENROUTER_API_KEY="$key"
+eq "nothing to redact: the answer as it is" "the answer" "$(output result)"
+if [[ $(summary) == *secret* ]]; then fail "nothing to redact: a note anyway"; else pass "nothing to redact: no note"; fi
+
+# The summary lists the calls, each with how it ended, as text that cannot become markup.
+cat >"$tmp/calls.jsonl" <<'EVENTS'
+{"type":"run.started","model":"m"}
+{"type":"tool.call","id":"1","name":"bash","arguments":{"command":"cargo test <all>\nand more"}}
+{"type":"tool.result","id":"1","name":"bash","failed":false}
+{"type":"tool.call","id":"2","name":"apply_patch","arguments":"*** Begin Patch\n*** Update File: src/a.rs\n@@\n*** Add File: b.md\n+x\n*** End Patch"}
+{"type":"tool.result","id":"2","name":"apply_patch","failed":true}
+{"type":"tool.call","id":"3","name":"agents","arguments":{"action":"spawn","task":"look"}}
+{"type":"run.completed","status":"done","exit_code":0,"usage":{"agent":{"model":"acme/model","calls":3},"cost_usd":0.01},"duration_ms":1000}
+EVENTS
+run_action STUB_EVENTS_FILE="$tmp/calls.jsonl"
+has "calls: counted" "$(summary)" "<summary>Calls (3)</summary>"
+has "calls: a command, escaped, its first line" "$(summary)" "- ✓ bash: <code>cargo test &lt;all&gt;</code>"
+has "calls: a patch by its files" "$(summary)" "- ✗ apply_patch: <code>update src/a.rs, add b.md</code>"
+has "calls: one with no result yet" "$(summary)" "- … agents: <code>spawn</code>"
+run_action
+if [[ $(summary) == *Calls* ]]; then fail "no calls: a list anyway"; else pass "no calls: no list"; fi
+
+# privileges: on Linux, llx and what it runs lose sudo and the runner's groups (docker's): sudo
+# starts the lockdown as root, which checks that sudo is gone under setpriv, then becomes llx.
+mkdir -p "$tmp/linux" "$tmp/sockets"
+cat >"$tmp/linux/uname" <<'UNAME'
+#!/usr/bin/env bash
+case "${1:-}" in -m) echo x86_64 ;; *) echo Linux ;; esac
+UNAME
+cat >"$tmp/linux/getent" <<'GETENT'
+#!/usr/bin/env bash
+[ "$1 $2" = "group nogroup" ] && echo 'nogroup:x:65534:'
+GETENT
+# sudo as a runner's: it resets PATH and HOME and drops LD_* (as its env_delete does), unless
+# no_new_privs (STUB_DROPPED, set by setpriv) keeps it from becoming root.
+cat >"$tmp/linux/sudo" <<'SUDO'
+#!/usr/bin/env bash
+echo "$*" >>"$STUB_DIR/sudo"
+if [ -n "${STUB_DROPPED:-}" ] && [ -z "${STUB_SUDO_SURVIVES:-}" ]; then exit 1; fi
+[ -z "${STUB_NO_SUDO:-}" ] || exit 1
+while [ $# -gt 0 ]; do case "$1" in -n | -E | --preserve-env) shift ;; --) shift; break ;; *) break ;; esac; done
+[ "$1" != true ] || exit 0
+exec env -u LD_LIBRARY_PATH PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root SUDO_UID=1001 SUDO_GID=118 SUDO_USER=runner SUDO_COMMAND=x "$@"
+SUDO
+cat >"$tmp/linux/setpriv" <<'SETPRIV'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >>"$STUB_DIR/setpriv"
+while [ $# -gt 0 ] && [ "$1" != -- ]; do shift; done
+shift
+STUB_DROPPED=1 exec "$@"
+SETPRIV
+chmod +x "$tmp/linux/"*
+linux=(PATH="$tmp/linux:$tmp/bin:$PATH" LLX_ACTION_SOCKET_DIRS="$tmp/sockets" INPUT_PRIVILEGES=)
+run_action "${linux[@]}" OPENROUTER_API_KEY="$key" LD_LIBRARY_PATH=/opt/py/lib HOME=/home/runner
+eq "drop: the run" "0 done" "$rc $(output status)"
+has "drop: sudo starts the lockdown, keeping the variables" "$(cat "$tmp/run/sudo")" "-n -E -- "
+has "drop: no groups, no new privileges, the runner's uid, nogroup" "$(tr '\n' ' ' <"$tmp/run/setpriv")" \
+  "--reuid=1001 --regid=65534 --clear-groups --no-new-privs --inh-caps=-all --ambient-caps=-all --bounding-set=-all -- "
+has "drop: sudo is checked to be gone first" "$(cat "$tmp/run/sudo")" "-n true"
+has "drop: llx keeps the key" "$(cat "$tmp/run/fullenv")" "OPENROUTER_API_KEY=$key"
+has "drop: llx keeps what sudo drops" "$(cat "$tmp/run/fullenv")" "LD_LIBRARY_PATH=/opt/py/lib"
+has "drop: llx keeps the step's PATH" "$(cat "$tmp/run/fullenv")" "PATH=$tmp/linux:"
+has "drop: llx keeps the home" "$(cat "$tmp/run/fullenv")" "HOME=/home/runner"
+if grep -q '^SUDO_' "$tmp/run/fullenv"; then fail "drop: llx sees sudo's variables"; else pass "drop: no SUDO_ variables"; fi
+eq "drop: the prompt is still stdin" "go" "$(cat "$tmp/run/prompt")"
+if ls "$tmp/run/rt"/llx-run-*/kept >/dev/null 2>&1; then fail "drop: the kept variables are left on disk"; else pass "drop: the kept variables are gone"; fi
+has "drop: the summary says so" "$(summary)" "sudo and the runner's groups dropped"
+run_action "${linux[@]}" STUB_SUDO_SURVIVES=1
+eq "drop: sudo that survives is not ready, llx never runs" "3 not-ready" "$rc $(output status)"
+if [ -e "$tmp/run/args" ]; then fail "drop: llx ran with sudo"; fi
+has "drop: why, in the summary" "$(summary)" "sudo still works"
+run_action "${linux[@]}" STUB_NO_SUDO=1
+eq "auto: no passwordless sudo, kept" "0 done" "$rc $(output status)"
+if [ -e "$tmp/run/setpriv" ]; then fail "auto: setpriv ran without sudo"; else pass "auto: nothing to drop"; fi
+has "auto: the summary says so" "$(summary)" "privileges kept"
+run_action "${linux[@]}" STUB_NO_SUDO=1 INPUT_PRIVILEGES=drop
+eq "drop asked, impossible: not ready" "3 not-ready" "$rc $(output status)"
+run_action "${linux[@]}" INPUT_PRIVILEGES=keep
+if [ -e "$tmp/run/sudo" ]; then fail "keep: sudo ran"; else pass "keep: llx runs as the step does"; fi
+run_action "${linux[@]}" INPUT_PRIVILEGES=some
+eq "privileges: a bad value" "3 not-ready" "$rc $(output status)"
+if [ "$(uname -s)" != Linux ]; then
+  run_action INPUT_PRIVILEGES=drop
+  eq "drop off Linux: not ready" "3 not-ready" "$rc $(output status)"
+  run_action INPUT_PRIVILEGES=
+  if [ -e "$tmp/run/sudo" ]; then fail "auto off Linux: sudo ran"; else pass "auto off Linux: kept"; fi
+fi
+
+# On a Linux runner with passwordless sudo and setpriv (CI's), the lockdown for real.
+if [ "$(uname -s)" = Linux ] && command -v setpriv >/dev/null && sudo -n true 2>/dev/null; then
+  run_action INPUT_PRIVILEGES=drop OPENROUTER_API_KEY="$key" STUB_PROBE=1
+  eq "real drop: the run" "0 done" "$rc $(output status)"
+  has "real drop: no new privileges" "$(cat "$tmp/run/probe")" "NoNewPrivs:"$'\t'"1"
+  has "real drop: sudo refused" "$(cat "$tmp/run/probe")" "sudo refused"
+  if grep -q writable "$tmp/run/probe"; then fail "real drop: docker's socket is writable"; else pass "real drop: docker's socket out of reach"; fi
+  has "real drop: llx keeps the key" "$(cat "$tmp/run/fullenv")" "OPENROUTER_API_KEY=$key"
+fi
+
+# instructions-from: the instruction files, and what they import from the repository, as a trusted
+# revision has them; the checkout's own are gone, and git shows none of it as a change.
+repo=$tmp/repo
+rm -rf "$repo" && mkdir -p "$repo/sub" "$repo/docs" && cd "$repo" || exit 1
+git init -q && git config user.email t@t && git config user.name t
+printf 'base rules\n@docs/rules.md\n' >AGENTS.md && printf 'base imported\n' >docs/rules.md && printf 'base sub\n' >sub/CLAUDE.md
+git add -A && git commit -qm base && base=$(git rev-parse HEAD)
+printf 'evil rules\n' >AGENTS.md && printf 'evil imported\n' >docs/rules.md && rm sub/CLAUDE.md
+printf 'evil new\n' >sub/AGENTS.override.md && printf 'code\n' >main.rs
+git add -A && git commit -qm head
+cd "$here" || exit 1
+run_action INPUT_WORKING_DIRECTORY="$repo" INPUT_INSTRUCTIONS_FROM="$base"
+eq "instructions: the run" "0 done" "$rc $(output status)"
+eq "instructions: the base's file" "base rules"$'\n'"@docs/rules.md" "$(cat "$repo/AGENTS.md")"
+eq "instructions: what it imports, as the base has it" "base imported" "$(cat "$repo/docs/rules.md")"
+eq "instructions: one the head removed is back" "base sub" "$(cat "$repo/sub/CLAUDE.md")"
+if [ -e "$repo/sub/AGENTS.override.md" ]; then fail "instructions: the head's new file stays"; else pass "instructions: the head's new file is gone"; fi
+eq "instructions: git shows no change" "" "$(git -C "$repo" status --porcelain)"
+eq "instructions: the code is the head's" "code" "$(cat "$repo/main.rs")"
+has "instructions: the summary says so" "$(summary)" "instructions from ${base:0:12}"
+GITHUB_EVENT_PATH=$tmp/event.json && printf '{"pull_request":{"base":{"sha":"%s"}}}' "$base" >"$GITHUB_EVENT_PATH"
+git -C "$repo" checkout -q -f HEAD && git -C "$repo" ls-files -z | git -C "$repo" update-index -z --no-skip-worktree --stdin
+git -C "$repo" clean -qfd
+run_action INPUT_WORKING_DIRECTORY="$repo" INPUT_INSTRUCTIONS_FROM=base GITHUB_EVENT_PATH="$GITHUB_EVENT_PATH"
+eq "instructions: base is the pull request's base" "base rules"$'\n'"@docs/rules.md" "$(cat "$repo/AGENTS.md")"
+printf '{}' >"$GITHUB_EVENT_PATH"
+run_action INPUT_WORKING_DIRECTORY="$repo" INPUT_INSTRUCTIONS_FROM=base GITHUB_EVENT_PATH="$GITHUB_EVENT_PATH"
+eq "instructions: base with no pull request is not ready" "3 not-ready" "$rc $(output status)"
+run_action INPUT_WORKING_DIRECTORY="$repo" INPUT_INSTRUCTIONS_FROM=0000000000000000000000000000000000000000
+eq "instructions: a commit the checkout lacks is not ready" "3 not-ready" "$rc $(output status)"
+has "instructions: why" "$(summary)" "fetch-depth: 0"
+
 # The install: the version from Cargo.toml, a checksum, the archive for this machine.
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) target=x86_64-unknown-linux-gnu ;;
+  Linux-aarch64) target=aarch64-unknown-linux-gnu ;;
   Darwin-*) target=universal-apple-darwin ;;
   *) target='' ;;
 esac

@@ -1,4 +1,4 @@
-name: llx
+name: llx agent
 description: Run the llx agent once (llx exec) and hand back its answer, its exit code and what it spent.
 author: rsaryev
 branding:
@@ -82,6 +82,20 @@ inputs:
       goes in allow or deny. They come from the workflow, so they are trusted.
     required: false
     default: ''
+  privileges:
+    description: >-
+      drop: llx and every command it runs lose sudo and the runner's groups (docker's among them), so
+      none can read the provider's key; Linux only, needs passwordless sudo and setpriv. keep: they run
+      as the step does. Default: drop where it can (a hosted Linux runner), else keep.
+    required: false
+    default: ''
+  instructions-from:
+    description: >-
+      A git revision whose AGENTS.md, AGENTS.override.md and CLAUDE.md (and what they import) the agent
+      reads instead of the checkout's, or base for a pull request's base. For a pull request whose
+      author you do not trust. Default: the checkout's.
+    required: false
+    default: ''
   install-only:
     description: >-
       true installs llx, puts it on PATH and runs nothing, for steps that run llx themselves (llx decide).
@@ -138,9 +152,11 @@ runs:
         INPUT_VERSION: ${{ inputs.version }}
         INPUT_ARGS: ${{ inputs.args }}
         INPUT_INSTALL_ONLY: ${{ inputs.install-only }}
+        INPUT_PRIVILEGES: ${{ inputs.privileges }}
+        INPUT_INSTRUCTIONS_FROM: ${{ inputs.instructions-from }}
       run: bash "$GITHUB_ACTION_PATH/action/run.sh" prepare
     # llx takes this shell's place: while the agent runs, no other process of the step holds the
-    # step's variables, the provider's key among them.
+    # step's variables, the provider's key among them (with privileges dropped, but sudo's, root's).
     - id: run
       if: steps.prepare.outputs.ready == 'true'
       shell: bash
