@@ -12,11 +12,12 @@ export const NAV: NavGroup[] = [
   },
   {
     title: 'CI and scripts',
-    blurb: 'llx exec and llx decide in a pipeline: the GitHub Action, exit codes, shell recipes and ready-made workflows.',
+    blurb: 'llx exec and llx decide in a pipeline: the GitHub Action, exit codes, shell recipes, ready-made workflows, and how the action compares with other agents\' actions.',
     pages: [
       { slug: 'ci', source: 'docs/ci.md' },
       { slug: 'recipes', source: 'docs/recipes.md' },
       { slug: 'examples', source: 'examples/README.md' },
+      { slug: 'compare', source: 'docs/compare.md' },
     ],
   },
   {

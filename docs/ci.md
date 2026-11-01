@@ -11,6 +11,7 @@ That is why it is flexible and why it is safer:
 
 - [The GitHub Action](#the-github-action)
 - [The two-job pattern](#the-two-job-pattern)
+- [A GitHub App for the posting job](#a-github-app-for-the-posting-job)
 - [Rules in CI](#rules-in-ci)
 - [Keys and models](#keys-and-models)
 - [Limits](#limits)
@@ -64,7 +65,9 @@ jobs:
 
 The key and any value from the event go in the step's `env:`. The prompt names them (`$BASE`): the action replaces `$NAME` and `${NAME}` with those variables that are set, and nothing else. No command runs, no other shell syntax is read, and a name that is not set stays as written.
 
-The action runs on Linux x86_64 runners, and on macOS runners. On another system it stops with a clear error. It needs `jq` and `perl`, which the hosted runners have.
+The action runs on Linux runners (x86_64 and arm64) and on macOS runners. On another system it stops with a clear error. It needs `jq` and `perl`, which the hosted runners have.
+
+On a hosted Linux runner, llx and every command it runs lose `sudo` and the runner's groups (`docker`'s among them), so no command can read the provider's key out of llx (`privileges`, below). Install what the agent needs (`apt-get`, a Docker service) in a step before llx's, or set `privileges: keep` where the agent itself must use `sudo` or `docker`.
 
 ### Inputs
 
@@ -84,6 +87,8 @@ One of `prompt` and `prompt-file` is needed, unless `install-only` is set. The r
 | `working-directory` | the workspace | Where the agent works. |
 | `version` | the action's own | The llx release to install. `system` uses the `llx` already on the PATH, for a self-hosted runner that builds it. |
 | `args` | | More arguments for `llx exec` (`--no-advice`), split on blanks and lines; quotes are not read, so a rule goes in `allow` or `deny`. They come from the workflow, so they are trusted. |
+| `privileges` | `drop` where it can | `drop`: llx and every command it runs lose `sudo` and the runner's groups (`docker`'s among them), through `setpriv` with `no_new_privs`; Linux only, with passwordless `sudo`, as a hosted runner has. `keep`: they run as the step does. With neither set, `drop` where it can (a hosted Linux runner), else `keep`, and the summary says which. |
+| `instructions-from` | the checkout's | A git revision whose `AGENTS.md`, `AGENTS.override.md` and `CLAUDE.md` (at any depth, and what they `@`-import from the repository) the agent reads instead of the checkout's, or `base` for the pull request's base. For a pull request whose author you do not trust; the checkout needs that commit (`fetch-depth: 0`). Git is told to look past these files, so a change made from the tree never carries them. |
 | `install-only` | | `true` installs llx, puts it on the PATH and runs nothing, for a step of your own (`llx decide`). The outputs stay empty. |
 
 ### Outputs
@@ -97,7 +102,7 @@ One of `prompt` and `prompt-file` is needed, unless `install-only` is set. The r
 | `cost-usd`, `turns` | What the run spent and how many model turns it took. |
 | `events-file` | The file holding the run's `--json` events, one per line, under `RUNNER_TEMP`. |
 
-The action writes its outputs and a step summary (status, model, turns, cost, time, and the answer in a collapsed block) even when llx failed, then ends with llx's exit code. A workflow that branches on how the task ended sets `continue-on-error: true` on the step and reads `status`. The answer is never printed to stdout, and the job log shows the trace as a terminal would.
+The action writes its outputs and a step summary (status, model, turns, cost, time; each call with how it ended; the answer in a collapsed block) even when llx failed, then ends with llx's exit code. Before it does, a value of the step's variables named as a secret (`*_KEY`, `*_TOKEN`, `*_SECRET`, `*_PASSWORD`, 16 characters or more) that the answer or the events quote is replaced by `***`, and the summary says how many were: a later job may post the answer. A workflow that branches on how the task ended sets `continue-on-error: true` on the step and reads `status`. The answer is never printed to stdout, and the job log shows the trace as a terminal would.
 
 ### Pinning
 
@@ -203,6 +208,16 @@ Any system that can send an HTTP request can hand llx a task: on GitHub, the req
 
 On GitLab, the flow calls the [pipeline trigger API](https://docs.gitlab.com/ci/triggers/) instead (`POST /api/v4/projects/<id>/trigger/pipeline` with a trigger token, `ref` and `variables[JIRA_KEY]={{issue.key}}`), the jobs run on `if: $CI_PIPELINE_SOURCE == "trigger"`, and the posting job opens the merge request as it pushes, with [push options](https://docs.gitlab.com/topics/git/commit/): `git push -o merge_request.create -o merge_request.target=main -o merge_request.draft -o merge_request.title="KEY: …"`.
 
+### A GitHub App for the posting job
+
+The posting jobs of [llx.yml](../examples/github/llx.yml) and [jira.yml](../examples/github/jira.yml) push and open pull requests with the workflow's token, so the workflows those start wait for a person to approve them. With an app of your own, they use its token instead, and your tests run on llx's change at once:
+
+1. Settings > Developer settings > GitHub Apps > New GitHub App (an organization's: its Settings > Developer settings). A name, any homepage URL, the webhook off. Repository permissions: Contents, Issues and Pull requests read and write (Metadata read comes with them). "Only on this account".
+2. Generate a private key, and install the app on the repository.
+3. In the repository, the variable `LLX_APP_ID` (the app's ID, or its client ID) and the secret `LLX_APP_KEY` (the whole private key file).
+
+The posting job then takes a token with [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token), scoped to that repository and those permissions, revoked when the job ends. The job that runs the model never sees it.
+
 ## Rules in CI
 
 A runner has no terminal, so nobody can approve a command. What no rule allows and the mode's sandbox does not cover is refused, and the agent is told so, and how a person could allow it. The syntax is in [Modes, approvals and trust](modes.md#rules).
@@ -306,15 +321,17 @@ Two details matter on a runner:
 
 - **The split is the boundary.** The model's job has a token that can only read, and no way to write. The posting job has the write token, no model key, and runs nothing from the pull request.
 - **`--allow bash` runs every command as it is**, outside the sandbox, with the network. In CI the checkout is throwaway and the job has no token that can write, so nothing a command changes reaches the repository.
-- **The key can leak.** llx removes the provider's key from the variables a command gets, but a command can read it from `/proc/<llx pid>/environ`. On Linux llx marks itself non-dumpable, which stops that for a user without root, and the action runs llx in place of its step's shell, so no other process of the step holds the key while the agent works. A hosted runner gives passwordless `sudo`, which reads anything. With bash allowed on input from strangers, assume the key can leak: use a dedicated key with a spend limit, and allow by name only what needs the network (`bash(gh pr view *)`), so every other command runs in the sandbox, with none.
-- **Instruction files come from the checkout.** `AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md`, and the files they `@`-import, are read from the working tree, and on a pull request the PR controls them. The token is read-only, so the worst case is a bad answer or a leaked key.
+- **The key stays in llx.** llx removes the provider's key from the variables a command gets. A command could still read it from `/proc/<llx pid>/environ` or llx's memory, so on Linux llx marks itself non-dumpable, which stops any process of the same user, and the action runs llx in place of its step's shell, so no other process of the step holds the key while the agent works. What a non-dumpable process does not stop is root: a hosted runner's passwordless `sudo`, or its `docker` group, which runs anything as root. So the action drops both before llx starts (`privileges: drop`, the default where it can): llx and every command it runs keep the runner's user but have no supplementary group and `no_new_privs`, which keeps `sudo` and every other setuid program from raising them, and the action checks that `sudo` fails and no service socket (Docker's, containerd's) is left in reach, else stops before llx runs. On macOS a process of the same user can read another's variables (`ps -E`), and with `privileges: keep` the commands keep `sudo`: there, with bash allowed on input from strangers, assume the key can leak. Either way use a dedicated key with a spend limit.
+- **A secret in the answer is replaced.** The model can quote what a command printed. A value of the step's variables named as a secret that the answer or the events hold becomes `***` before any output is written.
+- **Instruction files come from the checkout.** `AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md`, and the files they `@`-import, are read from the working tree, and on a pull request the PR controls them. Where its author may be anyone (`pull_request_target`, a fork's code checked out), set `instructions-from: base`: the agent then reads the base's. The token is read-only, so the worst case is a bad answer.
 - **Event values go through `env:`**, named in the prompt (`$PR`). Never paste `${{ }}` into a script or a prompt: a title is text anyone can write. Text written by others is data, and the prompt says so.
 - **The posting job never runs code from the pull request.** It checks out nothing, or a branch it only applies a patch to and pushes.
-- **Only people with write access trigger the agent.** Check `author_association` is `OWNER`, `MEMBER` or `COLLABORATOR` on comment triggers. Never use `pull_request_target` with the head checked out. A fork gets no secrets.
+- **Only people with write access trigger the agent.** `author_association` says how someone relates to the repository's owner, not what they may do: a `MEMBER` or a `COLLABORATOR` may only read. Ask GitHub, as [llx.yml](../examples/github/llx.yml) does: `gh api repos/$GH_REPO/collaborators/$ASKER/permission --jq .permission` is `admin` or `write`. A fork gets no secrets.
+- **`pull_request_target` and `workflow_run` run with the secrets on code someone else wrote.** Never check out the head in the workspace's root and run its code with the key there. When the agent must read it, check it out into a directory of its own, run the agent in `plan` or with no `allow`, and set `instructions-from: base`.
 
 ## GitLab
 
-The same two jobs. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
+The same two jobs. From the next release, the image `ghcr.io/rsaryev/llx:<version>` (Linux x86_64 and arm64) has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/llx:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
 
 ```yaml
 stages: [think, post]
@@ -370,7 +387,7 @@ llx-post:
 
 - **A workflow triggered by a review comment runs from the pull request's merge ref.** `pull_request_review_comment` takes the workflow file from there, so a workflow you fixed on `main` is not the one that runs on an open pull request until `main` is merged into it. A comment on the conversation tab (`issue_comment`) runs the workflow from the default branch.
 - **`gh pr view --comments` needs `checks: read`.** Prefer `gh pr view "$PR" --json title,body,comments,reviews`, which does not ask for it.
-- **Runs started by `github.token` wait for approval.** A push or a pull request made with the workflow's own token starts its workflows as "action required", waiting for someone with write access to approve them. A GitHub App token runs them at once. Opening a pull request from a workflow also needs "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings.
+- **Runs started by `github.token` wait for approval.** A push or a pull request made with the workflow's own token starts its workflows as "action required", waiting for someone with write access to approve them. A [GitHub App's token](#a-github-app-for-the-posting-job) runs them at once. Opening a pull request from a workflow also needs "Allow GitHub Actions to create and approve pull requests" in the repository's Actions settings.
 - **Triage needs the labels.** [triage.yml](../examples/github/triage.yml) picks from the repository's own labels, at least two of each kind, and skips with a notice when they are missing.
 - **The CI-failure workflow names the tests workflow.** [ci-failure.yml](../examples/github/ci-failure.yml) starts on `workflow_run` of one workflow by its `name:`. Edit that one line to yours.
 - **A prompt is not a script.** The action replaces `$NAME` for variables that are set and nothing else, so `$(gh pr view ...)` stays as text. Let the agent run the command: say in the prompt which one.

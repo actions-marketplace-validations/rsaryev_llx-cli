@@ -13,6 +13,16 @@ test repository before it was published.
 4. Read the file's header: it says what the workflow does, what it needs, and what to change to
    make it yours (the model, the prompt, the rules).
 
+From a clone of your repository, with [`gh`](https://cli.github.com) signed in, the review is:
+
+```bash
+mkdir -p .github/workflows
+curl -fsSL -o .github/workflows/llx-review.yml \
+  https://raw.githubusercontent.com/rsaryev/llx/main/examples/github/review.yml
+gh secret set OPENROUTER_API_KEY   # paste a key made for CI
+git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requests" && git push
+```
+
 | Workflow | When | What llx does | Also needs |
 |---|---|---|---|
 | [review.yml](github/review.yml) | a pull request opens or changes | explores the merged tree, runs what it needs to confirm a problem; posts one review of inline comments (never a verdict) and one summary it updates, skipping what it said before | |
@@ -58,25 +68,31 @@ where you can read it, and so is what gets posted.
 - **The key.** llx removes the provider key from the variables the commands it runs get. While
   the agent runs, llx is the only process of the step that holds it (the action runs llx in place
   of the step's shell), and on Linux llx cannot be read through `/proc` by a process without
-  root. But a hosted runner gives passwordless `sudo`, so with `bash` allowed, assume the key can
-  leak: use a key made for CI, with a spend limit. Where the input is from strangers, allow by name
-  only what needs the network or the token (`allow: bash(gh pr view *)`): the rest runs in the
-  sandbox.
-- **Who can trigger it.** `llx.yml` answers only owners, members and collaborators. Pull
+  root. On a hosted Linux runner the action drops `sudo` and the runner's groups (`docker`'s)
+  for llx and every command it runs, so none can become root to read it (`privileges`,
+  [docs/ci.md](../docs/ci.md#security)); a step that needs `sudo` (`apt-get install`) runs before
+  llx's. Still use a key made for CI, with a spend limit, and where the input is from strangers,
+  allow by name only what needs the network or the token (`allow: bash(gh pr view *)`): the rest
+  runs in the sandbox.
+- **Who can trigger it.** `llx.yml` answers only those GitHub says may write to the repository
+  (its permission API, not `author_association`, which a member who may only read has too). Pull
   requests from forks are skipped: they get no secrets, and their code would run next to the
   key. No workflow uses `pull_request_target`.
 - **Text written by others is data.** Values from the event reach the prompt through `env:`
   (`$PR`), never pasted into a script with `${{ }}`. A comment or a body is read by the agent with
-  `gh`, and every prompt says that what others wrote is data, not instructions.
+  `gh`, and every prompt says that what others wrote is data, not instructions. `llx.yml` gives the
+  agent the request as the event carried it, so an edit after it was made changes nothing.
 - **Instruction files come from the checkout.** On a pull request, the instruction files
   (`AGENTS.override.md`, `AGENTS.md` or `CLAUDE.md`, and what they `@`-import) are the pull
-  request's. The token is read-only, so the worst is a bad answer or a leaked key.
+  request's. The token is read-only, so the worst is a bad answer. Where the author may be anyone,
+  `instructions-from: base` reads the base's instead.
 
 ## Notes
 
 - When `llx.yml` pushes or opens a pull request with the workflow's token, the workflows its push
   or pull request starts wait for a person to approve them: your tests run on llx's change once
-  someone does, or at once when the posting job uses a GitHub App's token.
+  someone does, or at once when the posting job uses a GitHub App's token: set the variable
+  `LLX_APP_ID` and the secret `LLX_APP_KEY` ([docs/ci.md](../docs/ci.md#a-github-app-for-the-posting-job)).
 - A workflow started by a review comment runs the version of the file on the pull request's
   merge ref: a fix on `main` reaches an open pull request once `main` is merged into it.
 - `gh pr view --comments` needs `checks: read`; the prompts use
@@ -85,9 +101,10 @@ where you can read it, and so is what gets posted.
   0.x release. GitHub's own actions (`actions/checkout@v7`) go by their major tag, as llx's own
   workflows name them; pin them to a commit too where your policy asks for it.
 - On a self-hosted runner, replace `ubuntu-latest` with its labels; the action needs `jq` and
-  `perl` there. It installs the Linux x86_64 and macOS builds: elsewhere (Linux arm64, say), build
-  llx on the runner (`cargo install`, as the [README](../README.md#install) says) and give the
-  action `version: system`.
+  `perl` there. It installs the Linux (x86_64, arm64) and macOS builds: elsewhere, build llx on the
+  runner (`cargo install`, as the [README](../README.md#install) says) and give the action
+  `version: system`. Without passwordless `sudo` it keeps the runner's privileges, and the summary
+  says so.
 
 More in [docs/ci.md](../docs/ci.md): the action's inputs and outputs, rules in CI, keys and models,
 exit codes, and GitLab.
