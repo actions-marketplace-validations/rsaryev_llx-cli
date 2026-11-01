@@ -48,6 +48,46 @@ fn a_session_with_a_task_says_how_to_resume_it() {
 }
 
 #[test]
+fn each_session_says_its_own_total_when_it_is_known() {
+    let mut app = lanes(&["a", "b"], &["a", "b"]);
+    let now = Instant::now();
+    app.frame(
+        from(
+            "a",
+            Event::Total(protocol::Total {
+                input_tokens: 24_100,
+                cached_tokens: 21_000,
+                output_tokens: 1_200,
+                cost: 0.042,
+            }),
+        ),
+        now,
+    );
+    app.frame(
+        from(
+            "b",
+            Event::Total(protocol::Total {
+                input_tokens: 900,
+                cached_tokens: 0,
+                output_tokens: 40,
+                cost: 0.0,
+            }),
+        ),
+        now,
+    );
+    app.show("b");
+    assert_eq!(
+        plain(&app.farewell(Leaving::Quit)),
+        [
+            "Session usage: 900 in · 40 out",
+            "Resume this session: llx resume b",
+            "Session usage: 24.1k in · 87% cached · 1.2k out · $0.042",
+            "Resume this session: llx resume a",
+        ]
+    );
+}
+
+#[test]
 fn an_empty_session_says_nothing() {
     let app = lanes(&["s1"], &[]);
     assert!(app.farewell(Leaving::Quit).is_empty());

@@ -1,4 +1,4 @@
-//! What is said under the history when the person leaves: how to come back, one dim line each.
+//! What is said under the history when the person leaves: usage and how to come back.
 //! Only sessions that have a task are worth resuming, so an empty one says nothing.
 
 use ratatui::text::{Line, Span};
@@ -26,15 +26,27 @@ impl App {
         let worked = |view: &&super::views::SessionView| {
             !view.id.is_empty() && (view.tasks > 0 || view.busy.is_some())
         };
-        let mut ids: Vec<&str> = lanes.filter(worked).map(|view| view.id.as_str()).collect();
-        if let Some(at) = ids.iter().position(|id| *id == self.views.shown) {
-            ids[..=at].rotate_right(1);
+        let mut sessions: Vec<_> = lanes.filter(worked).collect();
+        if let Some(at) = sessions.iter().position(|view| view.id == self.views.shown) {
+            sessions[..=at].rotate_right(1);
         }
         let line = |text: String| Line::from(Span::styled(text, style::dim()));
         match leaving {
-            Leaving::Quit => ids
+            Leaving::Quit => sessions
                 .into_iter()
-                .map(|id| line(format!("Resume this session: llx resume {id}")))
+                .flat_map(|view| {
+                    let usage = view
+                        .lane
+                        .as_ref()
+                        .and_then(|lane| lane.total.as_ref())
+                        .map(super::spend::spent)
+                        .filter(|usage| !usage.is_empty())
+                        .map(|usage| line(format!("Session usage: {usage}")));
+                    usage.into_iter().chain(std::iter::once(line(format!(
+                        "Resume this session: llx resume {}",
+                        view.id
+                    ))))
+                })
                 .collect(),
             // What keeps running may be no task (a shell, a monitor): always said.
             Leaving::Background => vec![line(
