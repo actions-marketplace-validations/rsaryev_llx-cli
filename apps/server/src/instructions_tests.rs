@@ -56,3 +56,35 @@ fn a_huge_file_is_cut_and_says_so() {
             .ends_with("[10 more bytes not shown: read the file for the rest]")
     );
 }
+
+fn call(name: &str, arguments: Value) -> ToolCall {
+    ToolCall {
+        id: "c1".into(),
+        name: name.into(),
+        arguments,
+    }
+}
+
+#[test]
+fn a_command_that_reads_an_instruction_file_is_kept() {
+    let output = "Exit code: 0\nWall time: 0 seconds\nOutput:\nweb rules";
+    for command in ["cat app/web/AGENTS.md", "sed -n 1,200p docs/CLAUDE.md"] {
+        let read = call("bash", serde_json::json!({ "command": command }));
+        assert!(reads_one(&read, output), "{command}");
+    }
+}
+
+#[test]
+fn another_command_another_tool_or_a_larger_output_is_not() {
+    let output = "Exit code: 0\nOutput:\nfn main() {}";
+    let other = call("bash", serde_json::json!({"command": "cat src/main.rs"}));
+    assert!(!reads_one(&other, output));
+    let patch = call(
+        "apply_patch",
+        serde_json::json!("*** Update File: AGENTS.md"),
+    );
+    assert!(!reads_one(&patch, output));
+    // A search of every file that names one is no instruction file.
+    let search = call("bash", serde_json::json!({"command": "rg -n AGENTS.md"}));
+    assert!(!reads_one(&search, &"x".repeat(FILE_LIMIT * 2)));
+}

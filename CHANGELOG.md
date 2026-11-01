@@ -24,6 +24,7 @@
 - A patch's diff shows each change as the patch made it, its context lines as the file has them: edits more than about 1,000 lines apart showed only removed lines.
 - `apply_patch`: a call cut off at the output limit and written as JSON (`{"patch": …}`) is answered unrun, as such a call whole already was refused.
 - An old tool output or call argument that quotes the history's elision marker (a read of llx's own source or log) is elided like any other, instead of kept whole.
+- A long session keeps the newest read of each instruction file (a deeper directory's `AGENTS.md`, `AGENTS.override.md` or `CLAUDE.md`, as the prompt asks the model to read before working there) when it elides old outputs to save context: the rules it read stay in view. Only a conversation past the model's limit itself lets them go, as it does the latest messages.
 - A run is always told how many incoming messages were dropped when its queue overflowed, even when a step took none of them.
 - A session file that is not a session is reported as `session <id> is not a session: …`, not `is unreadable`.
 - OpenAI's own API (a key at api.openai.com) is sent the output limit as `max_completion_tokens`, the field its reasoning models take, and one prompt cache key per conversation instead of one for every session.

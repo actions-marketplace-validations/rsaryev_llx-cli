@@ -13,21 +13,43 @@ fn reading(reads: usize, chars: usize) -> Conversation {
 
 /// `reading`, each read getting `report` back.
 fn reading_of(reads: usize, report: &str) -> Conversation {
+    let commands: Vec<String> = (0..reads).map(|n| format!("cat f{n}.rs")).collect();
+    running(&commands, report)
+}
+
+/// A conversation of one call a command, each getting `report` back.
+fn running(commands: &[String], report: &str) -> Conversation {
     let mut conversation = Conversation::new("rules");
     conversation.push(Message::User("Goal: look".into()));
-    for n in 0..reads {
+    for (n, command) in commands.iter().enumerate() {
         conversation.push(Message::Assistant {
             text: None,
             calls: vec![ToolCall {
                 id: format!("c{n}"),
                 name: "shell".into(),
-                arguments: json!({"command": format!("cat f{n}.rs")}),
+                arguments: json!({"command": command}),
             }],
             carried: vec![],
         });
         conversation.result(&format!("c{n}"), report);
     }
     conversation
+}
+
+/// Ten reads of 4,000 characters, those at `rules` of `rules.md`, which the pipeline keeps.
+fn reading_rules_at(rules: &[usize]) -> (Pipeline, Conversation) {
+    let commands: Vec<String> = (0..10)
+        .map(|n| match rules.contains(&n) {
+            true => "cat sub/rules.md".to_string(),
+            false => format!("cat f{n}.rs"),
+        })
+        .collect();
+    let keep = |call: &ToolCall, _: &str| call.arguments["command"] == json!("cat sub/rules.md");
+    let pipeline = Pipeline {
+        tail: 2_000,
+        ..Pipeline::keeping(Box::new(keep))
+    };
+    (pipeline, running(&commands, &"x".repeat(4_000)))
 }
 
 fn elided(conversation: &Conversation) -> Vec<bool> {
@@ -91,7 +113,8 @@ fn past_the_gate_old_outputs_go_down_to_the_target_and_the_tail_stays() {
         Frame {
             target: 6_600,
             ratio: 1.0,
-            tail: 0
+            tail: 0,
+            pass: Pass::Gate,
         }
         .size(&conversation)
             <= 6_600
@@ -213,6 +236,38 @@ fn the_real_size_counts() {
         marks[..gone].iter().all(|e| *e) && !marks[9],
         "the oldest went, the newest stays: {marks:?}"
     );
+}
+
+#[test]
+fn an_output_the_app_keeps_stays_while_the_others_around_it_go() {
+    let (pipeline, mut conversation) = reading_rules_at(&[1]);
+    let report = pipeline.prepare(&mut conversation, 11_000, 1.0);
+    // The one kept is passed over: the next one goes in its place.
+    assert_eq!(report, [("outputs", 4)]);
+    let marks = elided(&conversation);
+    assert_eq!(
+        marks,
+        [
+            true, false, true, true, true, false, false, false, false, false
+        ]
+    );
+}
+
+#[test]
+fn of_the_same_call_only_the_newest_output_is_kept() {
+    let (pipeline, mut conversation) = reading_rules_at(&[0, 2]);
+    pipeline.prepare(&mut conversation, 11_000, 1.0);
+    let marks = elided(&conversation);
+    assert!(marks[0] && !marks[2], "{marks:?}");
+}
+
+#[test]
+fn past_the_limit_itself_a_kept_output_gives_way_too() {
+    let (pipeline, mut conversation) = reading_rules_at(&[0]);
+    // Below what the kept output (1,000 tokens) and the tail (2,000) take together.
+    pipeline.prepare(&mut conversation, 2_500, 1.0);
+    let marks = elided(&conversation);
+    assert!(marks[0], "{marks:?}");
 }
 
 #[test]

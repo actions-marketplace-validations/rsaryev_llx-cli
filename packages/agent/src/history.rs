@@ -10,9 +10,13 @@
 //! - once it is, the stages run until `LOW`, so one cache miss buys many stable turns;
 //! - an elision is made in the conversation itself, so it is never undone (a ratchet);
 //! - the recent tail, `tail` tokens and at least `MIN_TAIL` messages, is left alone unless the
-//!   limit itself is passed.
+//!   limit itself is passed;
+//! - so is the newest output of each call the app keeps ([`Lasting`]): what is still in force once
+//!   read, as the rules of a directory are.
 
-use contracts::chat::Message;
+use std::collections::{HashMap, HashSet};
+
+use contracts::chat::{Message, ToolCall};
 use contracts::tool::ToolSpec;
 use serde_json::Value;
 
@@ -23,6 +27,8 @@ const FALLBACK: u64 = 128_000;
 /// The most a request holds, whatever the window: quality and cost fall well before a million.
 const AUTO: u64 = 272_000;
 const MIN_TAIL: usize = 4;
+/// Tokens of the recent tail llx leaves alone.
+const TAIL: u64 = 16_384;
 /// Percent of the ceiling that opens the gate, and where a pass stops.
 const HIGH: u64 = 90;
 const LOW: u64 = 60;
@@ -41,7 +47,21 @@ pub(crate) struct Frame {
     pub(crate) ratio: f64,
     /// Where the protected tail starts.
     pub(crate) tail: usize,
+    pub(crate) pass: Pass,
 }
+
+/// Which pass a frame is of.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum Pass {
+    /// Down to the target: the tail and what the app keeps are left alone.
+    Gate,
+    /// Past the limit itself: all but the last messages give way.
+    Ceiling,
+}
+
+/// Whether the app keeps what a call got back through a pass (C3): the agent knows no tool, the
+/// app knows which outputs are still in force once read. Given the call and its output.
+pub type Lasting = dyn Fn(&ToolCall, &str) -> bool + Send + Sync;
 
 impl Frame {
     /// `estimate` tokens, estimated, in real tokens, as far as the ratio tells.
@@ -89,8 +109,18 @@ impl Default for Pipeline {
     /// llx's: old outputs, old arguments; the tail only past the ceiling.
     fn default() -> Self {
         Self {
-            stages: vec![Box::new(Outputs), Box::new(Arguments)],
-            tail: 16_384,
+            stages: vec![Box::new(Outputs { keep: None }), Box::new(Arguments)],
+            tail: TAIL,
+        }
+    }
+}
+
+impl Pipeline {
+    /// llx's, the newest output of each call `keep` names left alone as the tail is.
+    pub fn keeping(keep: Box<Lasting>) -> Self {
+        Self {
+            stages: vec![Box::new(Outputs { keep: Some(keep) }), Box::new(Arguments)],
+            tail: TAIL,
         }
     }
 }
@@ -101,6 +131,7 @@ impl Strategy for Pipeline {
             target: ceiling * LOW / 100,
             ratio,
             tail: 0,
+            pass: Pass::Gate,
         };
         let mut report = Report::new();
         if frame.size(conversation) * 100 < ceiling * HIGH {
@@ -123,14 +154,17 @@ impl Strategy for Pipeline {
         // Still past the ceiling itself: the tail gives way too, all but its last messages.
         if frame.size(conversation) > ceiling {
             frame.tail = conversation.messages().len().saturating_sub(MIN_TAIL);
+            frame.pass = Pass::Ceiling;
             run(&frame, conversation);
         }
         report
     }
 }
 
-/// Tool outputs, any worth eliding.
-pub(crate) struct Outputs;
+/// Tool outputs, any worth eliding but those the app keeps.
+pub(crate) struct Outputs {
+    keep: Option<Box<Lasting>>,
+}
 
 impl Stage for Outputs {
     fn name(&self) -> &'static str {
@@ -138,12 +172,43 @@ impl Stage for Outputs {
     }
 
     fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        elide(
-            conversation,
-            frame,
-            |message| matches!(message, Message::ToolResult { content, .. } if worth(content)),
-        )
+        let kept = match (&self.keep, frame.pass) {
+            (Some(keep), Pass::Gate) => kept(conversation.messages(), keep),
+            (None, _) | (Some(_), Pass::Ceiling) => HashSet::new(),
+        };
+        elide(conversation, frame, |message| {
+            matches!(message, Message::ToolResult { id, content, .. }
+                if worth(content) && !kept.contains(id))
+        })
     }
+}
+
+/// The ids of the outputs `keep` names, the newest of each call (its tool and arguments): a file
+/// read again keeps one copy, not every one.
+fn kept(messages: &[Message], keep: &Lasting) -> HashSet<String> {
+    let mut calls: HashMap<&str, &ToolCall> = HashMap::new();
+    let mut newest = HashMap::new();
+    for message in messages {
+        match message {
+            Message::Assistant { calls: made, .. } => {
+                calls.extend(made.iter().map(|call| (call.id.as_str(), call)));
+            }
+            Message::ToolResult {
+                id,
+                content,
+                failed: false,
+            } => {
+                if let Some(call) = calls.get(id.as_str()).filter(|call| keep(call, content)) {
+                    newest.insert((&call.name, call.arguments.to_string()), id.clone());
+                }
+            }
+            Message::ToolResult { failed: true, .. }
+            | Message::System(_)
+            | Message::User(_)
+            | Message::Image { .. } => {}
+        }
+    }
+    newest.into_values().collect()
 }
 
 /// The large arguments of tool calls: what an edit wrote is on disk.

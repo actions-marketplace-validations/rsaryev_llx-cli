@@ -6,13 +6,16 @@
 //!   the first of `AGENTS.override.md`, `AGENTS.md`, `CLAUDE.md` (a deeper file comes later and
 //!   wins);
 //! - a directory below the working directory may hold its own: the prompt says to read it before
-//!   working there.
+//!   working there, and the history keeps what such a read got back ([`reads_one`]).
 //!
 //! A line that is only `@path` brings in that file, as in CLAUDE.md. Everything is read once
 //! and only ever appended, so the conversation's prefix, and the prompt cache, stay as they were.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
+
+use contracts::chat::ToolCall;
+use serde_json::Value;
 
 /// The names an instruction file has, the first found in a directory being the one read.
 const NAMES: [&str; 3] = ["AGENTS.override.md", "AGENTS.md", "CLAUDE.md"];
@@ -22,12 +25,26 @@ pub(crate) const FILE_LIMIT: usize = 16 * 1024;
 pub(crate) const TOTAL_LIMIT: usize = 32 * 1024;
 /// How deep `@path` imports go.
 const IMPORT_DEPTH: usize = 3;
+/// The tool the model reads files with, and the bytes its report adds around what it read (the
+/// exit code, the time, the directory).
+const SHELL: &str = "bash";
+const REPORT: usize = 1024;
 
 /// One file's instructions, ready to read.
 #[derive(Debug, PartialEq)]
 pub(crate) struct Found {
     pub path: PathBuf,
     pub text: String,
+}
+
+/// Whether `call` read an instruction file and `output` holds no more than one: a command that
+/// names one, as the prompt asks the model to read a deeper directory's. Its rules stay in force,
+/// so the history keeps what it got back while it can, where it would elide any other output.
+pub(crate) fn reads_one(call: &ToolCall, output: &str) -> bool {
+    let command = call.arguments.get("command").and_then(Value::as_str);
+    call.name == SHELL
+        && output.len() <= FILE_LIMIT + REPORT
+        && command.is_some_and(|command| NAMES.iter().any(|name| command.contains(name)))
 }
 
 /// The person's own instructions, for every project.
