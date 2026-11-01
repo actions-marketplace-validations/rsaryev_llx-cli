@@ -41,9 +41,11 @@ fn a_line_is_one_event_with_its_time_level_target_and_process() {
 #[test]
 fn a_long_message_is_cut_at_a_character() {
     let long = "é".repeat(LONGEST);
-    let said = format_args!("{long}");
-    let record = Record::builder().level(Level::Info).args(said).build();
-    let line = line(UNIX_EPOCH, 1, &record);
+    // One statement: before Rust 1.89 (the workspace's rust-version is older), what
+    // `format_args!` with an argument borrows lives only to the end of its statement.
+    let mut record = Record::builder();
+    record.level(Level::Info);
+    let line = line(UNIX_EPOCH, 1, &record.args(format_args!("{long}")).build());
     assert!(
         line.len() < LONGEST + 200 && line.ends_with(" …\n"),
         "{}",
