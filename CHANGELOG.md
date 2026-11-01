@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
+
 ## 0.2.0
 
 The first public release.

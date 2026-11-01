@@ -2,8 +2,8 @@
 //! server's, the interface only shows it). An entry goes to the lane waiting for one; words sent
 //! while a task works go to that task at its next step (steering); a command, a picture or Tab
 //! waits for the task to end; what comes back from the background waits behind the person's own.
-//! Every change, and only a change, is told to the interface as the lane's [`Event::Queue`]; a
-//! lane's end as its [`Event::LaneEnded`].
+//! Every change, and only a change, is told to the interface as the lane's [`Event::Queue`], in
+//! the order the queue changed (`show`); a lane's end as its [`Event::LaneEnded`].
 
 use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
@@ -45,6 +45,11 @@ struct Lane {
     background: VecDeque<Typed>,
     /// Its prompt gets nothing more: the person left, or the lane was closed.
     over: bool,
+    /// How many times its queue changed, how many of them the interface was told, and whether a
+    /// thread is telling it now (`show`).
+    changes: u64,
+    told: u64,
+    telling: bool,
 }
 
 /// How a lane's queue is shown in the interface.
@@ -96,16 +101,12 @@ impl Inputs {
             };
             if let Some(taken) = taken {
                 state.ready = false;
-                let queue = queue(state);
-                drop(lanes);
-                (self.tell)(lane, queue);
+                self.show(lanes, lane);
                 return taken;
             }
             // Told once that it waits, outside the lock (R6); what arrives meanwhile wakes it.
             if !told {
-                let queue = queue(state);
-                drop(lanes);
-                (self.tell)(lane, queue);
+                self.show(lanes, lane);
                 told = true;
                 lanes = self.lock();
                 continue;
@@ -148,9 +149,7 @@ impl Inputs {
         }
         let said = texts(&state.steered);
         state.steered.clear();
-        let queue = queue(state);
-        drop(lanes);
-        (self.tell)(lane, queue);
+        self.show(lanes, lane);
         (self.tell)(lane, Event::Steered(said.clone()));
         said
     }
@@ -193,11 +192,40 @@ impl Inputs {
         let state = lanes.lanes.entry(lane.into()).or_default();
         let before = queue(state);
         change(state);
-        let queue = queue(state);
-        drop(lanes);
+        let changed = queue(state) != before;
         self.arrived.notify_all();
-        if queue != before {
+        match changed {
+            true => self.show(lanes, lane),
+            false => drop(lanes),
+        }
+    }
+
+    /// Tell the interface that `lane`'s queue changed, outside the lock (R6) and in the order it
+    /// changed: one thread tells a lane at a time, the queue as it is when it tells, and tells
+    /// again while it changed meanwhile; a change made while another tells is told by that one.
+    /// So what the interface was told last is the queue as it is, never one a thread read before.
+    fn show<'a>(&'a self, mut lanes: MutexGuard<'a, Table>, lane: &str) {
+        let Some(state) = lanes.lanes.get_mut(lane) else {
+            return;
+        };
+        state.changes += 1;
+        if state.telling {
+            return;
+        }
+        state.telling = true;
+        loop {
+            let Some(state) = lanes.lanes.get_mut(lane) else {
+                return;
+            };
+            if state.told == state.changes {
+                state.telling = false;
+                return;
+            }
+            state.told = state.changes;
+            let queue = queue(state);
+            drop(lanes);
             (self.tell)(lane, queue);
+            lanes = self.lock();
         }
     }
 

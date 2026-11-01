@@ -75,6 +75,48 @@ fn what_is_sent_to_a_lane_at_its_prompt_is_its_next_entry() {
     assert_eq!(last_queue(&told), (false, vec![], vec![], vec![]));
 }
 
+/// The interface is told the queue in the order it changed: an entry the lane took while the
+/// queue that held it was still being told is never shown as waiting last.
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a test's poll: the telling is held until the prompt took the entry"
+)]
+fn an_entry_taken_while_its_queue_is_told_is_not_left_shown() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let taken = Arc::new(AtomicBool::new(false));
+    let told: Told = Arc::new(Mutex::new(vec![]));
+    let (kept, held) = (Arc::clone(&told), Arc::clone(&taken));
+    let inputs = Arc::new(Inputs::new(move |lane, event| {
+        let holds_it = matches!(&event, Event::Queue { queued, .. } if !queued.is_empty());
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while holds_it && !held.load(Ordering::SeqCst) && std::time::Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        kept.lock().unwrap().push((lane.into(), event));
+    }));
+    let (theirs, done) = (Arc::clone(&inputs), Arc::clone(&taken));
+    let thread = std::thread::Builder::new().name("prompt".into());
+    let prompt = thread
+        .spawn(move || {
+            let got = theirs.next("s1");
+            done.store(true, Ordering::SeqCst);
+            got
+        })
+        .unwrap();
+    while !inputs
+        .lock()
+        .lanes
+        .get("s1")
+        .is_some_and(|state| state.ready)
+    {
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    inputs.input(sent("fix the parser"), false);
+    assert_eq!(prompt.join().unwrap(), Some(Typed::from("fix the parser")));
+    assert_eq!(last_queue(&told), (false, vec![], vec![], vec![]));
+}
+
 #[test]
 fn words_sent_while_a_task_works_go_to_it_and_are_shown_as_theirs_when_read() {
     let (inputs, told) = inputs();
