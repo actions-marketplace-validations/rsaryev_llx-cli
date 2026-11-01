@@ -47,8 +47,8 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
 5. **image-arch** and **image**: on each architecture's runner, the image of
    `scripts/image/Dockerfile` with the release's Linux archive, run with `--version` and pushed as
    `ghcr.io/rsaryev/llx:X.Y.Z-amd64` and `-arm64`; then both joined under `X.Y.Z` (and `latest`,
-   but for a prerelease). The first time, make the package public: the package's settings on
-   GitHub, "Change visibility".
+   but for a prerelease). The package is public, as the repository is (an anonymous `docker pull`
+   works).
 6. **major**, for a version without a suffix: the major tag (`v0` for `0.x.y`) moves to the
    released commit, so `uses: rsaryev/llx@v0` follows the releases. It starts no workflow. The
    workflow's token cannot move it onto a commit whose `.github/workflows` differ from `main`'s
