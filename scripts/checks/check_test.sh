@@ -42,88 +42,110 @@ core="-p agent -p contracts -p llx -p models -p openai -p openrouter -p server -
 
 expect "a core crate: it and every dependent, tested" "" "fmt
 clippy $core
-test $core" packages/contracts/src/tool.rs
+test $core
+secrets" packages/contracts/src/tool.rs
 
 expect "fast: fmt, clippy on the crate changed, the repository's rules" --fast "fmt
 clippy -p contracts
-repo" packages/contracts/src/tool.rs
+repo
+secrets" packages/contracts/src/tool.rs
 
 expect "the app: itself; its tests hold the rules" "" "fmt
 clippy -p llx
-test -p llx" apps/cli/src/main.rs
+test -p llx
+secrets" apps/cli/src/main.rs
 
 expect "the server: itself and the binary, which composes it" "" "fmt
 clippy -p llx -p server
-test -p llx -p server" apps/server/src/commands.rs
+test -p llx -p server
+secrets" apps/server/src/commands.rs
 
 expect "the interface: itself and the binary, which composes it" "" "fmt
 clippy -p llx -p tui
-test -p llx -p tui" apps/tui/src/app.rs
+test -p llx -p tui
+secrets" apps/tui/src/app.rs
 
 expect "a leaf crate: it and its dependents" "" "fmt
 clippy -p llx -p queue -p server
-test -p llx -p queue -p server" packages/queue/src/lib.rs
+test -p llx -p queue -p server
+secrets" packages/queue/src/lib.rs
 
 expect "a file a crate includes is the crate's (and Markdown has links)" "" "fmt
 clippy -p agent -p llx -p server
 test -p agent -p llx -p server
-mdlinks" packages/agent/src/prompt.md
+mdlinks
+secrets" packages/agent/src/prompt.md
 
 expect "the lock: the whole workspace, and the binary's size" "" "fmt
 clippy --workspace
 test --workspace
-size" Cargo.lock
+size
+secrets" Cargo.lock
 
 expect "clippy.toml: the whole workspace, no size" --fast "fmt
 clippy --workspace
-repo" clippy.toml
+repo
+secrets" clippy.toml
 
 expect "a crate's manifest: its crates, and the size" "" "fmt
 clippy -p llx -p server -p tools
 test -p llx -p server -p tools
-size" packages/tools/Cargo.toml
+size
+secrets" packages/tools/Cargo.toml
 
 expect "a doc: the rules, the site, the links" "" "repo
 site
-mdlinks" docs/ci.md
+mdlinks
+secrets" docs/ci.md
 
 expect "a doc, fast: no site build" --fast "repo
-mdlinks" docs/ci.md
+mdlinks
+secrets" docs/ci.md
 
 expect "the site's code" "" "repo
-site" site/src/App.tsx
+site
+secrets" site/src/App.tsx
 
-expect "a file no check reads: the rules only" "" "repo" LICENSE
+expect "a file no check reads: the rules only" "" "repo
+secrets" LICENSE
 
 expect "the action's script" "" "repo
 action
-shellcheck" action/run.sh
+shellcheck
+secrets" action/run.sh
 
 expect "the action's metadata" "" "repo
 action
-actionlint" action.yml
+actionlint
+secrets" action.yml
 
 expect "an example workflow" "" "repo
 actionlint
-examples" examples/github/review.yml
+examples
+secrets" examples/github/review.yml
 
 expect "CI's workflow" "" "repo
-actionlint" .github/workflows/ci.yml
+actionlint
+secrets" .github/workflows/ci.yml
 
 expect "scripts/check itself" "" "repo
 check-test
-shellcheck" scripts/check
+shellcheck
+secrets" scripts/check
 
 expect "a shell script" "" "repo
-shellcheck" scripts/dist.sh
+shellcheck
+secrets" scripts/dist.sh
 
 expect "a hook, a shell script with no extension" "" "repo
-shellcheck" scripts/hooks/pre-commit
+shellcheck
+secrets" scripts/hooks/pre-commit
 
 expect "a file gone: its crate, and the links that may name it" "" "fmt
 clippy -p llx -p server -p tools
 test -p llx -p server -p tools
-mdlinks" packages/tools/src/no-such-file.rs
+mdlinks
+secrets" packages/tools/src/no-such-file.rs
 
 expect "nothing changed: nothing to check" "" ""
 
@@ -137,10 +159,12 @@ check-test
 shellcheck
 actionlint
 examples
-mdlinks"
+mdlinks
+secrets"
 
 expect "coverage only when asked" "--fast --coverage" "repo
-coverage" LICENSE
+coverage
+secrets" LICENSE
 
 expect "only the checks named, in the one order" "--only test,fmt" "fmt
 test --workspace"

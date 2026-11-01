@@ -31,6 +31,7 @@ describe() {
     actionlint) echo "actionlint (pinned) on the workflows and examples, the examples against action.yml" ;;
     examples) echo "the example workflows' schemas, time limits, models and versions" ;;
     mdlinks) echo "relative links and anchors in every Markdown file" ;;
+    secrets) echo "gitleaks (pinned) on every commit and on the working tree's changes" ;;
   esac
 }
 
@@ -93,6 +94,18 @@ check_site() {
 check_action() { bash action/test.sh; }
 check_check_test() { sh scripts/checks/check_test.sh; }
 check_mdlinks() { sh scripts/checks/mdlinks.sh; }
+
+# Keys and tokens, by gitleaks' own rules: every commit there is (a shallow clone has fewer), then
+# what the index and the working tree change of the tracked files. A new file is read once staged,
+# as the pre-commit hook does. A finding is shown with its secret redacted, as CI's logs are public;
+# one known to be fake goes in .gitleaksignore by its fingerprint, never a whole path.
+check_secrets() {
+  gitleaks_bin=$(tool gitleaks) || return 1
+  for gitleaks_scan in "" --staged --pre-commit; do
+    # shellcheck disable=SC2086 # the scan is a flag, or none
+    "$gitleaks_bin" git $gitleaks_scan --no-banner --no-color --redact --verbose --log-level warn . || return 1
+  done
+}
 
 # Every shell script of the repository, tracked or new.
 shell_files() {

@@ -29,6 +29,10 @@ jq 1.7.1 darwin-arm64 - https://github.com/jqlang/jq/releases/download/jq-1.7.1/
 jq 1.7.1 darwin-amd64 - https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-macos-amd64 4155822bbf5ea90f5c79cf254665975eb4274d426d0709770c21774de5407443
 jq 1.7.1 linux-amd64 - https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-amd64 5942c9b0934e510ee61eb3e30273f1b3fe2590df93933a93d7c58b81d19c8ff5
 jq 1.7.1 linux-arm64 - https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-arm64 4dd2d8a0661df0b22f1bb9a1f9830f06b6f3b8f7d91211a1ef5d7c4f06a8b4a5
+gitleaks 8.30.1 darwin-arm64 gitleaks https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_arm64.tar.gz b40ab0ae55c505963e365f271a8d3846efbc170aa17f2607f13df610a9aeb6a5
+gitleaks 8.30.1 darwin-amd64 gitleaks https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_darwin_x64.tar.gz dfe101a4db2255fc85120ac7f3d25e4342c3c20cf749f2c20a18081af1952709
+gitleaks 8.30.1 linux-amd64 gitleaks https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+gitleaks 8.30.1 linux-arm64 gitleaks https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_arm64.tar.gz e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080
 EOF
 }
 

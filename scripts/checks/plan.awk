@@ -12,6 +12,7 @@
 #   action.yml, examples/github/, .github/workflows/, .github/actions/ -> actionlint
 #   examples/github/        -> the examples' conventions
 #   *.md, or any path gone  -> relative links and anchors
+#   anything                -> secrets in the commits and the working tree (gitleaks)
 
 FNR == 1 { part++ }
 
@@ -150,6 +151,7 @@ function changes(    c, i, j, m, d, grow, whole, rust, s, reason) {
   if (seen("workflow")) emit("actionlint", "", why("workflow"))
   if (seen("examples")) emit("examples", "", why("examples") ": schemas, time limits, models, versions")
   if (seen("links")) emit("mdlinks", "", why("links") ": relative links and anchors")
+  if (seen("any")) emit("secrets", "", "a change may hold a key or a token (gitleaks)")
 }
 
 END {

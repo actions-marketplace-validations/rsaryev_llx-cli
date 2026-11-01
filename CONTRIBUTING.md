@@ -46,7 +46,8 @@ Under it are the usual commands, which you can still run alone: `cargo fmt --all
 `cargo clippy --workspace --all-targets -- -D warnings` (then, on libraries and binaries,
 `-D unused_crate_dependencies`), `cargo test --workspace`, the release binary's size (under 5 MiB, warned above
 4 MB), the site's build, the action's tests, and the linters: shellcheck, actionlint, the example
-workflows' conventions and the Markdown's relative links, at pinned versions it downloads once.
+workflows' conventions, the Markdown's relative links and gitleaks on every commit and on the
+working tree's changes, at pinned versions it downloads once.
 Two checks CI does not run; run them yourself before a release ([RELEASING.md](RELEASING.md)):
 the minimum Rust version (`cargo +1.88 check --workspace --all-targets --locked`) and the line
 coverage, at least 85% (`scripts/check --all --coverage`, or `scripts/coverage.sh` alone).

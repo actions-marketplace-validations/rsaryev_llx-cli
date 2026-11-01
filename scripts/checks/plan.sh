@@ -11,7 +11,7 @@
 # the toolchain).
 
 # Every check, in the order they run.
-CHECKS="fmt clippy repo test coverage size site action check-test shellcheck actionlint examples mdlinks"
+CHECKS="fmt clippy repo test coverage size site action check-test shellcheck actionlint examples mdlinks secrets"
 
 # The crate whose integration tests hold the repository's rules (apps/cli/tests/suite/repo).
 REPO_CRATE=llx

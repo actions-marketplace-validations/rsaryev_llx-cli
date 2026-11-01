@@ -1,0 +1,5 @@
+# Findings gitleaks reports that are known to be no secret, one fingerprint a line
+# (commit:path:rule:line), as `scripts/check --only secrets` prints them.
+# The scripted model's fake OpenRouter key in the pty harness, before it became FAKE_KEY.
+ef5d284557048bf846d5e3a59e4e7f696ec22cc9:apps/cli/tests/common/term.rs:generic-api-key:80
+e554ec721f190cbbefc532b5c1fe6ba10bfce3bb:apps/cli/tests/common/term.rs:generic-api-key:178
