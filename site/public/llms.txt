@@ -9,7 +9,7 @@
 
 ## Install
 
-- `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh` (macOS and Linux x86_64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/llx llx`.
+- `curl -fsSL https://llx.sh/install | sh` (macOS, Linux x86_64 and arm64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/llx llx`.
 - Sign in with `/login` in a session (`llx`), or set the provider's key (for example `OPENROUTER_API_KEY`).
 
 ## Use

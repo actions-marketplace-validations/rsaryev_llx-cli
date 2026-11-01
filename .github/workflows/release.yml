@@ -50,7 +50,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, ubuntu-24.04-arm]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -79,6 +79,11 @@ jobs:
             os: ubuntu-22.04
             targets: x86_64-unknown-linux-gnu
             smoke: target/x86_64-unknown-linux-gnu/release/llx
+          # The same on arm64 (Graviton, Ampere, the ubuntu-*-arm runners), built natively.
+          - name: linux-arm
+            os: ubuntu-22.04-arm
+            targets: aarch64-unknown-linux-gnu
+            smoke: target/aarch64-unknown-linux-gnu/release/llx
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
@@ -99,7 +104,7 @@ jobs:
             # The archive, as a user unpacks it, runs in a plain distribution.
             unpacked="$RUNNER_TEMP/unpacked"
             mkdir "$unpacked"
-            tar -xzf dist/llx-x86_64-unknown-linux-gnu.tar.gz -C "$unpacked" llx
+            tar -xzf "dist/llx-${{ matrix.targets }}.tar.gz" -C "$unpacked" llx
             docker run --rm --network none -v "$unpacked:/unpacked:ro" ubuntu:22.04 /unpacked/llx --version
           fi
           if [ "$RUNNER_OS" = macOS ]; then
@@ -166,6 +171,72 @@ jobs:
           # shellcheck disable=SC2086 # prerelease is one flag or nothing
           gh release create "$GITHUB_REF_NAME" dist/* \
             --verify-tag --title "llx $VERSION" --notes-file notes.md $prerelease
+
+  # The image of the release, ghcr.io/<owner>/llx:<version> (scripts/image/Dockerfile): each
+  # architecture built on its own runner from the archive the release ships, checked, pushed under
+  # its own tag; `image` then joins them under the version (and `latest`, but for a prerelease).
+  image-arch:
+    name: image (${{ matrix.arch }})
+    needs: [check, publish]
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-latest
+            dist: linux
+            target: x86_64-unknown-linux-gnu
+          - arch: arm64
+            os: ubuntu-24.04-arm
+            dist: linux-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist-${{ matrix.dist }}
+          path: artifacts
+      - name: Build, check and push the image
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+          ARCH: ${{ matrix.arch }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION-$ARCH"
+          tar -xzf "artifacts/llx-$TARGET.tar.gz" -C scripts/image llx
+          docker build --platform "linux/$ARCH" -t "$image" scripts/image
+          docker run --rm --network none "$image" llx --version
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$image"
+
+  image:
+    name: image
+    needs: [check, image-arch]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Join the architectures under the version
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          tags=(-t "$image:$VERSION")
+          case "$VERSION" in *-*) ;; *) tags+=(-t "$image:latest") ;; esac
+          echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
+          docker buildx imagetools inspect "$image:$VERSION"
 
   # `uses: rsaryev/llx@v0` follows the releases: once the release exists, the major tag (v0 for
   # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving

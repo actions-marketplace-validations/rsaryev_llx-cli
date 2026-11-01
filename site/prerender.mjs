@@ -36,6 +36,10 @@ for (const image of ssr.IMAGES) {
   await cp(repo + image, dist + image);
 }
 await writeFile(`${dist}sitemap.xml`, ssr.sitemap());
+// The installer at llx.sh/install, as main has it: `curl -fsSL https://llx.sh/install | sh`. Its
+// type is text, so a browser shows the script instead of downloading it (Cloudflare's _headers).
+await cp(`${repo}scripts/install.sh`, `${dist}install`);
+await writeFile(`${dist}_headers`, '/install\n  Content-Type: text/plain; charset=utf-8\n');
 await writeFile(`${dist}llms-full.txt`, ssr.llmsFull());
 const llms = await readFile(`${dist}llms.txt`, 'utf8');
 await writeFile(`${dist}llms.txt`, `${llms.trimEnd()}\n\n${ssr.llmsDocs()}`);

@@ -1,7 +1,8 @@
 #!/bin/sh
 # Installs the llx binary from a GitHub release:
 #
-#   curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
+#   curl -fsSL https://llx.sh/install | sh
+# (the same file as main has it: https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh)
 #
 # Environment:
 #   LLX_VERSION      a release such as 0.2.0 (default: the latest)
@@ -43,6 +44,7 @@ detect_target() {
     Linux)
       case "$arch" in
         x86_64 | amd64) echo x86_64-unknown-linux-gnu ;;
+        aarch64 | arm64) echo aarch64-unknown-linux-gnu ;;
         *) fail "no Linux build for $arch yet; build from source: cargo install --locked --git https://github.com/$repo llx" ;;
       esac
       ;;

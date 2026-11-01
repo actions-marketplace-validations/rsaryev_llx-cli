@@ -11,6 +11,13 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+# `cargo binstall --git https://github.com/rsaryev/llx llx` takes the release's archive for its
+# target (scripts/dist.sh: llx-<target>.tar.gz, llx at its top).
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/llx-{ target }.tar.gz"
+pkg-fmt = "tgz"
+bin-dir = "{ bin }{ binary-ext }"
+
 # Documented as the server's library, `llx`, whose name it shares (cargo#6313).
 [[bin]]
 name = "llx"

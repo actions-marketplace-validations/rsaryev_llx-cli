@@ -8,4 +8,4 @@ export const EXAMPLES_DOCS = `${DOCS}/examples`;
 /** How another agent calls llx from its shell. */
 export const AGENTS_DOCS = `${DOCS}/agents`;
 /** The install: one tab per way in (a tab row shows only with several). */
-export const INSTALL = [['llx', 'curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh']] as const;
+export const INSTALL = [['llx', 'curl -fsSL https://llx.sh/install | sh']] as const;
