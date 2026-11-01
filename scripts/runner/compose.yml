@@ -1,0 +1,25 @@
+# One runner (README.md here): `docker compose run` starts it for one job, under
+# llx-ci-runner@N.service. What its jobs keep between them: sccache's cache, the cargo registry,
+# rustup's toolchains, the tool cache setup-node fills.
+services:
+  runner:
+    build: .
+    image: llx-ci-runner
+    env_file: .env # ACCESS_TOKEN=..., mode 0600, never in git
+    environment:
+      REPO: rsaryev/llx
+      RUNNER_NAME: llx-ci
+      LABELS: self-hosted,linux,x64,llx
+    volumes:
+      - cache:/cache
+      - cargo-registry:/home/runner/.cargo/registry
+      - rustup:/home/runner/.rustup
+      - toolcache:/toolcache
+    cpus: 5
+    mem_limit: 5g
+    pids_limit: 4096
+volumes:
+  cache:
+  cargo-registry:
+  rustup:
+  toolcache:

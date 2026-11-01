@@ -6,6 +6,15 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Where the jobs run: check, size and site on the project's own runners (`self-hosted`, `llx`:
+# scripts/runner/, one job per fresh container, the compiler's cache sccache kept between them), a
+# pull request from a fork on GitHub's: its code never reaches a machine of ours. A fork's pull
+# request can rewrite this file, so the repository also asks a maintainer to approve the runs of
+# every outside contributor (Settings, Actions, "Require approval for all external
+# contributors"): read the change to the workflows before approving. The action job always runs on
+# GitHub's runner, the one with passwordless sudo and docker's socket that action/test.sh drops
+# for real.
+#
 # Third-party actions are pinned to a commit: a moved tag or branch cannot change what runs.
 #
 # Each check is a step `scripts/check --only NAME`: the commands live in scripts/checks/run.sh, the
@@ -34,7 +43,7 @@ jobs:
   # size by the size job.
   check:
     name: check
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted", "llx"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -45,6 +54,7 @@ jobs:
           toolchain: stable
           components: clippy, rustfmt
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: runner.environment == 'github-hosted'
       - run: scripts/check --only fmt
       - run: scripts/check --only clippy
       - run: scripts/check --only test
@@ -53,7 +63,7 @@ jobs:
   # (AGENTS.md's goal).
   size:
     name: size
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted", "llx"]') }}
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
@@ -63,12 +73,13 @@ jobs:
         with:
           toolchain: stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        if: runner.environment == 'github-hosted'
       - run: scripts/check --only size
 
   # The site's types, build and prerender, as the site workflow builds it before it publishes.
   site:
     name: site
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.pull_request && github.event.pull_request.head.repo.full_name != github.repository && 'ubuntu-latest' || fromJSON('["self-hosted", "llx"]') }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7

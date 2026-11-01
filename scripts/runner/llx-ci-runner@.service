@@ -1,0 +1,17 @@
+# Runner N of rsaryev/llx (README.md here): one job per fresh container, started again after it.
+[Unit]
+Description=rsaryev/llx CI runner %i: one job per fresh container
+After=docker.service network-online.target
+Requires=docker.service
+ConditionPathExists=/opt/llx-ci-runner/.env
+
+[Service]
+WorkingDirectory=/opt/llx-ci-runner
+ExecStartPre=-/usr/bin/docker rm -f llx-ci-runner-%i
+ExecStart=/usr/bin/docker compose run --rm --name llx-ci-runner-%i -e RUNNER_NAME=llx-ci-%i runner
+ExecStop=/usr/bin/docker rm -f llx-ci-runner-%i
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

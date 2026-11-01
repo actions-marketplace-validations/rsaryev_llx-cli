@@ -53,6 +53,10 @@ the minimum Rust version (`cargo +1.88 check --workspace --all-targets --locked`
 coverage, at least 85% (`scripts/check --all --coverage`, or `scripts/coverage.sh` alone).
 The code stays under 50,000 lines of working code and 300 per file (ARCHITECTURE.md S1, S2).
 
+A pull request from a fork runs CI on GitHub's runners once a maintainer approves the run (the
+project's own runners take only branches of this repository: [scripts/runner/](scripts/runner/README.md)).
+Before you open one, `scripts/check` on your machine runs what CI will.
+
 ## Code
 
 - Small, focused modules: every file holds at most 300 lines of working code (blanks, comments
