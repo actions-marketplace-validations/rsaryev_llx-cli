@@ -22,6 +22,7 @@ test repository before it was published.
 | [describe.yml](github/describe.yml) | a pull request opens or is marked ready for review | writes a summary, each change, the risk and the testing below the author's text, in a block it replaces | |
 | [release.yml](github/release.yml) | run by hand | picks the version bump and writes the notes in one answer; drafts a release a person publishes | tags like `v1.2.3`; with none, the first draft is `v0.1.0` |
 | [gate.yml](github/gate.yml) | daily, or by hand | checks a rule you state (here, that what the docs name exists in the code), read-only, and fails the job when the listed data shows it is not met | |
+| [jira.yml](github/jira.yml) | a Jira automation flow hands it a work item (a manual trigger, or a transition) | makes the change on the branch `llx/KEY` and runs the tests; opens a draft pull request named by the key, or pushes to the open one; comments on the work item | a Jira flow and a fine-grained token, as its header says; for the comment, `JIRA_API`, `JIRA_EMAIL` and the secret `JIRA_API_TOKEN`; "Allow GitHub Actions to create and approve pull requests" |
 | [audit.yml](github/audit.yml) | weekly, or by hand | explores the repository, runs its tests and linters, and keeps one issue labeled `llx-audit` as its latest report: opened or rewritten when it finds something worth a maintainer's time, closed when nothing of it holds | |
 
 ## Beyond GitHub workflows

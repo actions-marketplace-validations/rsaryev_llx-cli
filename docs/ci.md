@@ -180,7 +180,28 @@ Each is one file to copy into `.github/workflows/`, with the key as a secret. Th
 | [describe.yml](../examples/github/describe.yml) | Writes a summary, the risk and the testing below the author's text. |
 | [release.yml](../examples/github/release.yml) | Picks the version bump and writes the notes in one answer, and drafts a release. |
 | [gate.yml](../examples/github/gate.yml) | Checks a rule you state (here, that what the docs name exists in the code), daily and read-only, and fails the job when it is not met. |
+| [jira.yml](../examples/github/jira.yml) | Makes a Jira work item's change and opens a draft pull request named by its key, then comments on the work item. |
 | [audit.yml](../examples/github/audit.yml) | Explores the repository weekly, runs its tests and linters, and keeps one issue as its latest report. |
+
+### From Jira
+
+Any system that can send an HTTP request can hand llx a task: on GitHub, the request is a [`repository_dispatch` event](https://docs.github.com/en/rest/repos/repos#create-a-repository-dispatch-event), and the workflow runs on the default branch. [jira.yml](../examples/github/jira.yml) takes it from a Jira automation flow:
+
+- **The trigger** is "Manual trigger from work item", with "Groups that can run trigger" set to the people who may hand work to llx, or "Work item transitioned" to a status of your choice.
+- **The action** is "Send web request": `POST https://api.github.com/repos/OWNER/REPO/dispatches`, with `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28` and `Authorization: Bearer` a fine-grained token for that repository alone, with Contents: write (its value marked Hidden). The body is "Custom data":
+
+  ```json
+  {"event_type": "jira-task", "client_payload": {
+    "key": "{{issue.key}}", "url": "{{issue.url}}",
+    "summary": "{{issue.summary.jsonEncode}}",
+    "description": "{{issue.description.jsonEncode}}"}}
+  ```
+
+  [`jsonEncode`](https://support.atlassian.com/cloud-automation/docs/jira-smart-values-text-fields/) escapes the text for JSON, its quotes and newlines; GitHub takes at most 10 keys in `client_payload` and a body under 64 KB, and answers 204.
+- **What comes back**: the commit, the branch `llx/KEY` and the draft pull request carry the key, so Jira's GitHub app shows them on the work item. With `JIRA_API`, `JIRA_EMAIL` and `JIRA_API_TOKEN` set, the posting job also comments on the work item ([REST API v3](https://developer.atlassian.com/cloud/jira/platform/rest/v3/api-group-issue-comments/), with an [API token](https://developer.atlassian.com/cloud/jira/platform/basic-auth-for-rest-apis/)). The model's job holds neither the Jira token nor one that can push.
+- **Who can start it**: whoever holds the token in the flow, so only people you trust should edit the flow. The work item's text is data: the agent reads it from a file.
+
+On GitLab, the flow calls the [pipeline trigger API](https://docs.gitlab.com/ci/triggers/) instead (`POST /api/v4/projects/<id>/trigger/pipeline` with a trigger token, `ref` and `variables[JIRA_KEY]={{issue.key}}`), the jobs run on `if: $CI_PIPELINE_SOURCE == "trigger"`, and the posting job opens the merge request as it pushes, with [push options](https://docs.gitlab.com/topics/git/commit/): `git push -o merge_request.create -o merge_request.target=main -o merge_request.draft -o merge_request.title="KEY: …"`.
 
 ## Rules in CI
 
