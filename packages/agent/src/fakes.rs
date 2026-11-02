@@ -110,6 +110,7 @@ impl Observer for Recorder {
     }
 }
 
+/// The model says `text` and calls nothing: the answer, unless something makes the run go on.
 pub(crate) fn says(text: &str) -> Completion {
     Completion {
         text: Some(text.into()),
@@ -124,9 +125,10 @@ pub(crate) fn done(answer: &str) -> Completion {
 
 /// The `result` call of `--schema`, with `data`.
 pub(crate) fn data(data: &Value) -> Completion {
-    calls(crate::schema::TOOL, serde_json::json!({ "data": data }))
+    calls(crate::schema::TOOL, json!({ "data": data }))
 }
 
+/// The model calls `name` with `arguments`, as the call `c1`.
 pub(crate) fn calls(name: &str, arguments: Value) -> Completion {
     Completion {
         calls: vec![ToolCall {
