@@ -35,10 +35,10 @@ Start a new session: plugins, subagents and the session's hook are read as it st
 `llx grep` is the search Claude starts with when it does not know the exact name: it ranks the
 files by the question's words, a decision model reads the best of them and keeps those that
 answer, and each comes back with its lines. On 24 questions about this repository with known
-answers ([benchmark/grep](../../benchmark/grep/README.md)), its first five files held 97% of the
-files the answers must name, and it named nothing for the four questions the code has no answer
+answers ([benchmark/grep](../../benchmark/grep/README.md)), its first five files held 98% of the
+files the answers must name, and its first ten all of them, and it named nothing for the four questions the code has no answer
 to; the `rg` pattern an agent would type first held 46%, and matched something for two of the
-four. It took 2.4 s and $0.0045 a question, and left Claude 4 KB to read against `rg`'s 19 KB.
+four. It took 2 to 3 s and $0.005 a question, and left Claude 4 KB to read against `rg`'s 19 KB.
 
 The decide guide gives Claude one rule rather than a list of cases: ask `llx decide` when a judgment has
 a few options it can name and the text is long, comes in many items, or is untrusted, so that
