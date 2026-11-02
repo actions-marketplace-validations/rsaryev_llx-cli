@@ -1,0 +1,51 @@
+{
+ "when": "2026-11-02 22:38",
+ "task": "evalkit",
+ "tests": 238,
+ "provider": "openai",
+ "model": "gpt-6-luna",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "after the daemon's removal, JSONL sessions, the seam's cleanup",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 1.7,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.2.0",
+   "commit": "55514bfe",
+   "bytes": 2391200,
+   "sha256": "60a2cd3167af"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 1094.7,
+   "pass": 238,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 83,
+   "input_tokens": 8108586,
+   "cached_tokens": 7957888,
+   "output_tokens": 32397,
+   "cost_usd": 0.1108,
+   "cache_pct": 98,
+   "calls": 88,
+   "failed_commands": 20,
+   "patches": 51,
+   "failed_patches": 9,
+   "model_s": 359.5,
+   "advised": 1
+  }
+ ]
+}
