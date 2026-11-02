@@ -57,11 +57,13 @@ At `f19ba1cb`, on an idle macOS arm64:
 
 | Mode | R@5 | R@10 | P@5 | MRR | none | time | cost | KB read |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| judged | 97% | 97% | 81% | 0.86 | 4/4 | 2.44 s | $0.0045 | 4.1 |
+| judged | 98% | 98% | 80% | 0.89 | 4/4 | 3.89 s | $0.0053 | 4.1 |
 | words | 80% | 93% | 43% | 0.68 | 0/4 | 0.19 s | 0 | 11.3 |
 | rg | 46% | 67% | 35% | 0.25 | 2/4 | 0.03 s | 0 | 19.2 |
 
-What it still misses: a file that does the thing with none of the question's words and is not
-judged likely enough (`concept-1`'s `doctor.rs`, which runs a shell through a wrapper), and the
-precision of a vague question (`flow`), where the decision model leans to yes on every file near
-the subject.
+A file that does the thing with none of the question's words (`concept-1`'s `doctor.rs`, which
+runs a shell through `tools::shell::query`) is found through the module it shares with a file
+that answers: the second round, which costs about a second. What it still misses: a file so
+found that the model still finds less likely than the best by more than 0.25 (`extras.rs`, at
+0.70), and the precision of a vague question (`flow`), where the decision model leans to yes on
+every file near the subject.

@@ -16,6 +16,7 @@ use crate::sync::each_at_once;
 
 mod blocks;
 mod judge;
+mod links;
 mod listing;
 mod rank;
 mod shown;
@@ -90,8 +91,21 @@ pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
                 .map(|doc| (doc, best_parts(doc, &terms, &weights, JUDGED_LINES)))
                 .collect();
             match judge::judged(decider.as_ref(), &args.query, &parts) {
+                // A definition is in one place: the files linked to it are not looked for.
+                Ok(verdicts) if verdicts.yes.iter().any(Option::is_some) && definition => {
+                    let second = vec![false; candidates.len()];
+                    picked(&candidates, &verdicts, &second, &ranked)
+                }
                 Ok(verdicts) if verdicts.yes.iter().any(Option::is_some) => {
-                    picked(&candidates, &verdicts, &ranked)
+                    let (candidates, verdicts, second) = links::second_round(
+                        decider.as_ref(),
+                        args,
+                        &docs,
+                        &terms,
+                        candidates,
+                        verdicts,
+                    );
+                    picked(&candidates, &verdicts, &second, &ranked)
                 }
                 Ok(_) => by_words(
                     &ranked,
@@ -118,9 +132,7 @@ pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
 /// answers a question about the code too rarely to take a place, unless the question is about
 /// tests.
 fn candidates(docs: &[Doc], ranked: &[rank::Scored], terms: &[Term], judge: usize) -> Vec<usize> {
-    let tests_asked = terms
-        .iter()
-        .any(|term| term.finds("test") || term.finds("tests"));
+    let tests_asked = asks_about_tests(terms);
     let kept = |doc: &usize| tests_asked || docs.get(*doc).is_some_and(|d| !rank::is_test(&d.path));
     let mut seen = vec![false; docs.len()];
     let mut order: Vec<usize> = ranked
@@ -141,20 +153,44 @@ fn candidates(docs: &[Doc], ranked: &[rank::Scored], terms: &[Term], judge: usiz
     order
 }
 
+/// Whether the question is about tests: then a test file is read as any other.
+fn asks_about_tests(terms: &[Term]) -> bool {
+    terms
+        .iter()
+        .any(|term| term.finds("test") || term.finds("tests"))
+}
+
 /// The files the model judged likely to answer, most likely first, and those it was unsure of.
-fn picked(candidates: &[usize], verdicts: &judge::Verdicts, ranked: &[rank::Scored]) -> Outcome {
+/// A file the `second` round read comes after those the first kept: it was found through one of
+/// them, and is told so, which leans the model to yes.
+fn picked(
+    candidates: &[usize],
+    verdicts: &judge::Verdicts,
+    second: &[bool],
+    ranked: &[rank::Scored],
+) -> Outcome {
     let place = |doc: usize| {
         ranked
             .iter()
             .position(|scored| scored.doc == doc)
             .unwrap_or(usize::MAX)
     };
-    let mut judged: Vec<(usize, f64, Lead)> =
-        (candidates.iter().zip(&verdicts.yes).zip(&verdicts.lead))
-            .filter_map(|((&doc, yes), lead)| Some((doc, (*yes)?, *lead)))
-            .collect();
-    judged.sort_by(|a, b| b.1.total_cmp(&a.1).then(place(a.0).cmp(&place(b.0))));
-    let best = judged.first().map_or(1.0, |(_, yes, _)| *yes);
+    let round = |at: usize| second.get(at).copied().unwrap_or(false);
+    let mut judged: Vec<(usize, f64, Lead, bool)> = (candidates
+        .iter()
+        .zip(&verdicts.yes)
+        .zip(&verdicts.lead)
+        .enumerate())
+    .filter_map(|(at, ((&doc, yes), lead))| Some((doc, (*yes)?, *lead, round(at))))
+    .collect();
+    judged.sort_by(|a, b| {
+        (a.3.cmp(&b.3))
+            .then(b.1.total_cmp(&a.1))
+            .then(place(a.0).cmp(&place(b.0)))
+    });
+    let best = judged.iter().map(|(_, yes, ..)| *yes).fold(0.0, f64::max);
+    let judged: Vec<(usize, f64, Lead)> =
+        judged.into_iter().map(|(d, y, l, _)| (d, y, l)).collect();
     let shown = YES.max(best - BELOW_BEST);
     let found = (judged.iter())
         .filter(|(_, yes, _)| *yes >= shown)
@@ -244,6 +280,7 @@ fn best_parts(doc: &Doc, terms: &[Term], weights: &[f64], lines: usize) -> judge
     let mut parts = judge::Parts {
         text: String::new(),
         spans: vec![],
+        via: vec![],
     };
     for block in blocks::blocks(&doc.text, &hits, weights, lines, None) {
         let n = parts.spans.len() + 1;
@@ -268,3 +305,7 @@ fn read_all(files: &[String]) -> Result<Vec<Doc>, Failure> {
         .map_err(|error| Failure::Environment(format!("could not start a thread: {error}")))?;
     Ok(read.into_iter().flatten().flatten().collect())
 }
+
+#[cfg(test)]
+#[path = "grep_tests.rs"]
+mod tests;

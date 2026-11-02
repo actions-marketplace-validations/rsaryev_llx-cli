@@ -115,7 +115,7 @@ For a choice among a few options, `llx decide` asks a small decision model about
 $ git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 ```
 
-To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 97% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 2.4 s for $0.0045 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone:
+To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 3.9 s for $0.0053 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone:
 
 ```console
 $ llx grep "where is a failed HTTP request sent again"

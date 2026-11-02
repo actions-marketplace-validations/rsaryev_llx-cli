@@ -54,7 +54,7 @@ llx grep "where is a failed HTTP request sent again"
 llx grep "which files start a child process" src/
 ```
 
-An agent makes it its first search when it does not know the exact name, or when a word would match too much, and keeps `rg` for an exact name. Exit 1 means no file answers: the code has no such thing. On 24 questions about this repository with known answers, its first five files held 97% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, and it named nothing for the four the code cannot answer; 2.4 s and $0.0045 a question, 4 KB to read against `rg`'s 19 KB ([benchmark/grep](../benchmark/grep/README.md)). Without a key it ranks by the words alone (80%, in a fraction of a second). Its options are in the [reference](reference.md#llx-grep).
+An agent makes it its first search when it does not know the exact name, or when a word would match too much, and keeps `rg` for an exact name. Exit 1 means no file answers: the code has no such thing. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, and it named nothing for the four the code cannot answer; 3.9 s and $0.0053 a question, 4 KB to read against `rg`'s 19 KB ([benchmark/grep](../benchmark/grep/README.md)). Without a key it ranks by the words alone (80%, in a fraction of a second). Its options are in the [reference](reference.md#llx-grep).
 
 ## In Claude Code and Codex
 

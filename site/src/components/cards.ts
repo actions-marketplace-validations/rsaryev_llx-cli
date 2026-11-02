@@ -157,7 +157,7 @@ export const CARDS: Card[] = [
       {
         grid: [
           [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],
-          [['acc', 'llx grep'], ['ok', '97%'], ['ok', '4/4']],
+          [['acc', 'llx grep'], ['ok', '98%'], ['ok', '4/4']],
           [['', 'rg, as an agent types it'], ['bad', '46%'], ['bad', '2/4']],
         ],
         align: 'lrr',

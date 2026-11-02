@@ -56,6 +56,7 @@ fn none() -> Parts {
     Parts {
         text: String::new(),
         spans: vec![],
+        via: vec![],
     }
 }
 
@@ -96,6 +97,7 @@ fn a_long_file_is_read_as_its_start_and_its_best_parts() {
     let parts = Parts {
         text: "[part 1: lines 1-1]\nfirst\n[part 2: lines 9-12]\nthe best part\n".into(),
         spans: vec![(0, 1), (8, 12)],
+        via: vec![],
     };
     let verdicts = judged(&table, "q", &[(&long, parts)]).unwrap();
     // The part the model named, by its number.

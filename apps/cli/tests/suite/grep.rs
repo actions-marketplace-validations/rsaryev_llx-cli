@@ -186,3 +186,71 @@ fn a_question_with_no_word_found_finds_nothing_and_a_path_not_there_is_named() {
     assert_eq!(out.status.code(), Some(3), "{}", text(&out.stderr));
     assert!(text(&out.stderr).contains("gone"));
 }
+
+#[test]
+fn a_file_with_none_of_the_words_is_reached_through_the_module_it_shares_with_one_that_answers() {
+    let home = Home::new();
+    let mut files = vec![
+        (
+            "project/src/runner.rs".to_string(),
+            "//! Starts a child process.\n\npub fn start() {\n    tools::shell::spawn(\"make\");\n}\n"
+                .to_string(),
+        ),
+        (
+            "project/src/probe.rs".to_string(),
+            "//! Is the shell there.\n\npub fn probe() -> bool {\n    tools::shell::spawn(\"true\")\n}\n"
+                .to_string(),
+        ),
+    ];
+    for n in 0..8 {
+        files.push((
+            format!("project/src/other{n}.rs"),
+            format!("pub fn other{n}() {{}}\n"),
+        ));
+    }
+    for (name, content) in files {
+        let path = home.path().join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, content).unwrap();
+    }
+    let yes = || Reply::decided("yes", &[("yes", 0.9), ("no", 0.1)]);
+    let model = Model::start(vec![yes(), yes()]);
+    let args = [
+        "grep",
+        "which files start a child process",
+        "project",
+        "--judge",
+        "1",
+        "--files",
+    ];
+    let out = grep(&home, Some(&model), &args);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        text(&out.stdout),
+        "project/src/runner.rs\nproject/src/probe.rs\n",
+        "{}",
+        text(&out.stderr)
+    );
+    // The file reached is read where it names the module, the words of the question not in it.
+    let asked = model.advised();
+    assert_eq!(asked.len(), 2);
+    assert_eq!(asked[1]["state"]["path"], "project/src/probe.rs");
+    assert!(
+        asked[1]["state"]["text"]
+            .as_str()
+            .unwrap()
+            .contains("tools::shell::spawn(\"true\")")
+    );
+    // And told why: what it does through the module is its own doing.
+    let question = asked[1]["questions"]
+        .as_object()
+        .unwrap()
+        .values()
+        .next()
+        .unwrap();
+    assert!(
+        question["instructions"]
+            .to_string()
+            .contains("reached through `tools::shell`")
+    );
+}
