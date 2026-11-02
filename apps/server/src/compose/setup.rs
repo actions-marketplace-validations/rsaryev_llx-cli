@@ -56,8 +56,8 @@ pub(crate) struct Shared {
     pub choice: Choice,
     pub terminal: bool,
     pub asks: bool,
-    /// The person at this interface, asked one question at a time (`gate::one_question`): each
-    /// terminal of the daemon is a person of its own.
+    /// The person the run has, asked one question at a time (`gate::one_question`, K3), at the
+    /// terminal or through the interface.
     pub asking: std::sync::Mutex<()>,
     pub drawing: Option<Drawing>,
 }

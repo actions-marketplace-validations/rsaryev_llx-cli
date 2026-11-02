@@ -30,13 +30,9 @@ pub(crate) struct Stoppable<'a> {
 
 pub(crate) const STOPPED: &str = "the person stopped the task";
 
-/// One question to the person at a time: an approval or an `ask`, from the main session or from
-/// any agent working beside it, waits on its person's lock for the one open to be answered. A
-/// person is one interface's (a desk's, `Shared::asking`), so a question waiting at one terminal
-/// of the daemon never holds another's; the terminal this process runs at has this one.
-static ASKING: Mutex<()> = Mutex::new(());
-
-/// Hold `person`'s attention for one question.
+/// Hold `person`'s attention for one question (K3): an approval or an `ask`, from the main session
+/// or from any agent working beside it, waits on the lock of the person the run has
+/// (`Shared::asking`) for the one open to be answered.
 pub(crate) fn one_question(person: &Mutex<()>) -> std::sync::MutexGuard<'_, ()> {
     crate::sync::lock(person)
 }
@@ -195,19 +191,22 @@ pub(crate) trait Asker: Send + Sync {
     fn approve(&self, effect: &Effect) -> Option<Approval>;
 }
 
-/// Asks at the terminal, on `prompter`.
-pub(crate) struct TerminalGate<P: Prompter>(pub P);
+/// Asks at the terminal, on `prompter`, one question at a time on the person's lock `asking`.
+pub(crate) struct TerminalGate<'a, P: Prompter> {
+    pub prompter: P,
+    pub asking: &'a Mutex<()>,
+}
 
-impl<P: Prompter> Asker for TerminalGate<P> {
+impl<P: Prompter> Asker for TerminalGate<'_, P> {
     fn approve(&self, effect: &Effect) -> Option<Approval> {
         let tool = printable(effect.tool);
         let question = format!(
             "\n  {tool}: {}\n  allow? [y]es  [n]o (n <why> tells the agent)  [a]lways for {tool} > ",
             printable(effect.summary)
         );
-        let _asking = one_question(&ASKING);
+        let _asking = one_question(self.asking);
         for _ in 0..TRIES {
-            if let Some(approval) = answer(&self.0.ask(&question)?) {
+            if let Some(approval) = answer(&self.prompter.ask(&question)?) {
                 return Some(approval);
             }
         }

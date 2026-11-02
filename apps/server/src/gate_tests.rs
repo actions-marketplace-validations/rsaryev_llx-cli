@@ -8,7 +8,10 @@ use crate::testing::Typed;
 /// Asking at a terminal that reads `script`, as the default mode does.
 fn terminal(script: &Typed) -> crate::mode::ModeGate<'_> {
     let mode = Box::leak(Box::new(ModeCell::new(crate::modes::built("default"))));
-    let asker = Box::new(TerminalGate(script));
+    let asker = Box::new(TerminalGate {
+        prompter: script,
+        asking: Box::leak(Box::default()),
+    });
     crate::mode::ModeGate::new(mode, Some(asker), &|_| {})
 }
 

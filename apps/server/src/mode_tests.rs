@@ -13,7 +13,13 @@ fn asking<'a>(
     typed: Option<&'a Typed>,
     waited: &'a (dyn Fn(Duration) + Sync),
 ) -> ModeGate<'a> {
-    let asker = typed.map(|typed| Box::new(TerminalGate(typed)) as Box<dyn Asker + 'a>);
+    let asker = typed.map(|typed| {
+        let at_terminal = TerminalGate {
+            prompter: typed,
+            asking: Box::leak(Box::default()),
+        };
+        Box::new(at_terminal) as Box<dyn Asker + 'a>
+    });
     ModeGate::new(mode, asker, waited)
 }
 

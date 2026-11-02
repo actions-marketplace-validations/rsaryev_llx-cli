@@ -69,7 +69,13 @@ pub(crate) fn assemble(
             stopped: &stopped,
             asking: &shared.asking,
         })),
-        None => (shared.terminal).then(|| Box::new(TerminalGate(Tty)) as Box<dyn Asker>),
+        None => (shared.terminal).then(|| {
+            let at_terminal = TerminalGate {
+                prompter: Tty,
+                asking: &shared.asking,
+            };
+            Box::new(at_terminal) as Box<dyn Asker>
+        }),
     };
     let approver = ModeGate::new(&mode, asker, &waited);
     let gate = Stoppable {
