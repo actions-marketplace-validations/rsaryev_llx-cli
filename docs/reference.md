@@ -101,10 +101,10 @@ The pattern is a regex as `rg` writes it (`spawn|Command::new`, `fn \w+_worker\(
 | `-i, --ignore-case` | The patterns in any case. |
 | `-l, --files` | The paths alone, best first, a line each. |
 | `--json` | One JSON object (below). |
-| `-n, --limit N` | At most N files shown with their lines; the rest are named. Default 10. |
+| `-n, --limit N` | At most N files shown with their lines; the rest the decision model kept are named. Default 10. |
 | `--lines N` | At most N lines shown in all, the best file given the most. Default 150. |
 | `--lexical` | By the words alone, even where a decision model is there: no network, no cost. |
-| `--judge N` | At most N files read by the decision model, the best by their words first. Default 80. |
+| `--judge N` | At most N files read by the decision model, the best by their words first (all of them, but the tests, when there are no more than half again as many). Default 80. |
 | `-m, --model MODEL` | The decision model. Env `LLX_DECISION_MODEL`, default `~typesafe/jev-latest`. |
 
 The output is each file's path and score, then its parts, each line with its number; `..` between parts apart; then `also:` the files past `--limit`, and `unsure, read to check:` those the model doubted. On stderr, one line says how many files answer of how many read, how they were picked, the time and the cost. With `--json`:

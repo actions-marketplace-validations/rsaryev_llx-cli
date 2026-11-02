@@ -1,6 +1,7 @@
 //! A search's words: the terms a question names, and the words of a text split as code names
 //! things (`parse_rows`, `parseRows` and `ParseRows` are each `parse` and `rows` too), so a term
-//! finds a name in any case and in its inflections (`kills` finds `kill` and `killpg`).
+//! finds a name in any case, in its inflections and as the start of a longer one (`kills` finds
+//! `kill` and `killed`, `kill` finds `killpg`).
 
 use super::pattern::Pattern;
 

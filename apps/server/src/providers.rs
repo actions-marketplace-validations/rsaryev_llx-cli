@@ -54,8 +54,9 @@ const DEFAULTS: [(&str, &str); 2] = [
     ("openrouter", "anthropic/claude-haiku-5.5"),
 ];
 
-/// The decision model `llx decide`, `llx grep` and `llx doctor` start with, and the one that
-/// advises a session's tasks: a policy, by catalog id (OpenRouter's).
+/// The decision model `llx decide`, `llx grep` and `llx doctor` start with, and the one a
+/// session's tasks are advised by and its `grep` tool reads with: a policy, by catalog id
+/// (OpenRouter's).
 pub(crate) const DECISION_DEFAULT: &str = "~typesafe/jev-latest";
 
 /// How often a long-lived process looks for a newer catalog: a file's time, and the refresh

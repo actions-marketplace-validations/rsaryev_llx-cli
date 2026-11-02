@@ -1,7 +1,7 @@
 //! `llx doctor`: is everything a run needs in place? The sign-in to each provider, both models
 //! (each asked one tiny question), and the shell `bash` runs in. A missing decision model only
-//! leaves out `llx decide`, the advice and `llx grep`'s reading (it ranks by words alone), so it
-//! warns without failing.
+//! leaves out `llx decide`, the advice and the reading of `grep`, the command's and the agent's
+//! (they rank by words alone), so it warns without failing.
 
 use std::collections::BTreeMap;
 use std::time::Duration;
