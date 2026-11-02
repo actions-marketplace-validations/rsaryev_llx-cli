@@ -30,12 +30,12 @@ chain with `&&`. Input is closed and there is no terminal: never start an intera
 with everything it started, after `timeout_ms` (default 120000, at most 600000): start a server \
 in the background with its output sent to a file. The output of a command that succeeds keeps \
 about 80000 characters (some 20000 tokens), so files of up to some 1500 lines in all read whole \
-in one command; that of one that fails, about 40000. Past that, the start and the end are kept \
-and lines over 2000 characters shortened; the result names a file with the whole output and the \
-command that reads the cut part: read that file rather than running the command again. A \
-non-zero exit is reported as output, not as a failure. Where the context says commands run in a \
-sandbox, one that must write outside the workspace, reach the network or open a socket (a \
-server) sets `escalate`: the person is asked to let it run as it is.";
+in one command; that of one that fails, about 40000. Past that, the start and the end are kept, \
+and in any output lines over 2000 characters are shortened; the result names a file with the \
+whole output and the command that reads the cut part: read that file rather than running the \
+command again. A non-zero exit is reported as output, not as a failure. Where the context says \
+commands run in a sandbox, one that must write outside the workspace, reach the network or open \
+a socket (a server) sets `escalate`: the person is asked to let it run as it is.";
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
