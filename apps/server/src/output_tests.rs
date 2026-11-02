@@ -134,7 +134,8 @@ fn a_person_reads_the_trace_on_stderr_and_the_answer_alone_on_stdout() {
     let output = Output::with(false, false, Box::new(out.clone()), Box::new(err.clone()));
     run(&output.drawn(Some(trace)));
     assert_eq!(out.text(), "All tests pass.\n");
-    // The trace is told what an interface is (`tui::Trace` draws it), how the task ended last.
+    // The trace is told what an interface is told (`tui::Trace` draws it): the call, its result,
+    // how the task ended, then the spend line.
     let [call, result] = told_call();
     let end = Event::TaskEnded {
         status: "done".into(),

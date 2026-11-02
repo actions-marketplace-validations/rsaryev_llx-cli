@@ -14,8 +14,9 @@ use super::monitor::{self, Ended};
 use super::spec::{self, Action, When};
 use super::{Job, Jobs, State, What, cron};
 
-/// Monitors running at once at most, and jobs of either kind kept once a schedule is added.
+/// Monitors running at once, at most.
 const MAX_MONITORS: usize = 8;
+/// Jobs of either kind kept, at most, for a schedule to be added.
 const MAX_SCHEDULES: usize = 50;
 /// How long a recurring schedule lives.
 const WEEK: u64 = 7 * 86_400;

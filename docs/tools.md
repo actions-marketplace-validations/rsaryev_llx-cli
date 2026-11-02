@@ -72,7 +72,7 @@ Starts other agents and works with them, in parallel. The model starts one only 
 Work that comes back later.
 
 - `monitor` runs a command in the background, asked of the gate and sandboxed as `bash`'s are (`escalate` too), in a session of its own, without the key variables `bash` leaves out and without its `AGENT`, `NO_COLOR` and `TERM`. Each batch of lines it prints (40 lines at most, each cut at 400 characters) reaches the main agent as a `<monitor>` message, at its next step while a task runs, else as a task of its own. It ends when the command exits, after 100 batches, at its deadline (5 min by default, 30 at most; 10 at most in `exec`, where the task waits for it) or with `stop`, and the agent is told.
-- `schedule` gives a `prompt` back as a task of its own at a time: `in` (`45m`, `2h`, `1d`), once; or a 5-field `cron` in local time (`*/10 * * * *`, `0 9 * * 1-5`; both day fields restricted match either), once or `recurring` (for 7 days at most). It runs between tasks, behind what you queued, while the session is open (not in `exec`; not restored by `resume`; no jitter).
+- `schedule` gives a `prompt` back as a task of its own at a time: `in` (`45m`, `2h`, `1d`), once; or a 5-field `cron` in local time (`*/10 * * * *`, `0 9 * * 1-5`; when both day fields are restricted a day matches either, and a field that starts with `*`, `*/2` too, is not: a day then matches both), once or `recurring` (for 7 days at most). It runs between tasks, behind what you queued, while the session is open (not in `exec`; not restored by `resume`; no jitter).
 - At most 8 monitors and 50 jobs. `list`, `stop`.
 
 ## result
