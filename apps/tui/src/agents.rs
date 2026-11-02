@@ -144,7 +144,8 @@ impl App {
     }
 
     /// Show the session `id`: its whole transcript, from the top. Another lane's gives the
-    /// list's keys back to the prompt: the rows it chose among were the other lane's.
+    /// list's keys back to the prompt: the rows it chose among were the other lane's. So does
+    /// one shown in place of a lane that ended, though a job chosen is still drawn.
     pub(crate) fn show(&mut self, id: &str) {
         let Some(at) = self.views.find(id) else {
             return;
@@ -152,7 +153,9 @@ impl App {
         if id == self.views.shown {
             return;
         }
-        if self.views.lane_of(at) != self.views.home() {
+        // The lane shown until now, `None` when it just ended.
+        let was = self.views.find(&self.views.shown);
+        if was.map(|shown| self.views.lane_of(shown)) != Some(self.views.lane_of(at)) {
             self.views.focus = None;
         }
         self.views.shown = id.to_string();

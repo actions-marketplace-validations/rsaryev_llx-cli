@@ -462,6 +462,47 @@ fn another_lane_shown_gives_the_keys_back_to_the_prompt() {
     assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
 }
 
+/// Lanes `ids`, the first shown, the last with the job `watch`, chosen in the list.
+fn a_job_chosen_in_the_last_of(ids: &[&str], now: Instant) -> App {
+    let mut app = app();
+    for &id in ids {
+        let (id, name) = (id.to_string(), id.to_string());
+        app.event(Event::LaneStarted { id, name }, now);
+    }
+    let last = ids.last().copied().unwrap_or_default();
+    app.frame(in_session(last, Event::Jobs(vec![job("j", "watch")])), now);
+    press(&mut app, KeyCode::Down, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
+    app
+}
+
+#[test]
+fn another_lane_shown_gives_the_keys_back_though_the_job_chosen_is_still_drawn() {
+    let now = Instant::now();
+    let mut app = a_job_chosen_in_the_last_of(&["tui-shown-a", "tui-shown-b"], now);
+    // Every lane's jobs are drawn under each: the row stays, but the lane on the screen changed.
+    app.event(Event::Show("tui-shown-b".into()), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), None, "{screen}");
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
+}
+
+#[test]
+fn the_lane_shown_ending_gives_the_keys_back_as_another_is_shown_in_its_place() {
+    let now = Instant::now();
+    let ids = ["tui-gone-a", "tui-gone-b", "tui-gone-c"];
+    let mut app = a_job_chosen_in_the_last_of(&ids, now);
+    // A ends while shown: B is shown in its place, and C's job is still drawn under it.
+    app.frame(in_session("tui-gone-a", Event::LaneEnded), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert!(screen.contains("◷ watch"), "{screen}");
+    assert_eq!(chosen(&screen), None, "{screen}");
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
+}
+
 #[test]
 fn an_agent_started_in_a_lane_gets_its_events() {
     let now = Instant::now();
