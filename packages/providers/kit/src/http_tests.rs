@@ -73,6 +73,8 @@ fn a_query_value_is_found_and_decoded() {
 fn a_broken_escape_stays_as_it_was() {
     assert_eq!(decode("100%"), "100%");
     assert_eq!(decode("%zz%4"), "%zz%4");
+    // Two hex digits make an escape, never a sign and one: `+` after it is still a space.
+    assert_eq!(decode("%+1"), "% 1");
     assert_eq!(decode("%C3%A9"), "\u{e9}");
 }
 

@@ -227,10 +227,10 @@ fn decode(text: &str) -> String {
     let mut out = Vec::with_capacity(bytes.len());
     let mut at = 0;
     while at < bytes.len() {
-        let escaped = bytes.get(at + 1..at + 3).and_then(|hex| {
-            let hex = std::str::from_utf8(hex).ok()?;
-            u8::from_str_radix(hex, 16).ok()
-        });
+        // Two hex digits, checked as such: `from_str_radix` would also take a sign (`%+1`).
+        let escaped = (bytes.get(at + 1..at + 3))
+            .filter(|hex| hex.iter().all(u8::is_ascii_hexdigit))
+            .and_then(|hex| u8::from_str_radix(std::str::from_utf8(hex).ok()?, 16).ok());
         match (bytes[at], escaped) {
             (b'%', Some(byte)) => {
                 out.push(byte);
