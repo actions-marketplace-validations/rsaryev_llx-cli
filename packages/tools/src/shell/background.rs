@@ -94,11 +94,15 @@ pub(super) fn hand(
 const FULL: &str = "the session takes no more jobs: `jobs list` shows them, `jobs stop` ends \
 one; the command was killed with everything it started";
 
+/// What waiting for a job's end takes.
+const IDLE: &str = "Nothing more is needed to learn its end: no monitor, poll or sleep. Do other \
+independent work; if there is none, respond without a tool call and wait.";
+
 /// What the model reads of a command started in the background.
 fn started(job: &Adopted, file: Option<&Path>) -> String {
     let mut out = vec![format!(
         "Running in the background: job `{}` ({}); its end comes back to you on its own as a \
-         <background> message: do not poll for it or sleep; `jobs stop` ends it.",
+         <background> message. {IDLE} `jobs stop` ends it.",
         job.name, job.id
     )];
     out.extend(whole(file));
@@ -109,8 +113,8 @@ fn started(job: &Adopted, file: Option<&Path>) -> String {
 fn moved(job: &Adopted, elapsed: Duration, file: Option<&Path>, so_far: &str) -> String {
     let mut out = vec![format!(
         "Still running after: {:.1} seconds (moved to the background as job `{}` ({}); its end \
-         comes back to you on its own as a <background> message. It runs now: do not start a \
-         second copy. A command that should have ended by now may be stuck, looping or waiting, \
+         comes back to you on its own as a <background> message. {IDLE} It runs now: do not \
+         start a second copy. A command that should have ended by now may be stuck, looping or waiting, \
          rather than slow: if so, end it with `jobs stop` and find why.)",
         elapsed.as_secs_f64(),
         job.name,
