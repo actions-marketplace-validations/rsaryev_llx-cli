@@ -510,6 +510,33 @@ fn hidden_lane_done_sets_unseen_and_notes_it() {
     assert!(!app.views.sessions[b].unseen, "seen once shown");
 }
 
+/// A lane's task ends `exhausted` when its turns, its time (`--timeout`) or its budget
+/// (`--budget`) ran out, and the status does not say which: the line about it names no one limit.
+#[test]
+fn a_hidden_lane_a_limit_stopped_says_it_reached_one_not_which() {
+    let now = Instant::now();
+    let mut app = App::new(80, 20, vec![]);
+    for (id, name) in [("A", "first"), ("B", "fix the flaky jobs test")] {
+        let (id, name) = (id.to_string(), name.to_string());
+        app.event(Event::LaneStarted { id, name }, now);
+    }
+    crate::test_support::history(&mut app);
+    let from = |event| in_session("B", event);
+    app.frame(from(Event::TaskStarted("fix it".into())), now);
+    let ended = Event::TaskEnded {
+        status: "exhausted".into(),
+        millis: 188_000,
+        turns: 3,
+        cost: 0.0,
+    };
+    app.frame(from(ended), now);
+    let shown = crate::test_support::history(&mut app);
+    assert!(
+        shown.contains("● Session \"fix the flaky jobs test\" reached a limit · 3m 08s"),
+        "{shown}"
+    );
+}
+
 #[test]
 fn a_resumed_lane_is_named_by_the_first_line_of_its_first_task() {
     let now = Instant::now();

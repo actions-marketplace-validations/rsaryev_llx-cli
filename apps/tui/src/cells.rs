@@ -63,7 +63,7 @@ pub(crate) fn end(end: &End, width: usize) -> Vec<Line<'static>> {
     let verb = match end.status {
         "interrupted" => "Stopped after",
         "error" => "Failed after",
-        // A limit of turns or of time: the error line under it says which.
+        // Its turns, its time or its budget ran out: the error line under it says which.
         "exhausted" => "Ran out after",
         _ => "Worked for",
     };

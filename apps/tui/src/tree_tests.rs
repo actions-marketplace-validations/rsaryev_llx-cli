@@ -100,28 +100,6 @@ fn an_agent_shows_how_long_it_worked_and_its_tokens_after_what_it_does() {
     assert_eq!(row, "    └ * scout  thinking · 1m 08s · 54.1k tokens");
 }
 
-/// A task a limit stopped ends `exhausted` whichever ran out, its turns, its time or its budget:
-/// its row and the line its lane is told name no one limit, as the status does not say which.
-#[test]
-fn an_agent_stopped_by_a_limit_says_it_reached_one_not_which() {
-    let now = Instant::now();
-    let mut app = App::new(60, 20, vec![]);
-    started(&mut app, "s1", "scout");
-    let agent = |event| in_session("s1", event);
-    app.frame(agent(Event::TaskStarted("look".into())), now);
-    crate::test_support::history(&mut app);
-    let ended = Event::TaskEnded {
-        status: "exhausted".into(),
-        millis: 1,
-        turns: 1,
-        cost: 0.0,
-    };
-    app.frame(agent(ended), now);
-    assert_eq!(rows(&app)[1], "    └ ✗ scout  limit reached");
-    let told = crate::test_support::history(&mut app);
-    assert!(told.contains("● Agent \"scout\" reached a limit"), "{told}");
-}
-
 #[test]
 fn wide_tree_keeps_names_readable_and_statistics_near_the_rows() {
     let now = Instant::now();

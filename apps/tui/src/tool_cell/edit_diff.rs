@@ -6,7 +6,7 @@ use crate::printable::printable;
 use crate::style;
 use crate::wrap::{fit, hard, width as columns};
 
-/// `diff`'s hunks as rows of at most `width`: each line under its old and new numbers, its sign
+/// `diff`'s hunks as rows of at most `width`: each line after its old and new numbers, its sign
 /// and code coloured, a long one broken under its own start; `…` between two hunks.
 pub(super) fn render(diff: &str, width: usize) -> Vec<Line<'static>> {
     let (mut old, mut new) = (0, 0);

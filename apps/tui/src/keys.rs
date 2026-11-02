@@ -1,6 +1,7 @@
 //! The keys the interface takes outside a question: stopping and quitting, sending (now, or for
 //! after the task with Tab), the next mode (Shift+Tab) and the reasoning level (Shift+Up/Down),
-//! the editor, the clipboard's picture and a suspend, and what `/` and `@` offer.
+//! the rewind (Esc twice), the sessions (← and ↓), the editor, the clipboard's picture and a
+//! suspend, and what `/` and `@` offer.
 
 use std::path::PathBuf;
 use std::time::Instant;

@@ -74,7 +74,7 @@ fn doing(running: &[Running]) -> Option<String> {
 }
 
 /// How long a session has worked, its task running too, and the tokens it used: `1m 08s · 54.1k
-/// tokens`; nothing before its first second.
+/// tokens`; nothing while it has neither a second nor a token.
 pub(crate) fn spent(view: &SessionView, now: Instant) -> String {
     let millis = view.worked + view.busy.map_or(0, |since| time::elapsed_ms(now, since));
     match (millis < 1000, view.tokens) {

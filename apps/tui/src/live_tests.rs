@@ -101,8 +101,8 @@ fn working_shows_the_call_its_steps_the_time_and_the_queue() {
     app.event(Event::TaskStarted("fix the parser".into()), start);
     let wait = label("Waiting for", "Waited for", "agent scout");
     app.event(call("c1", "agents", &wait), start);
-    // What the agent it waits for does, as the server says it under the call.
-    app.event(Event::Step("scout: Running cargo test".into()), start);
+    // What the agent it waits for did, as the server says it under the call (`agents/watch.rs`).
+    app.event(Event::Step("scout: Ran cargo test".into()), start);
     // Tab while it works keeps the entry for after the task; the session says the mode.
     typed(&mut app, "then update the changelog", start);
     press(&mut app, KeyCode::Tab, start);
@@ -113,7 +113,7 @@ fn working_shows_the_call_its_steps_the_time_and_the_queue() {
     app.event(Event::Mode("plan".into()), start);
     insta::assert_snapshot!(shown(&app, start + Duration::from_millis(12_300)), @"
     ⠸ Waiting for agent scout
-      └ scout: Running cargo test
+      └ scout: Ran cargo test
 
     ⠸ Working (12s · esc stop)
       ⏎ then update the changelog

@@ -1,8 +1,8 @@
 //! The list under the composer as it takes keys: ↓ from an empty prompt gives it the keys, ↑ and
 //! ↓ choose a row, Enter or → shows a session, `x` stops a session, an agent or a job, and Esc or
 //! ← (or ↑ past the top) give the keys back to the composer. And what every list of the interface
-//! shares (the `/` offers, the sessions, a choice's options): how a marker moves, the `N more`
-//! row, and a dim row under the composer.
+//! shares (the `/` offers, the sessions, a choice's options): how a marker moves and the `N more`
+//! row; and the dim row the live area and the tree draw under the composer.
 
 use std::time::Instant;
 

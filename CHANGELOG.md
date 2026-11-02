@@ -12,6 +12,8 @@
 - A question withdrawn as it was asked (the lane closed, the person left) is no longer shown again to every interface that attaches later.
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
 - The cursor no longer lands a row too low when rows wider than the terminal sit both above and below it in the live area.
+- A task stopped by `--timeout` or `--budget` no longer reads "out of turns" in the session list, the tree under the composer and the line a lane is told: it reads "limit reached", as one out of turns does, the error line under it saying which.
+- In a choice shown in tabs (`/model`'s providers), a number picks only a row of the tab shown, never one of a tab out of sight.
 - Ctrl+G's draft for `$EDITOR` is made as a new file only the person can read: a link planted at its name in a shared `/tmp` is no longer written through.
 - `llx grep` says why the decision model gave no answer when it falls back to the words alone (`OpenRouter answered 402: Insufficient credits`), not only that it gave none.
 - A streamed reply that fails after its first words (an error OpenRouter reports inside the stream) is no longer sent again at once: those words were billed. It is sent again only as a request that went out unanswered is, and an error before any word is still retried.
