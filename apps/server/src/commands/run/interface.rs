@@ -26,7 +26,7 @@ pub(super) fn in_process(root: &Workspace, front: &'static dyn Front) -> Result<
     )]
     let ((to_server, incoming), (out, from_server)) = (channel(), channel());
     let (peer, requests) = serving(incoming, out).map_err(|error| why(error.to_string()))?;
-    let interface = front.attach(root.root(), to_server, from_server);
+    let interface = front.attach(root.root(), to_server, from_server, offer());
     let held = interface.map_err(|Unready(error)| why(error))?;
     // A newer model catalog, for the next session: nothing here waits on it.
     crate::providers::refresh_catalog();
@@ -50,15 +50,14 @@ pub(crate) fn serving(
     let (desk, requests) = channel();
     let peer = Peer::new(out);
     let served = Arc::clone(&peer);
-    let info = info();
     let server = std::thread::Builder::new().name("llx-serve".into());
-    server.spawn(move || serve::serve(&incoming, &served, &desk, &info))?;
+    server.spawn(move || serve::serve(&incoming, &served, &desk))?;
     Ok((peer, requests))
 }
 
-/// What the server says of itself: what it offers.
-pub(crate) fn info() -> serve::Info {
-    serve::Info {
+/// What the server offers the interface (W3).
+pub(crate) fn offer() -> protocol::Offer {
+    protocol::Offer {
         max_lanes: desk::MAX_LANES,
         commands: entry::commands(),
         // A server's settings that cannot be read refused its run already; here the list is all.

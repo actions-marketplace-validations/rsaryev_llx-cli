@@ -9,29 +9,15 @@ use protocol::{Command, Done, ToClient, ToServer};
 use super::ui::Peer;
 use crate::desk::Request;
 
-/// What the server tells the interface of itself at the handshake.
-pub(crate) struct Info {
-    pub max_lanes: usize,
-    /// What `/` offers, each command with what it does.
-    pub commands: Vec<(String, String)>,
-    /// The modes, each with what it does.
-    pub modes: Vec<(String, String)>,
-}
-
 /// Serve the interface until it is gone: replies to their questions, lanes' commands to the
 /// desk, the person's entries to the lanes' queues. Once it is gone the person's prompts end with
 /// nothing, and the desk, its requests' sender dropped with it, stops the lanes' work.
-pub(crate) fn serve(
-    incoming: &Receiver<ToServer>,
-    peer: &Peer,
-    desk: &Sender<Request>,
-    info: &Info,
-) {
+pub(crate) fn serve(incoming: &Receiver<ToServer>, peer: &Peer, desk: &Sender<Request>) {
     for frame in incoming {
         match frame {
             ToServer::Reply { id, reply } => peer.replied(id, reply),
             ToServer::Call { id, command } => {
-                let done = guarded(command, peer, desk, info);
+                let done = guarded(command, peer, desk);
                 peer.send(ToClient::Done { id, done });
             }
         }
@@ -42,8 +28,8 @@ pub(crate) fn serve(
 
 /// [`done`], a panic in it that command's failure, never the connection's end (W8). The lints
 /// keep panics out of working code; this is for the one that gets through (an index, a library).
-fn guarded(command: Command, peer: &Peer, desk: &Sender<Request>, info: &Info) -> Done {
-    let doing = std::panic::AssertUnwindSafe(|| done(command, peer, desk, info));
+fn guarded(command: Command, peer: &Peer, desk: &Sender<Request>) -> Done {
+    let doing = std::panic::AssertUnwindSafe(|| done(command, peer, desk));
     std::panic::catch_unwind(doing).unwrap_or_else(|panic| {
         let what = (panic.downcast_ref::<&str>().map(|why| why.to_string()))
             .or_else(|| panic.downcast_ref::<String>().cloned())
@@ -61,7 +47,7 @@ fn not_open(session: &str) -> Done {
     }
 }
 
-fn done(command: Command, peer: &Peer, desk: &Sender<Request>, info: &Info) -> Done {
+fn done(command: Command, peer: &Peer, desk: &Sender<Request>) -> Done {
     let to_desk = |request| match desk.send(request) {
         Ok(()) => Done::Ok,
         Err(_gone) => Done::Failed {
@@ -69,11 +55,6 @@ fn done(command: Command, peer: &Peer, desk: &Sender<Request>, info: &Info) -> D
         },
     };
     match command {
-        Command::Initialize => Done::Initialized {
-            max_lanes: info.max_lanes,
-            commands: info.commands.clone(),
-            modes: info.modes.clone(),
-        },
         // A lane that ended keeps nothing: what comes for it is refused, never kept. One that
         // is ending may still be listed as working; its queue, forgotten first, refuses it.
         Command::Input(input) => {

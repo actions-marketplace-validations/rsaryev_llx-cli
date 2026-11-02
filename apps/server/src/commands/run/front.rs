@@ -8,7 +8,7 @@ use std::fmt;
 use std::path::Path;
 use std::sync::mpsc::{Receiver, Sender};
 
-use protocol::{ToClient, ToServer};
+use protocol::{Offer, ToClient, ToServer};
 
 use crate::output::Drawing;
 
@@ -16,12 +16,14 @@ use crate::output::Drawing;
 /// lane's trace is drawn as the binary draws it.
 pub trait Front: Send + Sync {
     /// The interface at this terminal, over `to_server` and `from_server` to its server in this
-    /// process: what holds the terminal, given back when it is dropped.
+    /// process, which offers it `offer` (W3): what holds the terminal, given back when it is
+    /// dropped.
     fn attach(
         &self,
         root: &Path,
         to_server: Sender<ToServer>,
         from_server: Receiver<ToClient>,
+        offer: Offer,
     ) -> Result<Box<dyn Any>, Unready>;
     /// The terminal given back, and the process ended at once: lanes that do not stop in time.
     fn quit(&self);

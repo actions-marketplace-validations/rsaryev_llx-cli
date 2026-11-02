@@ -58,14 +58,7 @@ fn serving(peer: &Arc<Peer>) -> Sender<ToServer> {
     let peer = Arc::clone(peer);
     let serving = std::thread::Builder::new().name("serving".into());
     serving
-        .spawn(move || {
-            let info = super::super::serve::Info {
-                max_lanes: 3,
-                commands: vec![],
-                modes: vec![],
-            };
-            super::super::serve::serve(&incoming, &peer, &desk, &info);
-        })
+        .spawn(move || super::super::serve::serve(&incoming, &peer, &desk))
         .unwrap();
     to_server
 }

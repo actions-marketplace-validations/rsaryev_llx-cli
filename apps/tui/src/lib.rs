@@ -53,7 +53,7 @@ use std::sync::mpsc::{Sender, channel};
 use std::thread::JoinHandle;
 
 use client::Client;
-use protocol::{Command, Done, Event, ToClient};
+use protocol::{Command, Done, Event, Offer, ToClient};
 
 use self::app::App;
 use self::event::Input;
@@ -76,10 +76,11 @@ pub type Deliver = Box<dyn Fn(ToClient) + Send>;
 /// process.
 pub type Connect<'a> = Box<dyn FnOnce(Deliver) -> io::Result<Client> + 'a>;
 
-/// What the interface is given: its connection to the server, the directory for `@` (where the
-/// sessions work), and how to end the process at once.
+/// What the interface is given: its connection to the server, what the server offers (W3), the
+/// directory for `@` (where the sessions work), and how to end the process at once.
 pub struct Start<'a> {
     pub connect: Connect<'a>,
+    pub offer: Offer,
     pub root: &'a std::path::Path,
     pub quit_now: fn() -> !,
 }
@@ -127,14 +128,11 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
     let client = (start.connect)(Box::new(move |frame| {
         let _ = gone.0.send(Input::Frame(frame));
     }))?;
-    let Ok(Done::Initialized {
+    let Offer {
         max_lanes,
         commands,
         modes,
-    }) = client.call(Command::Initialize, drawing::ANSWER)
-    else {
-        return Err(io::Error::other("the server did not attach the interface"));
-    };
+    } = start.offer;
     let mut app = App::new(usize::from(width), usize::from(height), commands);
     let files = inbox.clone();
     let arrive = move |list| {

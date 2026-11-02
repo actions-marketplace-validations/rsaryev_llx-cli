@@ -26,7 +26,7 @@ use crate::desk::{Work, run};
 use crate::meta::title::Namer;
 use crate::mode::Mode;
 use crate::output::Output;
-use crate::server::serve::{Info, serve};
+use crate::server::serve::serve;
 use crate::server::{Peer, Ui};
 use crate::sync::lock;
 
@@ -260,13 +260,8 @@ pub(crate) fn served_titled(
     std::thread::scope(|scope| {
         let task = task.map(str::to_string);
         let desk = scope.spawn(|| run(&shared, &ui, asked, seat, task, &start, quit));
-        let info = Info {
-            max_lanes: MAX_LANES,
-            commands: vec![],
-            modes: vec![],
-        };
         let served = Arc::clone(&peer);
-        scope.spawn(move || serve(&incoming, &served, &to_desk, &info));
+        scope.spawn(move || serve(&incoming, &served, &to_desk));
         person(Link { frames, to_server }, &Server(Arc::clone(&peer)));
         let deadline = Instant::now() + Duration::from_secs(10);
         while !desk.is_finished() {

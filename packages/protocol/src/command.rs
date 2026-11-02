@@ -5,8 +5,6 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    /// The handshake, first and once (W3).
-    Initialize,
     /// What the person sent a session: its next task, words for the task running, or a command.
     Input(Input),
     /// Ctrl-C: stop the session's task; with none running, or once it was stopped, the person
@@ -57,17 +55,20 @@ pub struct Running {
     pub name: String,
 }
 
+/// What the server offers, handed to the interface as it starts, with the channels (W3): the
+/// commands `/` offers and the modes `/mode` does, each with what it does, and the lanes it opens
+/// at most.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Offer {
+    pub max_lanes: usize,
+    pub commands: Vec<(String, String)>,
+    pub modes: Vec<(String, String)>,
+}
+
 /// What came of a command.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Done {
     Ok,
-    /// The server and what it allows: the commands `/` offers and the modes `/mode` does, each
-    /// with what it does.
-    Initialized {
-        max_lanes: usize,
-        commands: Vec<(String, String)>,
-        modes: Vec<(String, String)>,
-    },
     /// What an interrupt came to: `again` when no task ran or it was stopped already, so the
     /// interface may quit.
     Interrupted {

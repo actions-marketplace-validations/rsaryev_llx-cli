@@ -27,14 +27,7 @@ fn served() -> Served {
     let (desk, requests) = channel();
     let peer = Peer::new(out);
     let theirs = Arc::clone(&peer);
-    std::thread::spawn(move || {
-        let info = Info {
-            max_lanes: 3,
-            commands: vec![("help".into(), "the commands".into())],
-            modes: vec![("plan".into(), "plan first".into())],
-        };
-        serve(&incoming, &theirs, &desk, &info);
-    });
+    std::thread::spawn(move || serve(&incoming, &theirs, &desk));
     Served {
         to_server,
         out: from_server,
@@ -64,17 +57,8 @@ impl Served {
 }
 
 #[test]
-fn an_interface_that_starts_is_told_what_the_server_allows() {
+fn work_lists_what_runs_in_the_lanes() {
     let served = served();
-    served.call(1, Command::Initialize);
-    assert_eq!(
-        served.done(1),
-        Done::Initialized {
-            max_lanes: 3,
-            commands: vec![("help".into(), "the commands".into())],
-            modes: vec![("plan".into(), "plan first".into())],
-        }
-    );
     let ui = Ui::new(Arc::clone(&served.peer));
     let (id, name) = ("s1".to_string(), "first".to_string());
     ui.send(protocol::Event::LaneStarted { id, name });
