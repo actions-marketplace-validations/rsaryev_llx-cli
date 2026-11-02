@@ -31,7 +31,7 @@ pub enum Scope {
 
 impl Scope {
     /// What a gate's verdict lets a command do; a refusal is its reason.
-    pub(crate) fn of(verdict: Verdict) -> Result<Self, String> {
+    fn of(verdict: Verdict) -> Result<Self, String> {
         match verdict {
             Verdict::Allow => Ok(Self::Open),
             Verdict::Workspace => Ok(Self::Workspace),

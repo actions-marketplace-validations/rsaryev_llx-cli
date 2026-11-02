@@ -20,16 +20,16 @@ const PAUSE: Duration = Duration::from_millis(10);
 
 /// What one pass found.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Pass {
+struct Pass {
     /// Processes of the session, its leader aside, sent SIGKILL.
-    pub signalled: usize,
+    signalled: usize,
     /// Processes of the session that refused the signal (another user's, such as `sudo`).
-    pub refused: usize,
+    refused: usize,
 }
 
 /// Send SIGKILL to every process of session `sid` but its leader (the caller kills and reaps that
 /// one).
-pub(super) fn kill_members(sid: libc::pid_t) -> Pass {
+fn kill_members(sid: libc::pid_t) -> Pass {
     let mut pass = Pass::default();
     if sid <= 1 {
         return pass;
@@ -55,7 +55,7 @@ pub(super) fn kill_members(sid: libc::pid_t) -> Pass {
     clippy::disallowed_methods,
     reason = "a backoff between kill passes: a process killed has no event to wait on"
 )]
-pub(super) fn end(sid: libc::pid_t, wait: Duration) -> bool {
+fn end(sid: libc::pid_t, wait: Duration) -> bool {
     let deadline = Instant::now() + wait;
     loop {
         let pass = kill_members(sid);

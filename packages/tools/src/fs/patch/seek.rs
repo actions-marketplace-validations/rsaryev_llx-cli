@@ -11,14 +11,14 @@ pub(super) fn seek(lines: &[&str], pattern: &[String], start: usize, eof: bool) 
     // An end-of-file pattern is looked for at the end first, then anywhere.
     let first = if eof { last.max(start) } else { start };
     // Then anywhere; when that is where it began, the same passes are not run twice.
-    let starts = std::iter::once(first).chain((first != start).then_some(start));
+    let mut starts = std::iter::once(first).chain((first != start).then_some(start));
     let same: [fn(&str, &str) -> bool; 4] = [
         |a, b| a == b,
         |a, b| a.trim_end() == b.trim_end(),
         |a, b| a.trim() == b.trim(),
         |a, b| plain(a).eq(plain(b)),
     ];
-    starts.into_iter().find_map(|from| {
+    starts.find_map(|from| {
         same.iter().find_map(|same| {
             (from..=last).find(|&at| {
                 lines

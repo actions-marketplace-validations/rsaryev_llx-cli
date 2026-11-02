@@ -109,8 +109,8 @@ fn carry_out(workspace: &Workspace, gate: &dyn Gate, patch: &str) -> Result<Tool
 /// The writes of `changed` first, then its deletions, so a move that fails halfway keeps its
 /// source. A failure puts back every file already written, from what was on disk.
 fn write(changed: &[&File]) -> Result<(), ToolError> {
-    let (written, removed): (Vec<&&File>, Vec<&&File>) =
-        changed.iter().partition(|file| file.now.is_some());
+    let (written, removed): (Vec<&File>, Vec<&File>) =
+        changed.iter().copied().partition(|file| file.now.is_some());
     let mut done: Vec<&File> = vec![];
     // `bytes` at `path`, or no file there.
     let put = |path: &Path, bytes: &Option<Vec<u8>>| match bytes {
@@ -269,11 +269,11 @@ fn move_to(
     workspace: &Workspace,
     files: &mut Vec<File>,
     to: &str,
-    source: &PathBuf,
+    source: &Path,
     new: String,
 ) -> Result<Option<String>, ToolError> {
     let dest = load(workspace, files, to)?;
-    if dest.path == *source {
+    if dest.path == source {
         dest.now = Some(new.into_bytes());
         return Ok(None);
     }

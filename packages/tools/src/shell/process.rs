@@ -310,7 +310,7 @@ pub(super) fn pump(
 
 /// How `status` ended. A status `try_wait` gives is an exit or a signal: it waits with neither
 /// `WUNTRACED` nor `WCONTINUED`, so the 0 stands in for a state it cannot return.
-pub(super) fn ending(status: ExitStatus) -> Ending {
+fn ending(status: ExitStatus) -> Ending {
     status.code().map_or_else(
         || Ending::Signal(status.signal().unwrap_or_default()),
         Ending::Exit,
