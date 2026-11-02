@@ -2,6 +2,8 @@
 //! dragged in, the clipboard's image: `tui::attach`) or `--image`. Each goes to the model after
 //! the message, as the person's own.
 
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 use contracts::tool::Image;
@@ -17,15 +19,28 @@ pub(crate) struct Attachment {
 /// The picture at `path`, read and checked.
 pub(crate) fn read(path: &Path) -> Result<Attachment, String> {
     let shown = path.display();
-    let bytes =
-        std::fs::read(path).map_err(|error| format!("{shown} could not be read: {error}"))?;
+    let unread = |error: std::io::Error| format!("{shown} could not be read: {error}");
+    let file = File::open(path).map_err(unread)?;
+    // No further than the limit: a file of gigabytes, or a pipe that does not end, is not read
+    // whole to be refused.
+    let mut bytes = Vec::new();
+    (&file)
+        .take(MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(unread)?;
     if u64::try_from(bytes.len()).unwrap_or(u64::MAX) > MAX_BYTES {
-        return Err(format!(
+        let most = MAX_BYTES >> 20;
+        return Err(match file.metadata().map(|meta| meta.len()) {
             // Rounded up: a file just past the limit is not said to be the limit.
-            "{shown} is {} MB; a picture may be at most {} MB",
-            bytes.len().div_ceil(1 << 20),
-            MAX_BYTES >> 20
-        ));
+            Ok(size) if size > MAX_BYTES => format!(
+                "{shown} is {} MB; a picture may be at most {most} MB",
+                size.div_ceil(1 << 20)
+            ),
+            // A pipe has no size to say.
+            Ok(_) | Err(_) => {
+                format!("{shown} is more than {most} MB; a picture may be at most {most} MB")
+            }
+        });
     }
     let image = picture::image(&bytes)
         .ok_or_else(|| format!("{shown} is not a PNG, JPEG, GIF or WebP picture"))?;

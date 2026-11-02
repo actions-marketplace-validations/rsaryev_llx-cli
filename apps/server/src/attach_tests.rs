@@ -41,3 +41,38 @@ fn a_picture_too_large_says_its_size_rounded_up() {
         "{refused}"
     );
 }
+
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a test's fixture: the command ends by itself"
+)]
+#[test]
+fn a_picture_from_a_pipe_is_read_no_further_than_the_limit() {
+    use std::io::Write;
+    let dir = Scratch::new();
+    let pipe = dir.path().join("shot");
+    let made = std::process::Command::new("mkfifo")
+        .arg(&pipe)
+        .status()
+        .unwrap();
+    assert!(made.success());
+    let writing = pipe.clone();
+    let writer = std::thread::Builder::new()
+        .name("llx-test-pipe".into())
+        .spawn(move || {
+            let mut sink = std::fs::OpenOptions::new()
+                .write(true)
+                .open(writing)
+                .unwrap();
+            // Far past the limit, as `--image <(command)` may give.
+            let chunk = vec![0_u8; 1 << 20];
+            (0..64).try_for_each(|_| sink.write_all(&chunk))
+        })
+        .unwrap();
+    let refused = read(&pipe).unwrap_err();
+    assert!(
+        refused.ends_with("shot is more than 8 MB; a picture may be at most 8 MB"),
+        "{refused}"
+    );
+    assert!(writer.join().unwrap().is_err(), "the rest was never read");
+}
