@@ -18,38 +18,10 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { parseArgs } from "node:util";
+import { type Answer, type Query, type Scored, isTest, modes, recorded, scored, table } from "./score";
 
 const HERE = import.meta.dir;
 const ROOT = path.resolve(HERE, "../..");
-
-type Query = {
-  id: string;
-  group: string;
-  query: string;
-  rg: string;
-  paths?: string[];
-  must: string[];
-  ok: string[];
-};
-type Answer = {
-  files: string[];
-  scores?: number[];
-  unsure?: string[];
-  millis: number;
-  cost: number;
-  bytes: number;
-  failed?: string;
-};
-type Scored = Answer & {
-  id: string;
-  group: string;
-  mode: string;
-  r5: number;
-  r10: number;
-  p5: number;
-  rr: number;
-  none?: boolean;
-};
 
 const { values: opts } = parseArgs({
   options: {
@@ -65,7 +37,7 @@ const { values: opts } = parseArgs({
     ranks: { type: "boolean", default: false },
   },
 });
-const MODES = opts.mode?.length ? opts.mode : ["words", "judged", "rg"];
+const MODES = modes(opts.mode);
 const spec = JSON.parse(fs.readFileSync(path.join(HERE, "queries.json"), "utf8"));
 const queries: Query[] = spec.queries.filter(
   (q: Query) => !opts.only?.length || opts.only.some((o) => q.id.startsWith(o)),
@@ -140,56 +112,13 @@ function ask(mode: string, q: Query, repo: string): Answer {
   return { files, scores, unsure, millis: run.millis, cost: answer.cost_usd ?? 0, bytes };
 }
 
-function scored(mode: string, q: Query, a: Answer): Scored {
-  const right = (file: string) =>
-    q.must.includes(file) || q.ok.some((glob) => new Bun.Glob(glob).match(file));
-  const found = (k: number) =>
-    q.must.length ? q.must.filter((m) => a.files.slice(0, k).includes(m)).length / q.must.length : 0;
-  const first = a.files.slice(0, 5);
-  const p5 = first.length ? first.filter(right).length / first.length : q.must.length ? 0 : 1;
-  const at = a.files.findIndex((file) => q.must.includes(file));
-  const base = { ...a, id: q.id, group: q.group, mode, r5: found(5), r10: found(10), p5, rr: 0 };
-  if (!q.must.length) return { ...base, none: a.files.length === 0 };
-  return { ...base, rr: at < 0 ? 0 : 1 / (at + 1) };
-}
-
-const mean = (xs: number[]) => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0);
-const pct = (x: number) => `${Math.round(x * 100)}%`;
-
-function table(results: Scored[]): string {
-  const groups = [...new Set(queries.map((q) => q.group)), "all"];
-  const rows = ["| mode | group | R@5 | R@10 | P@5 | MRR | none | time | cost | KB read |", "|---|---|---|---|---|---|---|---|---|---|"];
-  for (const mode of MODES)
-    for (const group of groups) {
-      const of = results.filter((r) => r.mode === mode && (group === "all" || r.group === group));
-      const answered = of.filter((r) => r.none === undefined);
-      const absent = of.filter((r) => r.none !== undefined);
-      if (!of.length) continue;
-      rows.push(
-        [
-          mode,
-          group,
-          answered.length ? pct(mean(answered.map((r) => r.r5))) : "",
-          answered.length ? pct(mean(answered.map((r) => r.r10))) : "",
-          pct(mean(of.map((r) => r.p5))),
-          answered.length ? mean(answered.map((r) => r.rr)).toFixed(2) : "",
-          absent.length ? `${absent.filter((r) => r.none).length}/${absent.length}` : "",
-          `${(mean(of.map((r) => r.millis)) / 1000).toFixed(2)} s`,
-          `$${of.reduce((s, r) => s + r.cost, 0).toFixed(4)}`,
-          (mean(of.map((r) => r.bytes)) / 1024).toFixed(1),
-        ].join(" | ").replace(/^/, "| ").replace(/$/, " |"),
-      );
-    }
-  return rows.join("\n");
-}
-
 const repo = snapshot(spec.commit);
 if (opts.ranks) {
   let deepest = 0;
   for (const q of queries.filter((q) => q.must.length)) {
     const run = sh([opts.llx!, "grep", "--lexical", "-l", "-n", "5000", q.query, ...(q.paths ?? [])], repo);
     // As the model's reading leaves tests out.
-    const listed = run.out.split("\n").filter((f) => f && !/(_tests\.|\/tests?\/)/.test(f));
+    const listed = run.out.split("\n").filter((f) => f && !isTest(f));
     const ranks = q.must.map((m) => listed.indexOf(m) + 1 || null);
     const found = ranks.filter((r): r is number => r !== null);
     if (found.length) deepest = Math.max(deepest, ...found);
@@ -217,13 +146,4 @@ fs.writeFileSync(
   path.join(HERE, "results", `${name}.json`),
   JSON.stringify({ commit: spec.commit, modes: MODES, results }, null, 1),
 );
-if (opts.record) {
-  const all = results.filter((r) => r.mode === "judged" || r.mode === "words");
-  const line = (mode: string) => {
-    const of = all.filter((r) => r.mode === mode);
-    const answered = of.filter((r) => r.none === undefined);
-    return `${mode} R@5 ${pct(mean(answered.map((r) => r.r5)))} P@5 ${pct(mean(of.map((r) => r.p5)))} MRR ${mean(answered.map((r) => r.rr)).toFixed(2)}`;
-  };
-  const row = `- ${name}: ${MODES.filter((m) => m !== "rg").map(line).join("; ")}\n`;
-  fs.appendFileSync(path.join(HERE, "HISTORY.md"), row);
-}
+if (opts.record) fs.appendFileSync(path.join(HERE, "HISTORY.md"), recorded(name, results));
