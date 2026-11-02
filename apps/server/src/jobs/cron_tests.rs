@@ -77,6 +77,14 @@ fn delays_read_as_seconds_at_least_a_minute() {
 }
 
 #[test]
+fn a_delay_too_long_to_count_is_refused() {
+    for text in ["999999999999999999d", "18446744073709551615s"] {
+        let refused = delay(text).unwrap_err();
+        assert!(refused.contains("too long"), "{text}: {refused}");
+    }
+}
+
+#[test]
 fn utc_dates_are_civil() {
     // 2026-10-23 12:34 UTC was a Friday.
     let friday = utc(1_792_758_840);

@@ -227,6 +227,26 @@ fn a_monitor_batch_between_tasks_comes_as_data_and_a_schedule_as_its_prompt() {
 }
 
 #[test]
+fn a_delay_past_what_the_clock_counts_is_never_due() {
+    use contracts::tool::Tool;
+    in_session("jobs-far-lane", |jobs, _| {
+        std::thread::scope(|scope| {
+            let tool = JobsTool { jobs, scope };
+            // Minutes that fit in seconds, but not added to the clock.
+            let far = json!({"action": "schedule", "prompt": "p", "in": "307445734561825860m"});
+            let said = tool.call(&far).unwrap().report;
+            assert!(said.starts_with("Scheduled"), "{said}");
+        });
+        let state = jobs.lock();
+        let next = match &state.jobs[0].what {
+            What::Schedule { next, .. } => *next,
+            What::Monitor { .. } => panic!("a schedule was asked for"),
+        };
+        assert!(next > crate::clock::now(), "due at {next}: at once");
+    });
+}
+
+#[test]
 fn a_schedule_stopped_from_its_row_leaves_the_list() {
     in_session("jobs-row-lane", |jobs, events| {
         schedule(jobs, "bye", Arc::new(AtomicBool::new(true)));

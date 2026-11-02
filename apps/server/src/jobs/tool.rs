@@ -195,7 +195,12 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
                 );
                 (recurring.then_some(cron), next, said)
             }
-            When::In(seconds) => (None, now + seconds, format!("in {} min", seconds / 60)),
+            // Past what the clock counts, it is never due, rather than due at once.
+            When::In(seconds) => (
+                None,
+                now.saturating_add(seconds),
+                format!("in {} min", seconds / 60),
+            ),
         };
         self.ask("", &format!("schedule {said}: {prompt}"), Needs::Sandbox)?;
         let (id, name) = {

@@ -126,12 +126,13 @@ pub(crate) fn delay(text: &str) -> Result<u64, String> {
         .parse()
         .map_err(|error| format!("`{text}` is not a delay such as 45m or 2h: {error}"))?;
     let seconds = match unit.trim() {
-        "s" | "sec" => count.div_ceil(60) * 60,
-        "m" | "min" | "" => count * 60,
-        "h" => count * 3600,
-        "d" => count * 86_400,
+        "s" | "sec" => count.div_ceil(60).checked_mul(60),
+        "m" | "min" | "" => count.checked_mul(60),
+        "h" => count.checked_mul(3600),
+        "d" => count.checked_mul(86_400),
         _ => return Err(format!("`{text}`: the unit is s, m, h or d")),
     };
+    let seconds = seconds.ok_or_else(|| format!("`{text}` is too long a delay"))?;
     Ok(seconds.max(60))
 }
 
