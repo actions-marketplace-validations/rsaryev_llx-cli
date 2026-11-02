@@ -23,7 +23,15 @@ read-only mode):
 { "permissions": { "allow": ["Bash(llx exec *)", "Bash(llx grep *)", "Bash(llx decide *)"] } }
 ```
 
-Start a new session: plugins, subagents and the session's hook are read as it starts.
+As the plugin is enabled, Claude Code asks for its settings, all optional: an **OpenRouter key**
+(kept in the system keychain; it turns on `llx grep` and `llx decide`, and reaches only llx's
+commands, never another program Claude runs), and the **provider** and **model** the subagent's
+llx thinks with (empty: what `/login` in llx chose). Change them later with
+`claude plugin configure llx`. A key or a setting the environment already has wins.
+
+Start a new session: plugins, subagents and the session's hook are read as it starts. `llx grep`
+and `llx decide --check` came after llx 0.2.0: with 0.2.0 the subagent works, and the search and
+the decisions wait for the next release (or `cargo install --path apps/cli` from a clone).
 
 ## What it adds
 

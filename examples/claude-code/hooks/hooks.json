@@ -1,5 +1,5 @@
 {
-  "description": "Tells Claude, as each session starts or its context is compacted, what of llx this machine can run: the llx subagent where llx is installed, llx decide only where an OpenRouter key is set",
+  "description": "Hands the plugin's settings (the OpenRouter key, the provider and model) to llx in Claude's commands, and tells Claude, as each session starts or its context is compacted, what of llx this machine can run: the llx subagent where llx is installed, llx grep and llx decide only where an OpenRouter key is set",
   "hooks": {
     "SessionStart": [
       {
