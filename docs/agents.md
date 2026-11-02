@@ -69,7 +69,7 @@ The simplest way is to tell your agent to use it: `Use llx grep to find where X 
 npx skills add rsaryev/llx
 ```
 
-It is a thin discovery stub: it says when llx pays and points the agent at `llx grep --help`, `llx decide --help` and `llx exec --help`, so the instructions always match the installed llx and never go stale between releases. Do not copy its body into your instructions: it would go stale.
+It is a discovery stub: it says what llx does and when each part pays (the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, `llx grep`, `llx decide`, the modes and the sandbox), and points the agent at `llx --help`, `llx exec --help`, `llx grep --help` and `llx decide --help`, so the instructions always match the installed llx and never go stale between releases. Do not copy its body into your instructions: it would go stale.
 
 ### Claude Code
 

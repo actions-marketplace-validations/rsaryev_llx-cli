@@ -128,7 +128,7 @@ Ready-made GitHub workflows, each run for real: [pull request review](examples/g
 
 Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx grep` finds the code that answers a question, with its lines; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
 
-A skill teaches any agent that takes skills when llx pays (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
+A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, `llx grep` and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
 ```sh
 npx skills add rsaryev/llx
