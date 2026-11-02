@@ -282,8 +282,9 @@ command is cut.
   server's short local queries (`/diff`'s `git`, `doctor`'s shell) go through
   `tools::shell::query`, which kills one at its deadline with all it started; the interface's
   (the clipboard's tool, the pasted picture's, `@`'s `git`) through `apps/tui/src/within.rs`, as it may
-  not reach `tools` (L7). (Debt: the provider kit's browser opener waits without one, as the kit
-  may not reach `tools` (L3).)
+  not reach `tools` (L7). (Debt: the provider kit's browser opener, which may not reach `tools`
+  (L3), waits without one for the `sh` that hands the opener to the background and ends at once;
+  the opener itself is never waited for.)
 
 ## Code rules
 
