@@ -100,3 +100,18 @@ fn a_new_kept_for_after_the_task_says_how_to_open_a_session() {
     std::fs::write(term.file("go"), "").unwrap();
     term.wait_for("/new opens a session when typed at the prompt", LONG);
 }
+
+#[test]
+fn a_mistyped_command_or_mode_says_what_there_is_and_asks_the_model_nothing() {
+    let model = Model::start(vec![]);
+    let mut term = Term::start(&model, &[]);
+    term.type_text("/frobnicate").press(key::ENTER);
+    term.wait_for("unknown command /frobnicate: /help lists them", LONG);
+    term.type_text("/mode planning").press(key::ENTER);
+    term.wait_for("unknown mode planning: default, plan, bypass", LONG);
+    // Still in the mode it was, not the nearest name.
+    term.type_text("/status").press(key::ENTER);
+    let screen = term.wait_for("workspace  ", LONG);
+    assert!(screen.contains("mode       default"), "{screen}");
+    assert!(model.requests().is_empty(), "{:?}", model.requests());
+}
