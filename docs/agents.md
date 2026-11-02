@@ -57,7 +57,44 @@ llx grep -e 'spawn|shell::query' "which files start a child process" src/
 
 An agent makes it its first search when it does not know the exact name, or when a word would match too much, and keeps `rg` for an exact name. Exit 1 means no file answers: the code has no such thing. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, and it named nothing for the four the code cannot answer; 2 to 3 s and $0.005 a question, 4 KB to read against `rg`'s 19 KB ([benchmark/grep](../benchmark/grep/README.md)). Without a key it ranks by the words alone (80%, in a fraction of a second). With `-e`, a pattern as `rg`'s keeps only the files it matches and the question ranks them: where a string the answer must have is known, about a third of the cost and as good a ranking (92% in the first five with the pattern an agent types first, which misses some files: a guessed pattern finds nothing it does not match). The pattern is a regex as `rg` writes it (`spawn|Command::new`, `fn \w+_worker\(`, `\bMAX_[A-Z]+\b`), single-quoted for the shell; `-F` takes it as it is, `-i` in any case. It is `regex-lite`'s: `-i`, `\w` and `\d` know ASCII only (write a word in another script in its own case), and there is no look-around or back-reference; a pattern it cannot take is named, exit 3. Its options are in the [reference](reference.md#llx-grep).
 
-## In Claude Code and Codex
+## In your agent
 
-- **Claude Code:** a plugin, `/plugin install llx --marketplace rsaryev/llx` ([examples/claude-code](../examples/claude-code/README.md)). Its `llx` subagent hands bulk reading to `llx exec`, and as each session starts it tells Claude what of llx the machine can run: `llx grep` and the rule above for `llx decide` only where `llx decide --check` finds a key.
-- **Codex**, or any agent that reads `AGENTS.md`: a few lines to paste ([examples/codex](../examples/codex/README.md)).
+The simplest way is to tell your agent to use it: `Use llx grep to find where X happens. Run llx grep --help first.` Each command's `--help` has a paragraph for an agent: when it pays, how to ask, what its output means.
+
+### The skill (recommended)
+
+[skills/llx](../skills/llx/SKILL.md) is a skill for any agent that takes them (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
+
+```sh
+npx skills add rsaryev/llx
+```
+
+It is a thin discovery stub: it says when llx pays and points the agent at `llx grep --help`, `llx decide --help` and `llx exec --help`, so the instructions always match the installed llx and never go stale between releases. Do not copy its body into your instructions: it would go stale.
+
+### Claude Code
+
+The same skill, as a plugin:
+
+```text
+/plugin install llx --marketplace rsaryev/llx
+```
+
+On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs `llx grep`, `llx decide` and `llx exec --mode plan` without asking.
+
+### AGENTS.md / CLAUDE.md
+
+For more consistent results, add to your project's or your global instructions file:
+
+```markdown
+## llx
+
+Use `llx` to search the code by what a question means and for quick judgments. Run a command's
+`--help` the first time you use it.
+
+- `llx grep "<question in plain words>" [paths]`: where or how something is done when you do not
+  know the exact name; keep `rg` for an exact name.
+- `llx decide "<question>" --choices a,b [files]`: one of a few options about a long text, or
+  about each of many files.
+- `llx exec --mode plan "<task>"`: a reading task with a short answer, on another model.
+```
+

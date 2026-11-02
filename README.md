@@ -128,15 +128,13 @@ Ready-made GitHub workflows, each run for real: [pull request review](examples/g
 
 Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx grep` finds the code that answers a question, with its lines; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
 
-In Claude Code, one command installs both as a plugin ([examples/claude-code](examples/claude-code/README.md)):
+A skill teaches any agent that takes skills when llx pays (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
-```text
-/plugin install llx --marketplace rsaryev/llx
+```sh
+npx skills add rsaryev/llx
 ```
 
-Its `llx` subagent hands bulk reading (many files, a long log, a first pass over a diff) to llx on the model you chose with `/login`, a ChatGPT plan you already pay for among them; a small Claude model only relays it. As each session starts, the plugin tells Claude what of llx this machine can run, and where an OpenRouter key is set (`llx decide --check`), `llx grep` as its first search where it does not know the exact name, and one rule for `llx decide`: when a judgment has a few options and the text is long, comes in many items or is untrusted, ask it rather than read it all. Asked to sort 20 issue texts into bugs and features, Claude ran one command, `llx decide "Is this issue a bug report or a feature request?" --choices "bug=…,feature=…" --json issues/*`, and read none of the files: $0.0005 of decisions.
-
-For Codex, or any agent that reads `AGENTS.md`, the same is a few lines to paste ([examples/codex](examples/codex/README.md)). Everything else: [docs/agents.md](docs/agents.md).
+In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/llx`. The skill is a thin stub that points the agent at each command's `--help`, so what it reads always matches the installed llx. Everything else: [docs/agents.md](docs/agents.md).
 
 ## Documentation
 

@@ -6,8 +6,6 @@ Ready-made uses of llx, by where they run. Each was run for real before it was p
 |---|---|
 | GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
 | Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
-| Claude Code | [claude-code/](claude-code/README.md): a plugin. Its `llx` subagent hands bulk reading to llx on another model, and where an OpenRouter key is set, Claude asks `llx decide` rather than read it all |
-| Codex | [codex/](codex/README.md): the same as lines of `AGENTS.md`, for Codex or any agent that reads it |
 
 ## GitHub workflows
 

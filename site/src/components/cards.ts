@@ -165,11 +165,11 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'A plugin for Claude Code, lines for Codex',
-    text: 'Your agent keeps thinking on its own model. The llx subagent hands bulk reading to llx on the model you chose, a ChatGPT plan you already pay for among them; with an OpenRouter key, Claude searches with llx grep and asks llx decide rather than read every file itself. In Codex, the same is a few lines of AGENTS.md.',
-    link: { href: `${GITHUB}/tree/main/examples/claude-code`, label: 'The plugin' },
+    title: 'A skill for any agent',
+    text: 'One skill teaches Claude Code, Codex, Cursor and other agents when llx pays: it points them at each command\'s --help, so what they read always matches the installed llx. They search with llx grep and ask llx decide rather than read every file themselves.',
+    link: { href: `${GITHUB}/tree/main/skills/llx`, label: 'The skill' },
     panel: [
-      { ui: [[['acc', '> '], ['', '/plugin install llx --marketplace rsaryev/llx']]] },
+      shell('$ npx skills add rsaryev/llx'),
       shell('$ llx decide "Bug report or feature request?" \\\n    --choices bug,feature issues/*'),
       {
         grid: [

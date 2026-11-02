@@ -1,16 +1,20 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "llx",
+  "description": "Code search by meaning and fast decisions for AI agents",
   "owner": {
     "name": "rsaryev"
   },
   "plugins": [
     {
       "name": "llx",
-      "source": "./examples/claude-code",
-      "description": "Search the code by what a question means (llx grep), fast judgments on long texts (llx decide), and a subagent that hands bulk reading to llx on any model",
+      "description": "Searches the code by what a question means, makes fast judgments about long or many texts, and hands reading tasks to another model",
+      "source": "./",
+      "strict": false,
+      "skills": [
+        "./skills/llx"
+      ],
       "category": "development"
     }
-  ],
-  "description": "llx for Claude Code"
+  ]
 }

@@ -11,4 +11,3 @@ dist/
 # Claude Code settings of one person, not the project's (.claude/settings.json is shared).
 .claude/settings.local.json
 node_modules/
-examples/claude-code/evals/results/
