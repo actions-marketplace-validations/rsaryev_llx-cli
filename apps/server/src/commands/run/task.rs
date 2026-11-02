@@ -79,6 +79,7 @@ impl Rig<'_> {
             status: ended.status,
             code,
             answer: &run.answer,
+            shown: run.shown,
             data: run.data.as_ref(),
             error: error.as_deref(),
             agent: &run.spend,

@@ -64,6 +64,7 @@ fn summary(agent: &Spend) -> Summary<'_> {
         status: "done",
         code: 0,
         answer: "All tests pass.",
+        shown: false,
         data: None,
         error: None,
         agent,
@@ -373,4 +374,39 @@ fn with_v_a_session_shows_each_turn_as_a_note() {
     // which carry stderr's colour.
     assert!(lock(&told).is_empty());
     assert_eq!(notes, ["  · m/x · 12,345 in · 67 out · $0.0123 · 1.5s"]);
+}
+
+/// The interface is sent the task's answer as it ends, unless the answer was already shown, as
+/// the model's words said when its run began to wait: then it would read twice.
+#[test]
+fn the_interface_is_sent_an_answer_once() {
+    use crate::server::ui::{Peer, Ui};
+    use protocol::ToClient;
+    use std::time::Duration;
+    let spent = Spend::default();
+    for (shown, sent) in [(false, true), (true, false)] {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the in-process transport's channel, as the binary makes it"
+        )]
+        let (out, frames) = std::sync::mpsc::channel();
+        let output = Output::new(false, false, None).in_ui(Some(Ui::new(Peer::new(out))));
+        output.completed(&Summary {
+            shown,
+            ..summary(&spent)
+        });
+        let mut answers = 0;
+        let mut ended = false;
+        while !ended {
+            match frames.recv_timeout(Duration::from_secs(5)) {
+                Ok(ToClient::Event { event, .. }) => {
+                    answers += usize::from(matches!(event, Event::Answer(_)));
+                    ended = matches!(event, Event::TaskEnded { .. });
+                }
+                Ok(_) => {}
+                Err(why) => panic!("no end came: {why}"),
+            }
+        }
+        assert_eq!(answers, usize::from(sent), "shown: {shown}");
+    }
 }

@@ -60,6 +60,9 @@ pub(crate) struct Summary<'a> {
     pub status: &'a str,
     pub code: i32,
     pub answer: &'a str,
+    /// The answer was already shown as the model's words (`agent::Run::shown`): the interface is
+    /// not sent it again; stdout, `-o` and `--json` have it as always.
+    pub shown: bool,
     /// `--schema`: the data, or why none matched.
     pub data: Option<&'a Result<Value, String>>,
     pub error: Option<&'a str>,
@@ -239,7 +242,9 @@ impl Output {
             if let Some(error) = error {
                 ui.send(error);
             }
-            ui.send(Event::Answer(summary.answer.to_string()));
+            if !summary.shown {
+                ui.send(Event::Answer(summary.answer.to_string()));
+            }
             return ui.send(ended);
         }
         // At a terminal the answer comes first, drawn, then how the run ended; a pipe gets it

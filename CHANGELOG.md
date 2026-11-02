@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- An answer given while background agents still worked, then stopped while it waited for them, read twice in the session: once as the words said as the wait began, once more as the task's answer. It is shown once; stdout, `-o` and `--json` have it as before.
 - `llx grep` with an empty question is a usage error (exit 3), as a broken pattern is: it searched by no word and exited 1, as if no file answered.
 - In a read-only mode (`plan`) the context says when to ask the person with `ask`, as the other modes do at a terminal: it was left out, so a plan's open questions were guessed.
 - `scripts/ci-docker` runs CI's jobs as `runner`, a user with passwordless sudo, as GitHub's runners do: as root, the action's lockdown tested for real could never drop its privileges, and the `action` job failed. Its volumes are new (`llx-ci-runner-*`); the old `llx-ci-*` ones can be removed.

@@ -786,6 +786,32 @@ fn an_answer_while_work_is_still_to_come_waits_for_it_and_goes_on() {
     );
 }
 
+#[test]
+fn an_answer_said_before_a_wait_that_brings_nothing_is_not_shown_again() {
+    // The words are shown as the wait begins (it may be long); when nothing comes (the run was
+    // stopped, or what was to come ended unsaid), they are the answer, already shown once.
+    let mail = Mail::default();
+    mail.waiting.store(true, Ordering::SeqCst);
+    let chat = Scripted::new(vec![done("Watching the build.")]);
+    let seen = Recorder::default();
+    let run = Agent {
+        inbox: Some(&mail),
+        ..agent(&chat, &[], None, &seen)
+    }
+    .run(None, "watch", &[]);
+    assert_eq!(mail.waits.load(Ordering::SeqCst), 1);
+    assert_eq!(run.answer, "Watching the build.");
+    assert!(run.shown, "the answer was said as the wait began");
+    let said: Vec<_> = (seen.events().into_iter())
+        .filter(|event| event.starts_with("said"))
+        .collect();
+    assert_eq!(said, ["said Watching the build."]);
+    // An answer with nothing to wait for was never said: the app shows it.
+    let chat = Scripted::new(vec![done("Done.")]);
+    let run = agent(&chat, &[], None, &Silent).run(None, "look", &[]);
+    assert!(!run.shown);
+}
+
 /// A chat model that answers from a script, and puts a message in the inbox while it answers
 /// the first time: the person writes while the model writes.
 struct Interrupted<'a> {

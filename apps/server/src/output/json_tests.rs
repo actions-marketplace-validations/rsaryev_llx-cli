@@ -43,6 +43,7 @@ fn the_run_completes_with_its_status_usage_and_data() {
         status: "done",
         code: 0,
         answer: "Done.",
+        shown: false,
         data: Some(&data),
         error: None,
         agent: &agent,

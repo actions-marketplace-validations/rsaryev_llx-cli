@@ -136,7 +136,10 @@ pub(super) fn work(kit: &Kit, registry: &Registry, id: &str, message: &str) {
     // An agent's task has no limits of its own.
     let status = crate::commands::run::Ended::of(&run.status, None, halt, Limits::default()).status;
     let millis = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    watch.show(Event::Answer(run.answer.clone()));
+    // Said as the agent began to wait, and nothing came: its view has the words already.
+    if !run.shown {
+        watch.show(Event::Answer(run.answer.clone()));
+    }
     watch.show(Event::TaskEnded {
         status: status.to_string(),
         millis,

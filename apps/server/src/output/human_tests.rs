@@ -12,6 +12,7 @@ fn summary<'a>(
         status: "no_data",
         code: 1,
         answer: "The tests still fail.\n",
+        shown: false,
         data,
         error: None,
         agent,

@@ -83,6 +83,9 @@ pub enum Status {
 pub struct Run {
     pub status: Status,
     pub answer: String,
+    /// The answer was already shown as the model's words (`Observer::said`): said as a wait for
+    /// what was still to come began, and nothing came. The app does not show it again.
+    pub shown: bool,
     /// `--schema`: the data, or why none matched.
     pub data: Option<Result<Value, String>>,
     pub spend: Spend,
@@ -90,6 +93,16 @@ pub struct Run {
     pub conversation: Conversation,
     /// The tokens the conversation took at its last turn.
     pub used: u64,
+}
+
+/// What became of an answer held for what was still to come.
+enum Waited {
+    /// Something came: the run goes on with it.
+    Came,
+    /// The answer was said as the wait began, and nothing came: it stands, already shown.
+    Said,
+    /// Nothing was waited for: the answer stands, not yet shown.
+    No,
 }
 
 impl Agent<'_> {
@@ -135,6 +148,7 @@ impl Agent<'_> {
         let mut run = Run {
             status: Status::Exhausted,
             answer: String::new(),
+            shown: false,
             data: None,
             spend: Spend::default(),
             conversation,
@@ -189,8 +203,13 @@ impl Agent<'_> {
                 cuts = 0;
             }
             // An answer waits for what is still to come (not on the last turn: then it stands).
-            if turn + 1 < self.max_turns && self.awaited(&completion, &mut run) {
-                continue;
+            let mut said = false;
+            if turn + 1 < self.max_turns {
+                match self.awaited(&completion, &mut run) {
+                    Waited::Came => continue,
+                    Waited::Said => said = true,
+                    Waited::No => {}
+                }
             }
             if completion.calls.is_empty() {
                 // A message with no call is the answer: the task ends with it, as a person's
@@ -203,6 +222,7 @@ impl Agent<'_> {
                 }
                 run.status = Status::Done;
                 run.answer = answer;
+                run.shown = said;
                 self.conclude(&mut run, task);
                 return run;
             }
@@ -306,9 +326,9 @@ impl Agent<'_> {
     /// asked before taking: a source that is done posts its last entry before it says so, so
     /// nothing it sent is left behind. On the last turn the answer stands (the caller skips
     /// this), and what is still to come waits for the next goal.
-    fn awaited(&self, completion: &Completion, run: &mut Run) -> bool {
+    fn awaited(&self, completion: &Completion, run: &mut Run) -> Waited {
         if !completion.calls.is_empty() {
-            return false;
+            return Waited::No;
         }
         let expecting = self.expecting();
         let came = self.take();
@@ -320,11 +340,14 @@ impl Agent<'_> {
             true => self.inbox.map(|inbox| inbox.wait()).unwrap_or_default(),
             false => came,
         };
-        if came.is_empty() {
-            return false;
+        match (came.is_empty(), waits) {
+            (false, _) => {
+                Self::deliver(run, came);
+                Waited::Came
+            }
+            (true, true) => Waited::Said,
+            (true, false) => Waited::No,
         }
-        Self::deliver(run, came);
-        true
     }
 
     /// Show what the model said in a turn the run goes on from: it is not the answer.
