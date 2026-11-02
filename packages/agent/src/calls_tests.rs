@@ -1,15 +1,13 @@
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Condvar, Mutex};
 use std::time::Duration;
 
 use contracts::chat::{Completion, Message, ToolCall};
-use contracts::inbox::Inbox;
 use contracts::tool::{Input, Tool, ToolError, ToolOutput, ToolSpec};
 use serde_json::{Value, json};
 
 use crate::agent::Agent;
 use crate::fakes::Silent;
-use crate::fakes::{Recorder, Scripted, done, says, users};
+use crate::fakes::{Recorder, Scripted, done};
 
 /// Where the calls of a test's tools run, whichever tool they belong to: how many run now,
 /// the most that ever ran at once, and the order they started and ended in.
@@ -128,11 +126,7 @@ fn results(messages: &[Message]) -> Vec<(String, String)> {
         .collect()
 }
 
-fn agent<'a>(
-    chat: &'a Scripted,
-    tools: &'a [&'a dyn Tool],
-    inbox: Option<&'a dyn Inbox>,
-) -> Agent<'a> {
+fn agent<'a>(chat: &'a Scripted, tools: &'a [&'a dyn Tool]) -> Agent<'a> {
     Agent {
         chat,
         tools,
@@ -140,7 +134,7 @@ fn agent<'a>(
         max_turns: 6,
         observer: &Silent,
         schema: None,
-        inbox,
+        inbox: None,
         window: 0,
         strategy: &crate::fakes::Keep,
         advisor: None,
@@ -159,7 +153,7 @@ fn calls_that_may_run_together_do_and_answer_in_the_models_order() {
         done("Done."),
     ]);
     let tools: [&dyn Tool; 1] = [&look];
-    let run = agent(&chat, &tools, None).run(None, "look twice", &[]);
+    let run = agent(&chat, &tools).run(None, "look twice", &[]);
     assert_eq!(room.peak(), 2, "both ran at once");
     let results = results(run.conversation.messages());
     assert_eq!(
@@ -188,7 +182,7 @@ fn a_call_that_may_not_runs_alone_between_the_others() {
         done("Done."),
     ]);
     let tools: [&dyn Tool; 2] = [&look, &change];
-    let run = agent(&chat, &tools, None).run(None, "look, change, look", &[]);
+    let run = agent(&chat, &tools).run(None, "look, change, look", &[]);
     assert_eq!(room.peak(), 1, "no two calls overlapped");
     assert_eq!(
         room.log(),
@@ -217,7 +211,7 @@ fn a_batch_is_watched_call_by_call() {
     let tools: [&dyn Tool; 1] = [&look];
     let agent = Agent {
         observer: &recorder,
-        ..agent(&chat, &tools, None)
+        ..agent(&chat, &tools)
     };
     agent.run(None, "look", &[]);
     let events: Vec<String> = recorder
@@ -275,146 +269,9 @@ fn a_text_tool_is_called_with_its_text_and_a_json_tool_refuses_text() {
         done("Done."),
     ]);
     let tools: [&dyn Tool; 2] = [&Script, &look];
-    let run = agent(&chat, &tools, None).run(None, "go", &[]);
+    let run = agent(&chat, &tools).run(None, "go", &[]);
     let results = results(run.conversation.messages());
     assert_eq!(results[0], ("s".to_string(), "ran return 1".to_string()));
     assert!(results[1].1.contains("takes text"), "{results:?}");
     assert!(results[2].1.contains("JSON object"), "{results:?}");
-}
-
-/// An inbox that gives out what the test put in, and waits once for what comes later.
-#[derive(Default)]
-struct Mail {
-    now: Mutex<Vec<String>>,
-    later: Mutex<Vec<String>>,
-    waiting: AtomicBool,
-    waits: AtomicUsize,
-}
-
-impl Inbox for Mail {
-    fn take(&self) -> Vec<String> {
-        std::mem::take(&mut *self.now.lock().unwrap())
-    }
-
-    fn expecting(&self) -> bool {
-        self.waiting.load(Ordering::SeqCst)
-    }
-
-    fn wait(&self) -> Vec<String> {
-        self.waits.fetch_add(1, Ordering::SeqCst);
-        self.waiting.store(false, Ordering::SeqCst);
-        std::mem::take(&mut *self.later.lock().unwrap())
-    }
-}
-
-#[test]
-fn what_comes_in_is_said_before_the_next_turn() {
-    let room = Room::default();
-    let look = look(&room);
-    let mail = Mail::default();
-    mail.now
-        .lock()
-        .unwrap()
-        .push("also check the README".into());
-    let chat = Scripted::new(vec![turn(vec![call("a", "look")]), done("Done.")]);
-    let tools: [&dyn Tool; 1] = [&look];
-    let run = agent(&chat, &tools, Some(&mail)).run(None, "look", &[]);
-    assert_eq!(
-        users(run.conversation.messages()),
-        ["Goal: look", "also check the README"]
-    );
-}
-
-#[test]
-fn an_answer_while_work_is_still_to_come_waits_for_it_and_goes_on() {
-    // An agent's answer or a monitor's lines are still to come: ending now would lose them, so
-    // the run waits for them and goes on with what came.
-    let mail = Mail::default();
-    mail.waiting.store(true, Ordering::SeqCst);
-    mail.later
-        .lock()
-        .unwrap()
-        .push("<agent_result>found it</agent_result>".into());
-    let chat = Scripted::new(vec![done("Nothing found."), done("It found it.")]);
-    let run = agent(&chat, &[], Some(&mail)).run(None, "delegate", &[]);
-    assert_eq!(mail.waits.load(Ordering::SeqCst), 1);
-    assert_eq!(run.answer, "It found it.");
-    assert_eq!(
-        users(run.conversation.messages()),
-        ["Goal: delegate", "<agent_result>found it</agent_result>"]
-    );
-    assert!(
-        results(run.conversation.messages()).is_empty(),
-        "an answer is a message: nothing is refused, the agent's answer is just delivered"
-    );
-}
-
-/// A chat model that answers from a script, and puts a message in the inbox while it answers
-/// the first time: the person writes while the model writes.
-struct Interrupted<'a> {
-    script: Scripted,
-    mail: &'a Mail,
-}
-
-impl contracts::chat::Chat for Interrupted<'_> {
-    #[expect(
-        clippy::unwrap_in_result,
-        reason = "a test's fake: a poisoned lock fails the test"
-    )]
-    fn complete(
-        &self,
-        request: contracts::chat::Request,
-    ) -> Result<Completion, contracts::chat::ChatError> {
-        let reply = self.script.complete(request);
-        if self.script.calling.lock().unwrap().len() == 1 {
-            self.mail
-                .now
-                .lock()
-                .unwrap()
-                .push("run the tests too".into());
-        }
-        reply
-    }
-}
-
-#[test]
-fn a_message_that_comes_with_the_answer_is_not_lost() {
-    let mail = Mail::default();
-    let chat = Interrupted {
-        script: Scripted::new(vec![says("Done."), done("Done, with the tests too.")]),
-        mail: &mail,
-    };
-    let agent = Agent {
-        chat: &chat,
-        tools: &[],
-        context: "",
-        max_turns: 6,
-        observer: &Silent,
-        schema: None,
-        inbox: Some(&mail),
-        window: 0,
-        strategy: &crate::fakes::Keep,
-        advisor: None,
-    };
-    let run = agent.run(None, "work", &[]);
-    assert_eq!(run.answer, "Done, with the tests too.");
-    assert_eq!(
-        users(run.conversation.messages()),
-        ["Goal: work", "run the tests too"]
-    );
-}
-
-#[test]
-fn an_answer_on_the_last_turn_is_kept_and_nothing_is_waited_for() {
-    let mail = Mail::default();
-    mail.waiting.store(true, Ordering::SeqCst);
-    let chat = Scripted::new(vec![says("Here is what I have.")]);
-    let run = Agent {
-        max_turns: 1,
-        ..agent(&chat, &[], Some(&mail))
-    }
-    .run(None, "delegate", &[]);
-    assert_eq!(mail.waits.load(Ordering::SeqCst), 0, "no wait");
-    assert_eq!(run.answer, "Here is what I have.");
-    assert_eq!(run.status, crate::agent::Status::Done);
 }
