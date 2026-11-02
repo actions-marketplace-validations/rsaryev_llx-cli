@@ -157,3 +157,20 @@ fn a_get_sends_its_headers_and_reads_the_answer_as_a_post_does() {
     assert_eq!((reply.status, reply.body.as_str()), (200, "{}"));
     assert_eq!(reply.header("etag"), Some("\"v2\""));
 }
+
+#[test]
+fn a_request_over_tls_fails_as_an_error_with_no_certificates_built_in() {
+    // ureq is built without its bundled roots, and an agent left on its default (`WebPki`)
+    // panics as it sets up TLS. The kit's agent checks with the system's store: a server that
+    // hangs up before the handshake is an error the caller reads, never a panic.
+    let server = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = server.local_addr().unwrap();
+    let hangup = std::thread::Builder::new()
+        .name("tls-hangup".into())
+        .spawn(move || drop(server.accept().unwrap()))
+        .unwrap();
+    let web = Web::new(APP, Duration::from_secs(5));
+    let failed = web.post(&format!("https://{address}/x"), &[], "{}", None);
+    hangup.join().unwrap();
+    assert!(failed.is_err(), "{failed:?}");
+}
