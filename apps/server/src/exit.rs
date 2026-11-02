@@ -3,7 +3,8 @@
 
 /// The task ended with its answer (or the reader of stdout went away).
 pub(crate) const OK: i32 = 0;
-/// No data matched `--schema`, or `decide --expect` was not the choice picked.
+/// The answer is a no: no data matched `--schema`, `decide --expect` was not the choice picked,
+/// no file answers `grep`, no daemon answers `serve status`.
 pub(crate) const FAILED: i32 = 1;
 /// Turns, the time limit or the budget ran out before an answer.
 pub(crate) const EXHAUSTED: i32 = 2;

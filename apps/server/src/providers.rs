@@ -54,7 +54,8 @@ const DEFAULTS: [(&str, &str); 2] = [
     ("openrouter", "anthropic/claude-haiku-5.5"),
 ];
 
-/// The decision model `llx decide` and `llx doctor` start with: a policy, by catalog id (OpenRouter's).
+/// The decision model `llx decide`, `llx grep` and `llx doctor` start with, and the one that
+/// advises a session's tasks: a policy, by catalog id (OpenRouter's).
 pub(crate) const DECISION_DEFAULT: &str = "~typesafe/jev-latest";
 
 /// How often a long-lived process looks for a newer catalog: a file's time, and the refresh
@@ -342,7 +343,8 @@ pub(crate) fn openrouter_client(key: String, vars: Vars) -> openrouter::client::
     }
 }
 
-/// What `llx decide` says with no key for the decision model, read off no catalog.
+/// What `llx decide`, `llx grep` and `llx doctor` say with no key for the decision model, read
+/// off no catalog.
 pub(crate) fn how_to_decide() -> String {
     sign_in_words(openrouter::NAME, Some(openrouter::auth::KEY_VARIABLE))
 }

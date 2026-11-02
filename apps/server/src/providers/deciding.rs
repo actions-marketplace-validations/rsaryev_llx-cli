@@ -1,6 +1,7 @@
 //! The decision model: OpenRouter's (`/systemone`), the one provider that serves decision models,
 //! so it needs an OpenRouter key whichever provider the agent thinks with. `llx decide` asks it
-//! one question; a session's tasks ask it for advice (C9), each decision held to a few seconds.
+//! one question, `llx grep` whether each file it read answers; a session's tasks ask it for
+//! advice (C9), each decision held to a few seconds.
 
 use std::time::Duration;
 

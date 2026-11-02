@@ -1,5 +1,5 @@
 //! What the agent thinks with: a provider, one of its models, and a reasoning level that model
-//! takes. `/login` saves it as the default for later sessions (`<config>/llx/settings.json`);
+//! takes. `/login` saves it as the default for later sessions (`~/.config/llx/settings.json`);
 //! `--provider`, `--model` and `--reasoning` override it for one run.
 
 use std::path::PathBuf;
@@ -91,7 +91,7 @@ impl Choice {
     }
 }
 
-/// `<config>/llx/settings.json`: the saved choice and the person's modes.
+/// `~/.config/llx/settings.json`: the saved choice and the person's modes.
 pub(crate) fn settings_path() -> Option<PathBuf> {
     provider_kit::store::path(APP, FILE)
 }

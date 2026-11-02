@@ -90,7 +90,7 @@ Exit codes: 0 done, 1 no data matched --schema, 2 out of turns, time or budget, 
 or usage, 130 interrupted.
 
 Environment: OPENROUTER_API_KEY (else the key /login saved), LLX_PROVIDER, LLX_MODEL,
-LLX_REASONING, LLX_DECISION_MODEL (decide, doctor), LLX_MODELS_REFRESH (0: no background catalog refresh),
+LLX_REASONING, LLX_DECISION_MODEL (decide, grep, doctor), LLX_MODELS_REFRESH (0: no background catalog refresh),
 LLX_NO_DAEMON (1: sessions in this process),
 LLX_SESSIONS (where sessions are kept, default
 ~/.llx/sessions). Sign-ins and the /login choice are kept in ~/.config/llx/ (0600).";
