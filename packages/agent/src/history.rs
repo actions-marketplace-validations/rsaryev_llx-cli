@@ -108,10 +108,7 @@ pub struct Pipeline {
 impl Default for Pipeline {
     /// llx's: old outputs, old arguments; the tail only past the ceiling.
     fn default() -> Self {
-        Self {
-            stages: vec![Box::new(Outputs { keep: None }), Box::new(Arguments)],
-            tail: TAIL,
-        }
+        Self::keeping(Box::new(|_, _| false))
     }
 }
 
@@ -119,7 +116,7 @@ impl Pipeline {
     /// llx's, the newest output of each call `keep` names left alone as the tail is.
     pub fn keeping(keep: Box<Lasting>) -> Self {
         Self {
-            stages: vec![Box::new(Outputs { keep: Some(keep) }), Box::new(Arguments)],
+            stages: vec![Box::new(Outputs { keep }), Box::new(Arguments)],
             tail: TAIL,
         }
     }
@@ -163,7 +160,7 @@ impl Strategy for Pipeline {
 
 /// Tool outputs, any worth eliding but those the app keeps.
 pub(crate) struct Outputs {
-    keep: Option<Box<Lasting>>,
+    keep: Box<Lasting>,
 }
 
 impl Stage for Outputs {
@@ -172,9 +169,9 @@ impl Stage for Outputs {
     }
 
     fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        let kept = match (&self.keep, frame.pass) {
-            (Some(keep), Pass::Gate) => kept(conversation.messages(), keep),
-            (None, _) | (Some(_), Pass::Ceiling) => HashSet::new(),
+        let kept = match frame.pass {
+            Pass::Gate => kept(conversation.messages(), &self.keep),
+            Pass::Ceiling => HashSet::new(),
         };
         elide(conversation, frame, |message| {
             matches!(message, Message::ToolResult { id, content, .. }
