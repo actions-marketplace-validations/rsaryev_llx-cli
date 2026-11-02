@@ -1,12 +1,11 @@
 # The workspace's lints are in Cargo.toml; this is their configuration (ARCHITECTURE.md S4).
 
-# Tests may unwrap, panic, print and index: a failed test is the panic's job (R4).
+# Tests may unwrap, panic and print: a failed test is the panic's job (R4).
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
 allow-print-in-tests = true
 allow-dbg-in-tests = true
-allow-indexing-slicing-in-tests = true
 
 too-many-lines-threshold = 100
 cognitive-complexity-threshold = 25
