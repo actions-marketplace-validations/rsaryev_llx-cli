@@ -69,13 +69,7 @@ impl Workspace {
         let wanted = normal(&self.root.join(given));
         if !self.denied.is_empty() {
             // Where it really is: a symlink to a denied file is denied too.
-            let real = real(&wanted);
-            if self.denied.iter().any(|denied| real.starts_with(denied)) {
-                return Err(ToolError::Failed(format!(
-                    "{} is off limits to the tools",
-                    wanted.display()
-                )));
-            }
+            self.allowed(&wanted, &real(&wanted))?;
         }
         Ok(wanted)
     }
@@ -85,7 +79,35 @@ impl Workspace {
     /// on its target instead of replacing the link.
     pub(crate) fn writable(&self, path: &str) -> Result<PathBuf, ToolError> {
         let wanted = self.readable(path)?;
-        let real = real(&wanted);
+        self.inside(&wanted, real(&wanted))
+    }
+
+    /// Where `path` itself is, for removing it: as [`Self::writable`], but a symlink at its end is
+    /// not followed, so it is the link that goes, never what it points at. Its directory is the
+    /// one inside the root, and not one the app keeps to itself.
+    pub(crate) fn removable(&self, path: &str) -> Result<PathBuf, ToolError> {
+        let wanted = self.readable(path)?;
+        let place = match (wanted.parent(), wanted.file_name()) {
+            (Some(parent), Some(name)) => real(parent).join(name),
+            _ => real(&wanted),
+        };
+        self.allowed(&wanted, &place)?;
+        self.inside(&wanted, place)
+    }
+
+    /// Whether `place`, where `wanted` really is, is none of what the app keeps to itself.
+    fn allowed(&self, wanted: &Path, place: &Path) -> Result<(), ToolError> {
+        if self.denied.iter().any(|denied| place.starts_with(denied)) {
+            return Err(ToolError::Failed(format!(
+                "{} is off limits to the tools",
+                wanted.display()
+            )));
+        }
+        Ok(())
+    }
+
+    /// `real`, where `wanted` really is, when it is inside the root.
+    fn inside(&self, wanted: &Path, real: PathBuf) -> Result<PathBuf, ToolError> {
         if !real.starts_with(&self.root) {
             return Err(ToolError::Failed(format!(
                 "{} is outside the workspace {}: files are changed only inside it",

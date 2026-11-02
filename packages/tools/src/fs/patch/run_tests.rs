@@ -420,3 +420,99 @@ fn a_change_inside_a_nested_repositorys_git_must_leave_the_sandbox_too() {
         ["apply_patch: create sub/.git/hooks/pre-commit (1 line) [open]"]
     );
 }
+
+#[test]
+fn deleting_a_symbolic_link_removes_the_link_and_keeps_what_it_points_at() {
+    let dir = Scratch::new();
+    let target = dir.file("real.txt", "kept\n");
+    fs::create_dir_all(dir.path().join("docs")).unwrap();
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    std::os::unix::fs::symlink("docs", dir.path().join("docs-link")).unwrap();
+    let gate = Recorder::default();
+    let report = patch(&dir, &gate, "*** Delete File: link.txt\n");
+    assert!(target.exists(), "the link's target was deleted: {report:?}");
+    assert_eq!(read(&dir, "real.txt"), "kept\n");
+    assert_eq!(
+        report.unwrap(),
+        "Success. Updated the following files:\nD link.txt"
+    );
+    assert!(fs::symlink_metadata(dir.path().join("link.txt")).is_err());
+    // A link to a directory is a link too: it goes, the directory stays.
+    let report = patch(&dir, &gate, "*** Delete File: docs-link\n").unwrap();
+    assert_eq!(report, "Success. Updated the following files:\nD docs-link");
+    assert!(fs::symlink_metadata(dir.path().join("docs-link")).is_err());
+    assert!(dir.path().join("docs").is_dir());
+    assert_eq!(
+        *gate.asked.lock().unwrap(),
+        [
+            "apply_patch: delete the symlink link.txt (to real.txt)",
+            "apply_patch: delete the symlink docs-link (to docs)",
+        ]
+    );
+}
+
+/// The tool's own way to rewrite a file, `Delete File` then `Add File`, read hunk by hunk as a
+/// shell's `rm` then a write would: the link goes, and a file of its own takes its place.
+#[test]
+fn a_file_added_where_a_patch_deleted_a_link_takes_the_links_place() {
+    let dir = Scratch::new();
+    dir.file("real.txt", "kept\n");
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    let report = patch(
+        &dir,
+        &Open,
+        "*** Delete File: link.txt\n*** Add File: link.txt\n+new\n",
+    )
+    .unwrap();
+    assert_eq!(
+        report,
+        "Success. Updated the following files:\nD link.txt\nA link.txt"
+    );
+    let meta = fs::symlink_metadata(dir.path().join("link.txt")).unwrap();
+    assert!(meta.is_file(), "{meta:?}");
+    assert_eq!(read(&dir, "link.txt"), "new\n");
+    assert_eq!(read(&dir, "real.txt"), "kept\n");
+}
+
+#[test]
+fn a_link_a_patch_replaced_is_put_back_when_a_later_write_fails() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = Scratch::new();
+    std::os::unix::fs::symlink("missing.txt", dir.path().join("dangling")).unwrap();
+    let locked = dir.file("locked.txt", "y\n");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o444)).unwrap();
+    let message = failed(patch(
+        &dir,
+        &Open,
+        "*** Delete File: dangling\n*** Add File: dangling\n+new\n\
+         *** Update File: locked.txt\n@@\n-y\n+Y\n",
+    ));
+    assert!(message.contains("locked.txt"), "{message}");
+    assert_eq!(
+        fs::read_link(dir.path().join("dangling")).unwrap(),
+        PathBuf::from("missing.txt")
+    );
+}
+
+#[test]
+fn a_link_where_the_app_keeps_its_own_files_is_not_deleted() {
+    let dir = Scratch::new();
+    dir.file("notes.txt", "mine\n");
+    fs::create_dir_all(dir.path().join("config")).unwrap();
+    std::os::unix::fs::symlink("../notes.txt", dir.path().join("config/link")).unwrap();
+    let workspace = Workspace::new(dir.path())
+        .unwrap()
+        .denying([dir.path().join("config")]);
+    let tool = PatchTool {
+        workspace: &workspace,
+        gate: &Open,
+    };
+    let text = "*** Begin Patch\n*** Delete File: config/link\n*** End Patch";
+    let message = match tool.call(&Value::String(text.into())) {
+        Err(ToolError::Failed(message)) => message,
+        other => panic!("{other:?}"),
+    };
+    assert!(message.contains("off limits"), "{message}");
+    assert!(fs::symlink_metadata(dir.path().join("config/link")).is_ok());
+    assert_eq!(read(&dir, "notes.txt"), "mine\n");
+}

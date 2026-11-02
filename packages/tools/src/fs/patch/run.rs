@@ -2,26 +2,14 @@
 //! them, the gate asked for each file it will change, and only then the files written. A hunk that
 //! does not fit, a path outside the workspace or a refusal leaves every file as it was.
 
-use std::fs;
-use std::io;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use contracts::gate::{Effect, Gate, Needs, Verdict};
 use contracts::tool::{ToolError, ToolOutput};
 
+use super::disk::{self, File, load};
 use super::{Chunk, Hunk, NAME, apply, parse};
-use crate::fs::atomic;
 use crate::workspace::Workspace;
-
-/// A file as the patch sees it.
-struct File {
-    path: PathBuf,
-    shown: String,
-    /// What is on disk, until the patch writes it.
-    disk: Option<Vec<u8>>,
-    /// What the hunks so far leave: `None` when there is no such file.
-    now: Option<Vec<u8>>,
-}
 
 /// One thing the patch does to one file: what the gate is told, and what the report says.
 struct Step {
@@ -82,11 +70,11 @@ fn carry_out(workspace: &Workspace, gate: &dyn Gate, patch: &str) -> Result<Tool
             Verdict::Deny(reason) => return Err(crate::refused(&reason)),
         }
     }
-    let changed: Vec<&File> = files.iter().filter(|f| f.now != f.disk).collect();
+    let changed = disk::changed(&files);
     for file in &changed {
-        unchanged(&file.path, &file.shown, file.disk.as_deref())?;
+        disk::unchanged(file)?;
     }
-    write(&changed)?;
+    disk::write(&changed)?;
     // The model reads which files, as Codex's `apply_patch` says them; the diff is for the person
     // alone (`ToolOutput::shown`).
     let marks: Vec<&str> = (steps.iter())
@@ -104,64 +92,6 @@ fn carry_out(workspace: &Workspace, gate: &dyn Gate, patch: &str) -> Result<Tool
         ),
         shown: shown.join("\n\n"),
     })
-}
-
-/// The writes of `changed` first, then its deletions, so a move that fails halfway keeps its
-/// source. A failure puts back every file already written, from what was on disk.
-fn write(changed: &[&File]) -> Result<(), ToolError> {
-    let (written, removed): (Vec<&File>, Vec<&File>) =
-        changed.iter().copied().partition(|file| file.now.is_some());
-    let mut done: Vec<&File> = vec![];
-    // `bytes` at `path`, or no file there.
-    let put = |path: &Path, bytes: &Option<Vec<u8>>| match bytes {
-        Some(bytes) => atomic::write(path, bytes),
-        None => fs::remove_file(path),
-    };
-    for file in written.into_iter().chain(removed) {
-        if let Err(error) = put(&file.path, &file.now) {
-            for back in done {
-                let _ = put(&back.path, &back.disk);
-            }
-            return Err(ToolError::Failed(format!(
-                "{} could not be written: {error}",
-                file.shown
-            )));
-        }
-        done.push(file);
-    }
-    Ok(())
-}
-
-/// The file `name`, read from disk the first time the patch names it.
-fn load<'a>(
-    workspace: &Workspace,
-    files: &'a mut Vec<File>,
-    name: &str,
-) -> Result<&'a mut File, ToolError> {
-    let path = workspace.writable(name)?;
-    if let Some(index) = files.iter().position(|file| file.path == path) {
-        return Ok(&mut files[index]);
-    }
-    let shown = workspace.shown(&path);
-    // A FIFO or a device would block the read, or never end it.
-    if let Some(meta) = fs::metadata(&path).ok().filter(|meta| !meta.is_file()) {
-        let what = match meta.is_dir() {
-            true => "a directory",
-            false => "not a regular file",
-        };
-        return Err(ToolError::Failed(format!(
-            "{shown} is {what}: {NAME} changes files"
-        )));
-    }
-    let disk = contents(&path, &shown)?;
-    let index = files.len();
-    files.push(File {
-        path,
-        shown,
-        now: disk.clone(),
-        disk,
-    });
-    Ok(&mut files[index])
 }
 
 /// What `hunk` makes of the files, noted in `files`, and the steps it takes.
@@ -189,13 +119,24 @@ fn plan(
             file.now = Some(content.into_bytes());
         }
         Hunk::Delete { path } => {
-            let file = load(workspace, files, &path)?;
+            let file = disk::deleted(workspace, files, &path)?;
             let Some(bytes) = file.now.take() else {
                 return Err(ToolError::Failed(format!("{} does not exist", file.shown)));
             };
-            let size = count(String::from_utf8_lossy(&bytes).lines().count());
+            let summary = match &file.link {
+                Some(target) => format!(
+                    "delete the symlink {} (to {})",
+                    file.shown,
+                    target.display()
+                ),
+                None => format!(
+                    "delete {} ({})",
+                    file.shown,
+                    count(String::from_utf8_lossy(&bytes).lines().count())
+                ),
+            };
             steps.push(Step {
-                summary: format!("delete {} ({size})", file.shown),
+                summary,
                 done: format!("D {}", file.shown),
                 ..Step::of(&file.shown)
             });
@@ -297,29 +238,6 @@ impl Step {
             diff: String::new(),
         }
     }
-}
-
-/// The file's bytes, or `None` when there is no file yet.
-fn contents(path: &Path, shown: &str) -> Result<Option<Vec<u8>>, ToolError> {
-    match fs::read(path) {
-        Ok(bytes) => Ok(Some(bytes)),
-        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(ToolError::Failed(format!(
-            "{shown} could not be read: {error}"
-        ))),
-    }
-}
-
-/// Fail when the file is no longer what the patch was worked out from: the approval can take
-/// minutes, and an editor, a formatter or the person may change the file meanwhile. Their change
-/// is kept, and the model reads the file again.
-fn unchanged(path: &Path, shown: &str, read: Option<&[u8]>) -> Result<(), ToolError> {
-    if contents(path, shown)?.as_deref() == read {
-        return Ok(());
-    }
-    Err(ToolError::Failed(format!(
-        "{shown} changed while waiting for approval: read it again"
-    )))
 }
 
 /// `1 line`, `12 lines`.

@@ -1,12 +1,13 @@
 //! A patch, `*** Begin Patch` … `*** End Patch`, as `apply_patch` (`patch/tool.rs`) takes it.
 //! This file reads it into hunks; `patch/seek.rs` finds a hunk's lines in a file, `patch/apply.rs`
-//! makes the new content, `patch/run.rs` asks the gate and writes, and `patch/cut.rs` carries out
-//! what of a patch the output limit cut off is whole (B7).
+//! makes the new content, `patch/run.rs` asks the gate and `patch/disk.rs` reads and writes the
+//! files, and `patch/cut.rs` carries out what of a patch the output limit cut off is whole (B7).
 
 use serde_json::Value;
 
 mod apply;
 mod cut;
+mod disk;
 mod run;
 mod seek;
 mod tool;
