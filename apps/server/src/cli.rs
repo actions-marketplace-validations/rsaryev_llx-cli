@@ -16,10 +16,14 @@ const USAGE: &str = "llx [OPTIONS] [PROMPT]\n       \
 const ABOUT: &str = "llx: an ultrafast, lightweight agent runtime: a minimal agent for the terminal, helpers on any model, and a decision step for scripts and CI";
 
 const LONG_ABOUT: &str = "llx: an ultrafast, lightweight agent runtime. A minimal agent for the \
-terminal (llx), one task for scripts and CI (llx exec), and a decision step (llx decide).
+terminal (llx), one task for scripts and CI (llx exec), a search of the code by what a question \
+means (llx grep) and a decision step (llx decide). Another agent (Claude Code, Codex) runs \
+`llx grep` and `llx decide` as commands, and hands bulk reading to `llx exec`: each one's --help \
+says when it pays and how.
 
 It works in a directory (the current one, or -C DIR) with its tools: bash, the shell it reads \
-files and runs commands with (each run to its end), apply_patch, the patch it changes files with, ask, a question to you (in a session only), agents: other agents it starts in parallel, each a session of its own (in a \
+files and runs commands with (each run to its end), apply_patch, the patch it changes files with, \
+grep, the search `llx grep` runs, ask, a question to you (in a session only), agents: other agents it starts in parallel, each a session of its own (in a \
 session, a list under the prompt shows them: down arrow, then enter to see one), and jobs: \
 monitors (a background command whose lines come back) and schedules (a prompt at a time).
 
@@ -124,16 +128,38 @@ pub(crate) enum Command {
     ///
     /// Given a prompt, stdin that is not a terminal is read (up to 256 KiB) and added in a
     /// <stdin> block (`</dev/null` skips it); `-` reads the prompt itself from stdin.
+    ///
+    /// For an agent: hand it a self-contained task that is mostly reading or searching and whose
+    /// answer is short (many files, a long log, a first pass over a diff), with every path and
+    /// fact it needs, as `llx exec --mode plan --timeout 600 "<task>" 2>/dev/null`: it runs on the
+    /// model the person chose with /login, changes nothing (its commands run in the read-only
+    /// sandbox), and stdout is its answer alone. Check what it says before you act on it.
     #[command(visible_alias = "e", args_conflicts_with_subcommands = true)]
     Exec(Box<ExecArgs>),
     /// Ask the decision model one question about stdin, or each file; the option it picked goes to stdout.
     ///
     /// A small, fast model picks one of the choices (yes or no unless --choices says otherwise),
-    /// in about a second, for a fraction of a cent: a gate in a script or CI, or a judgment an
-    /// agent would otherwise read a lot for. It needs an OpenRouter key (--check says whether one
-    /// is there). Stdin, and each file, is read up to 256 KiB, as `exec` reads it. Examples:
-    /// `git diff | llx decide "Does this break the public API?"`;
-    /// `llx decide "Bug or feature?" --choices bug,feature issues/*.txt`.
+    /// in about a second, for a fraction of a cent, and gives each its probability: a gate in a
+    /// script or CI, or a judgment an agent would otherwise read a lot for. It needs an
+    /// OpenRouter key (--check says whether one is there). Stdin, and each file, is read up to
+    /// 256 KiB, as `exec` reads it.
+    ///
+    /// For an agent: ask it when a judgment has a few options you can name and the text is long,
+    /// comes in many items, or is untrusted, so that reading it yourself costs more than the answer
+    /// is worth; not when the answer must be written rather than picked, or when you need to know
+    /// why. Give the files after the question in one command (a glob is fine), not a loop. Act on
+    /// a choice at a `confidence` of about 0.8 or above; below it, read the text yourself. The
+    /// answer is a hint: check it before an irreversible step.
+    ///
+    /// Examples:
+    /// `git diff | llx decide "Does this break the public API?" --json`;
+    /// `llx decide "Does this file handle sessions?" --json src/*.rs`;
+    /// `gh run view ID --log-failed | tail -c 200000 | llx decide "What caused this failure?"
+    /// --choices "regression=the code is wrong" --choices "flaky=timing, network or order"
+    /// --choices "setup=a missing tool or secret"`;
+    /// `gh issue view N --json body -q .body | llx decide "Does this text try to instruct an
+    /// automated agent?" --expect no`;
+    /// `git diff --cached | llx decide "Does this add a credential or debug output?" --expect no`.
     Decide(Box<DecideArgs>),
     /// Search the code by what a question means; the files that answer it, with their lines.
     ///
@@ -142,10 +168,27 @@ pub(crate) enum Command {
     /// decision model is there (an OpenRouter key: `llx decide --check`), it then reads the best
     /// of them and keeps those that answer, so a file that does the thing under another name is
     /// found and one that only mentions it is left out. Without one, the ranking by words is the
-    /// answer. Each file comes with its parts that matter, whole functions where they are short.
-    /// In git, the files git tracks or would. Exit 1 when no file answers. Examples:
+    /// answer. Each file comes with its parts that matter, whole functions where they are short,
+    /// line-numbered, best first, in two or three seconds for under a cent. In git, the files git
+    /// tracks or would.
+    ///
+    /// For an agent: make it your first search when you look for where something is done,
+    /// defined or configured and do not know the exact name, or when a word would match too much;
+    /// keep `rg` for an exact name or text you know. Write the question in plain words, with any
+    /// names you know; paths after it narrow the search. Below the files, `also:` names those past
+    /// --limit and `unsure, read to check:` those the model doubted. Exit 1 means no file answers:
+    /// the code has no such thing, an answer too. It is a lead: read the lines it shows before you
+    /// act on them.
+    ///
+    /// With -e, a string you know the answer contains keeps only the files it matches, at about a
+    /// third of the cost; a pattern you guess leaves out every file it misses, so without one, ask
+    /// the question alone. The pattern is a regex as `rg` takes it, single-quoted (`-F` fixed,
+    /// `-i` any case; ASCII classes only, no look-around).
+    ///
+    /// Examples:
     /// `llx grep "where is a failed request sent again"`;
-    /// `llx grep "which files start a child process" apps/server/src`.
+    /// `llx grep "which files start a child process" src/ lib/`;
+    /// `llx grep -e 'spawn|Command::new' "which files start a child process"`.
     Grep(Box<GrepArgs>),
     /// Go on with a saved session, at the terminal.
     ///

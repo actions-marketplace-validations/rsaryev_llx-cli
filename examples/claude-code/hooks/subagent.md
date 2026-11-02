@@ -1,1 +1,0 @@
-The `llx` subagent runs a self-contained task with llx, on another model. Hand it bulk reading and searching whose answer is short (many files, a long log, a first pass over a diff), with every path and fact the task needs; keep your own turns for decisions and edits.
