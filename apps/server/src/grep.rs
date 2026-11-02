@@ -218,10 +218,11 @@ fn picked(
         .enumerate())
     .filter_map(|(at, ((&doc, yes), lead))| Some((doc, (*yes)?, *lead, round(at))))
     .collect();
+    // The place in the ranking only breaks a tie: it is looked for then alone.
     judged.sort_by(|a, b| {
         (a.3.cmp(&b.3))
             .then(b.1.total_cmp(&a.1))
-            .then(place(a.0).cmp(&place(b.0)))
+            .then_with(|| place(a.0).cmp(&place(b.0)))
     });
     // Each round's margin from its own best: a second round's file comes after all the first
     // kept, so the first's best does not bar it.
