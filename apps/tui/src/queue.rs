@@ -127,7 +127,8 @@ impl App {
     }
 
     /// What is shown may be incomplete (the server no longer kept all since the client's
-    /// cursor): every transcript, the jobs and the questions start again from what follows.
+    /// cursor): every transcript, the jobs and the questions start again from what follows, and
+    /// the list gives the keys back (the row it had chosen may have gone with the jobs).
     pub(super) fn gap(&mut self) {
         for view in &mut self.views.sessions {
             view.blocks.clear();
@@ -138,6 +139,7 @@ impl App {
             }
         }
         self.views.jobs.clear();
+        self.views.focus = None;
         self.questions.clear();
         self.settling = None;
         self.pending.clear();

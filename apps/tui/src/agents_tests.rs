@@ -328,6 +328,21 @@ fn the_list_chooses_only_job_rows_it_draws_and_keeps_a_row_chosen_when_rows_go()
 }
 
 #[test]
+fn a_gap_that_takes_the_job_chosen_gives_the_keys_back_to_the_prompt() {
+    let now = Instant::now();
+    let mut app = app();
+    app.event(Event::Jobs(vec![job("tui-gap-job", "watch")]), now);
+    press(&mut app, KeyCode::Down, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
+    // What is shown may be incomplete: the jobs start again from what follows.
+    app.frame(protocol::ToClient::Gap, now);
+    // No list is drawn to choose in: ← is the prompt's, which lists the sessions.
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List]);
+}
+
+#[test]
 fn an_agent_started_in_a_lane_gets_its_events() {
     let now = Instant::now();
     let mut app = app();
