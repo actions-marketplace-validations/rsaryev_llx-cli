@@ -67,17 +67,17 @@ check_coverage() {
 check_size() {
   size_bin="${CARGO_TARGET_DIR:-target}/release/llx"
   cargo build --release --locked -p "$REPO_CRATE" || return 1
-  size_default=$(wc -c <"$size_bin" | tr -d ' ')
-  note "release llx on $(tool_platform): default $size_default B (fails above $SIZE_LIMIT, warns above $SIZE_GOAL)"
-  if [ "$size_default" -gt "$SIZE_LIMIT" ]; then
-    echo "the release binary is $size_default B, over its cap of $SIZE_LIMIT B (5 MiB):"
+  size_bytes=$(wc -c <"$size_bin" | tr -d ' ')
+  note "release llx on $(tool_platform): $size_bytes B (fails above $SIZE_LIMIT, warns above $SIZE_GOAL)"
+  if [ "$size_bytes" -gt "$SIZE_LIMIT" ]; then
+    echo "the release binary is $size_bytes B, over its cap of $SIZE_LIMIT B (5 MiB):"
     echo "a dependency has to earn its size (AGENTS.md)"
     return 1
   fi
-  if [ "$size_default" -gt "$SIZE_GOAL" ]; then
-    note "warning: the release binary is $size_default B, past the $SIZE_GOAL B (4 MB) goal"
+  if [ "$size_bytes" -gt "$SIZE_GOAL" ]; then
+    note "warning: the release binary is $size_bytes B, past the $SIZE_GOAL B (4 MB) goal"
     if [ -n "${GITHUB_ACTIONS:-}" ]; then
-      echo "::warning title=binary size::the release binary is $size_default B, past the $SIZE_GOAL B (4 MB) goal"
+      echo "::warning title=binary size::the release binary is $size_bytes B, past the $SIZE_GOAL B (4 MB) goal"
     fi
   fi
 }

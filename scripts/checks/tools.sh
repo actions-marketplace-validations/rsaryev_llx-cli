@@ -5,8 +5,8 @@
 # laptop and CI read the same code the same way. Sourced by scripts/check.
 #
 # The cache is $LLX_TOOLS_DIR, else $XDG_CACHE_HOME/llx/tools, else ~/.cache/llx/tools. A new
-# version is a new row with the release's published SHA-256 (actionlint's and jq's checksum
-# files, GitHub's asset digests for shellcheck, yq's `checksums` file, column SHA-256).
+# version is a new row with the release's published SHA-256 (actionlint's, jq's and gitleaks'
+# checksum files, GitHub's asset digests for shellcheck, yq's `checksums` file, column SHA-256).
 
 tools_dir=${LLX_TOOLS_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/llx/tools}
 

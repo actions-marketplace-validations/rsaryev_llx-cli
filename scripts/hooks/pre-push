@@ -1,8 +1,8 @@
 #!/bin/sh
 # Git's pre-push hook (scripts/setup installs it): `scripts/check --fast` on what is pushed, the
 # commits since the remote's (fmt, clippy on the crates changed, the repository's rules, the
-# linters of what changed): seconds, not minutes. The tests, both builds, the size and the site
-# run in CI on every push, and by hand with `scripts/check` (or `--all`) before a change is
+# linters of what changed): seconds, not minutes. The tests, the release binary's size and the
+# site run in CI on every push, and by hand with `scripts/check` (or `--all`) before a change is
 # called done. `git push --no-verify` skips it.
 #
 # The checks read the working tree, so it must be what is pushed: a ref whose commit is not the
