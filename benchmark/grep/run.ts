@@ -116,13 +116,18 @@ function ask(mode: string, q: Query, repo: string): Answer {
     const read = sh(["rg", "-n", "-i", "-e", q.rg, ...paths], repo);
     return { files, millis: run.millis, cost: 0, bytes: read.out.length };
   }
-  const lexical = mode === "words" ? ["--lexical"] : [];
+  // `hybrid` and `hybrid-words`: the pattern an agent would give rg first (`rg -i -e`), with the
+  // question: the pattern keeps the files, the question ranks them, the model (or not) reads them.
+  const lexical = mode === "words" || mode === "hybrid-words" ? ["--lexical"] : [];
+  const pattern = mode.startsWith("hybrid") ? ["-i", "-e", q.rg] : [];
   const extra = opts["grep-arg"] ?? [];
-  const run = sh([opts.llx!, "grep", "--json", ...lexical, ...extra, q.query, ...paths], repo);
+  const run = sh([opts.llx!, "grep", "--json", ...lexical, ...pattern, ...extra, q.query, ...paths], repo);
   if (run.code !== 0 && run.code !== 1)
     return { files: [], millis: run.millis, cost: 0, bytes: 0, failed: run.err.trim() };
   const answer = JSON.parse(run.out);
-  if (mode === "judged" && answer.by !== "judged")
+  // With a pattern and no file it matches, nothing is judged: an empty answer, not a failure.
+  const nothing = answer.files.length === 0 && run.code === 1;
+  if ((mode === "judged" || mode === "hybrid") && answer.by !== "judged" && !nothing)
     return { files: [], millis: run.millis, cost: 0, bytes: 0, failed: run.err.trim() };
   const files: string[] = answer.files.map((f: { file: string }) => f.file);
   const scores: number[] = answer.files.map((f: { score: number }) => f.score);

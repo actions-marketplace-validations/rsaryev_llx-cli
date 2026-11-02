@@ -18,6 +18,7 @@ mod blocks;
 mod judge;
 mod links;
 mod listing;
+mod pattern;
 mod rank;
 mod shown;
 mod terms;
@@ -74,12 +75,15 @@ struct Outcome {
 /// Search, print what was found, and exit 1 when nothing was.
 pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
     let started = Instant::now();
+    let pattern = pattern::compiled(&args.pattern)?;
     let mut terms = terms::terms(&args.query);
-    terms.truncate(rank::MOST_TERMS);
     let files = listing::listed(&args.paths)?;
-    let docs = read_all(&files)?;
+    let mut docs = read_all(&files)?;
+    pattern::applied(pattern.as_ref(), &mut terms, &mut docs);
+    terms.truncate(rank::MOST_TERMS);
     let definition = terms::asks_for_definition(&args.query);
-    let (ranked, weights) = rank::ranked(&docs, &terms, definition);
+    let (ranked, mut weights) = rank::ranked(&docs, &terms, definition);
+    pattern::weighed(pattern.as_ref(), &mut weights);
     let decider = (!args.lexical)
         .then(|| providers::decider(&args.model))
         .flatten();

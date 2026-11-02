@@ -159,6 +159,18 @@ fn counted(doc: &Doc, terms: &[Term]) -> Counts {
 /// given: empty leaves them uncounted).
 fn line_mask(line: &str, terms: &[Term], words: &mut u32, each: &mut [u32]) -> Mask {
     let mut mask = 0;
+    for (t, term) in terms.iter().enumerate() {
+        let found = term
+            .pattern
+            .as_ref()
+            .map_or(0, |pattern| pattern.count(line));
+        if found > 0 {
+            mask |= 1 << t;
+            if let Some(count) = each.get_mut(t) {
+                *count = count.saturating_add(found);
+            }
+        }
+    }
     terms::each_word(line, |word| {
         *words = words.saturating_add(1);
         for (t, term) in terms.iter().enumerate() {

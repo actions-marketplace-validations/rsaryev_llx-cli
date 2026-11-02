@@ -2,6 +2,8 @@
 //! things (`parse_rows`, `parseRows` and `ParseRows` are each `parse` and `rows` too), so a term
 //! finds a name in any case and in its inflections (`kills` finds `kill` and `killpg`).
 
+use super::pattern::Pattern;
+
 /// One word of the question, as it is looked for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Term {
@@ -16,11 +18,27 @@ pub(super) struct Term {
     pub(super) exact: bool,
     /// A number is found in any of its spellings: `0600` is `0o600` and `600`.
     pub(super) number: bool,
+    /// `-e`'s patterns: a line, not a word, matches it.
+    pub(super) pattern: Option<Pattern>,
 }
 
 impl Term {
+    /// `-e`'s patterns as a term.
+    pub(super) fn pattern(pattern: Pattern) -> Self {
+        Self {
+            word: String::new(),
+            stem: String::new(),
+            exact: true,
+            number: false,
+            pattern: Some(pattern),
+        }
+    }
+
     /// Whether `word` (lower-cased) is this term.
     pub(super) fn finds(&self, word: &str) -> bool {
+        if self.pattern.is_some() {
+            return false;
+        }
         if self.number {
             return word.starts_with(|c: char| c.is_ascii_digit()) && number(word) == self.stem;
         }
@@ -128,6 +146,7 @@ fn term(word: String) -> Term {
             word,
             exact: true,
             number: true,
+            pattern: None,
         };
     }
     let exact = word.chars().count() <= 3;
@@ -136,6 +155,7 @@ fn term(word: String) -> Term {
         word,
         exact,
         number: false,
+        pattern: None,
     }
 }
 

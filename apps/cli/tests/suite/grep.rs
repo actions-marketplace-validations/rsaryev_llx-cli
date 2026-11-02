@@ -277,3 +277,122 @@ fn a_decision_model_that_refuses_says_why_and_the_words_answer() {
         "{said}"
     );
 }
+
+#[test]
+fn a_pattern_keeps_only_the_files_it_matches_then_the_question_ranks_them() {
+    let home = Home::new();
+    project(&home);
+    // retry.rs answers the question best by its words, but only http.rs calls `post(`.
+    let out = grep(
+        &home,
+        None,
+        &[
+            "grep",
+            "--lexical",
+            "-e",
+            r"post\(",
+            "where is a failed request sent again",
+            "project",
+        ],
+    );
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let shown = text(&out.stdout);
+    assert!(shown.starts_with("project/src/http.rs"), "{shown}");
+    assert!(!shown.contains("retry.rs"), "{shown}");
+    assert!(shown.contains("4:     post(request)"), "{shown}");
+}
+
+#[test]
+fn a_fixed_string_and_a_case_rule_match_as_grep_does() {
+    let home = Home::new();
+    project(&home);
+    let fixed = grep(
+        &home,
+        None,
+        &[
+            "grep",
+            "--lexical",
+            "-l",
+            "-F",
+            "-e",
+            "post(",
+            "who sends",
+            "project",
+        ],
+    );
+    assert_eq!(
+        text(&fixed.stdout),
+        "project/src/http.rs\n",
+        "{}",
+        text(&fixed.stderr)
+    );
+    let any_case = grep(
+        &home,
+        None,
+        &[
+            "grep",
+            "--lexical",
+            "-l",
+            "-i",
+            "-e",
+            "POST",
+            "who sends",
+            "project",
+        ],
+    );
+    assert_eq!(text(&any_case.stdout), "project/src/http.rs\n");
+    // Several patterns: a file with any of them.
+    let either = grep(
+        &home,
+        None,
+        &[
+            "grep",
+            "--lexical",
+            "-l",
+            "-e",
+            "post",
+            "-e",
+            "three times",
+            "who sends",
+            "project",
+        ],
+    );
+    let listed = text(&either.stdout);
+    assert!(
+        listed.contains("project/src/http.rs") && listed.contains("project/src/retry.rs"),
+        "{listed}"
+    );
+    assert!(!listed.contains("notes.md"), "{listed}");
+}
+
+#[test]
+fn a_pattern_that_matches_nothing_finds_nothing_and_a_broken_one_is_a_usage_error() {
+    let home = Home::new();
+    project(&home);
+    let none = grep(
+        &home,
+        None,
+        &[
+            "grep",
+            "--lexical",
+            "-e",
+            "graphql_schema",
+            "where is the schema",
+            "project",
+        ],
+    );
+    assert_eq!(none.status.code(), Some(1), "{}", text(&none.stderr));
+    assert_eq!(text(&none.stdout), "");
+    let broken = grep(
+        &home,
+        None,
+        &["grep", "--lexical", "-e", "post(", "who sends", "project"],
+    );
+    // A usage error, as every one of llx's is (exit.rs).
+    assert_eq!(broken.status.code(), Some(3), "{}", text(&broken.stderr));
+    assert!(
+        text(&broken.stderr).contains("post("),
+        "{}",
+        text(&broken.stderr)
+    );
+}

@@ -5,4 +5,6 @@ Make it your first search when you look for where something is done, defined or 
     llx grep "where is a failed HTTP request sent again"
     llx grep "which files start a child process" src/ lib/
 
+Where you know a string the answer must contain, add it as a pattern, as grep's: `llx grep -e 'spawn|shell::query' "which files start a child process"` keeps only the files it matches and costs a third as much; a pattern you guess leaves out every file it misses, so without one, ask the question alone.
+
 Write the question in plain words, with any names you know; paths after it narrow the search, written into the command itself. Below the files that answer, `also:` names the ones past the limit and `unsure, read to check:` those the model doubted. Exit 1 means no file answers: the code has no such thing, an answer too. `-l` prints the paths alone, `--json` one object with each file's score and lines. It is a lead: read the lines it shows before you act on them.

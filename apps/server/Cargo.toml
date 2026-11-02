@@ -35,6 +35,7 @@ clap.workspace = true
 serde_json.workspace = true
 log.workspace = true
 unicode-width.workspace = true
+regex-lite.workspace = true
 # Signals, the daemon's lock, sockets' and files' modes: calls std has no wrapper for.
 libc.workspace = true
 

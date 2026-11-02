@@ -6,6 +6,9 @@ use std::path::PathBuf;
 use clap::builder::RangedU64ValueParser;
 use clap::{ArgGroup, Args, Parser, Subcommand};
 
+mod grep;
+pub(crate) use grep::{GrepArgs, PatternArgs};
+
 const USAGE: &str = "llx [OPTIONS] [PROMPT]\n       \
     llx exec [OPTIONS] [PROMPT | -]\n       \
     llx <COMMAND>";
@@ -236,38 +239,6 @@ pub(crate) struct DecideArgs {
     /// cannot. No network, no cost: for a script or a plugin that offers decide only then.
     #[arg(long, conflicts_with_all = ["question", "files", "expect", "json"])]
     pub check: bool,
-    /// The decision model.
-    #[arg(short = 'm', long, value_name = "MODEL", env = "LLX_DECISION_MODEL", default_value = crate::providers::DECISION_DEFAULT)]
-    pub model: String,
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct GrepArgs {
-    /// What to find, in words or names: a question, or the names it is about.
-    pub query: String,
-    /// Where to search: files and directories (the current one when none).
-    #[arg(value_name = "PATH")]
-    pub paths: Vec<PathBuf>,
-    /// The paths alone, best first, a line each.
-    #[arg(short = 'l', long, conflicts_with = "json")]
-    pub files: bool,
-    /// One JSON object: each file with its score and parts, what was unsure, how they were
-    /// picked and the cost.
-    #[arg(long)]
-    pub json: bool,
-    /// At most this many files shown with their lines; the rest are named.
-    #[arg(short = 'n', long, value_name = "N", default_value_t = 10)]
-    pub limit: usize,
-    /// At most this many lines shown in all, the best file given the most.
-    #[arg(long, value_name = "N", default_value_t = 150)]
-    pub lines: usize,
-    /// By the words alone, even where a decision model is there: no network, no cost.
-    #[arg(long)]
-    pub lexical: bool,
-    /// At most this many files read by the decision model, the best by their words first
-    /// (all of them when there are no more).
-    #[arg(long, value_name = "N", default_value_t = 80)]
-    pub judge: usize,
     /// The decision model.
     #[arg(short = 'm', long, value_name = "MODEL", env = "LLX_DECISION_MODEL", default_value = crate::providers::DECISION_DEFAULT)]
     pub model: String,

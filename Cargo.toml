@@ -182,6 +182,9 @@ log = "0.4"
 # Already in the tree through ureq's gzip: the built-in model catalog, kept deflated.
 miniz_oxide = "0.9.1"
 sha2 = "0.11.1"
+# `llx grep -e`'s patterns: the regex crate's own small engine (about 50 KB; linear time, ASCII
+# classes), not the full one (450 to 830 KB).
+regex-lite = "0.1.9"
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
 
 # A small, self-contained binary: TLS is the OS's,

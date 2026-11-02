@@ -84,7 +84,7 @@ llx grep -l "where the release binary's size limit is checked"     # the paths a
 
 How it works:
 
-1. **The files.** Under each path (the current directory when none): in git, the files git tracks or would (its ignore rules kept); elsewhere every file but hidden ones, `target`, `node_modules` and `__pycache__`. A file over 1 MiB, one that is not text, a lock file, a minified bundle and a source map are left out.
+1. **The files.** With `-e`, only those with a line a pattern matches (a regex as grep's, with `-F` a fixed string, `-i` any case; given again, any of them); the pattern is then one term more, outweighing every word of the question, so the parts shown and read are its lines. Under each path (the current directory when none): in git, the files git tracks or would (its ignore rules kept); elsewhere every file but hidden ones, `target`, `node_modules` and `__pycache__`. A file over 1 MiB, one that is not text, a lock file, a minified bundle and a source map are left out.
 2. **The words.** The question's words without those every question has (`where`, `the`, `file`), and each name's parts as code writes them (`parse_rows`, `parseRows` and `ParseRows` are each `parse` and `rows` too); a word finds its inflections (`renames` finds `rename` and `renamed`, `failed` finds `failure`), and a number its spellings (`0600` finds `0o600`).
 3. **The ranking.** BM25 over each file's words, a rarer word counting more; a word in the path counts more, and on a definition's line more still when the question asks where something is defined; a file with more of the question's words comes before one that repeats a few; a test, and a file under `data/`, `vendor/` or the like, counts half.
 4. **The decision model** (where an OpenRouter key is set, unless `--lexical`). It reads the best files by their words, 24 at once, up to `--judge` of them (all of them, but the tests, when there are no more than half again as many), each as its start and its best parts, and says how likely each is to be one the answer names, and of a long one which of its parts shows best what was asked (one request: the text is read once). The files at least 0.5 likely, and within 0.25 of the most likely, are the answer, most likely first; below that, down to 0.2, are named as unsure. Without a decision model, the ranking by words is the answer, `--limit` files of it.
@@ -94,6 +94,9 @@ How it works:
 | Option | Meaning |
 | --- | --- |
 | `PATH…` | Files and directories to search; the current directory when none. |
+| `-e, --regexp PATTERN` | Only the files with a line it matches, then ranked by the question; again for any of several. A broken one is a usage error (exit 3). |
+| `-F, --fixed` | The patterns as fixed strings. |
+| `-i, --ignore-case` | The patterns in any case. |
 | `-l, --files` | The paths alone, best first, a line each. |
 | `--json` | One JSON object (below). |
 | `-n, --limit N` | At most N files shown with their lines; the rest are named. Default 10. |

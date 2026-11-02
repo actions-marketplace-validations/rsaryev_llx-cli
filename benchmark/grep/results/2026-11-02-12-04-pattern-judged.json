@@ -1,0 +1,687 @@
+{
+ "commit": "f19ba1cb",
+ "modes": [
+  "hybrid"
+ ],
+ "results": [
+  {
+   "files": [
+    "packages/contracts/src/model.rs"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    "apps/server/src/providers.rs"
+   ],
+   "millis": 1455,
+   "cost": 0.0007682640000000001,
+   "bytes": 526,
+   "id": "symbol-1",
+   "group": "symbol",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/daemon.rs"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [],
+   "millis": 1507,
+   "cost": 0.000291312,
+   "bytes": 607,
+   "id": "symbol-2",
+   "group": "symbol",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/exit.rs",
+    "docs/reference.md",
+    "action/run.sh",
+    "apps/server/src/error.rs",
+    "site/public/llms.txt",
+    "apps/server/src/cli.rs",
+    "apps/server/src/commands/run/task.rs",
+    "apps/server/src/commands/run/ended.rs",
+    "apps/server/src/commands.rs"
+   ],
+   "scores": [
+    1,
+    0.98,
+    0.97,
+    0.97,
+    0.84,
+    0.77,
+    0.88,
+    0.82,
+    0.7
+   ],
+   "unsure": [
+    "site/src/components/cards.ts",
+    "docs/ci.md",
+    "README.md",
+    "action.yml",
+    "CHANGELOG.md",
+    "docs/recipes.md",
+    "ARCHITECTURE.md",
+    "apps/server/src/commands/run.rs"
+   ],
+   "millis": 4643,
+   "cost": 0.0028436940000000003,
+   "bytes": 8664,
+   "id": "symbol-3",
+   "group": "symbol",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.4,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/store.rs",
+    "action/run.sh",
+    "apps/tui/src/composer/render.rs"
+   ],
+   "scores": [
+    1,
+    0.99,
+    0.79
+   ],
+   "unsure": [
+    "apps/tui/src/composer.rs"
+   ],
+   "millis": 2157,
+   "cost": 0.0012774719999999998,
+   "bytes": 3935,
+   "id": "symbol-4",
+   "group": "symbol",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.3333333333333333,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/jobs/monitor.rs",
+    "apps/server/src/daemon.rs",
+    "apps/server/src/agents/tool.rs",
+    "apps/server/src/jobs/tool.rs",
+    "apps/server/src/agents.rs",
+    "apps/server/src/meta/title.rs"
+   ],
+   "scores": [
+    0.99,
+    0.98,
+    0.88,
+    0.78,
+    0.76,
+    0.52
+   ],
+   "unsure": [
+    "apps/server/src/agents/fork.rs",
+    "apps/server/src/agents/spec.rs"
+   ],
+   "millis": 1990,
+   "cost": 0.0014626500000000002,
+   "bytes": 7353,
+   "id": "concept-1",
+   "group": "concept",
+   "mode": "hybrid",
+   "r5": 0.3333333333333333,
+   "r10": 0.3333333333333333,
+   "p5": 0.6,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/openrouter/src/client.rs",
+    "packages/providers/kit/src/retry.rs",
+    "action/run.sh",
+    "scripts/install.sh",
+    "packages/providers/openai/src/responses.rs"
+   ],
+   "scores": [
+    0.98,
+    0.96,
+    0.93,
+    0.9,
+    0.88
+   ],
+   "unsure": [
+    "packages/providers/kit/src/lib.rs",
+    "docs/recipes.md"
+   ],
+   "millis": 1905,
+   "cost": 0.000787416,
+   "bytes": 6416,
+   "id": "concept-2",
+   "group": "concept",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 0.5
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/cache.rs",
+    "packages/providers/openrouter/src/chat.rs"
+   ],
+   "scores": [
+    1,
+    0.96
+   ],
+   "unsure": [],
+   "millis": 2882,
+   "cost": 0.004497066000000001,
+   "bytes": 2525,
+   "id": "concept-3",
+   "group": "concept",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/hooks/claude-stop",
+    "packages/tools/src/shell/process.rs",
+    "packages/tools/src/shell/sweep.rs",
+    "docs/tools.md",
+    "apps/server/src/jobs/monitor.rs",
+    "apps/cli/src/terminal/daemon.rs",
+    "packages/tools/src/shell/query.rs",
+    "packages/tools/src/shell/leaders.rs",
+    "packages/tools/src/shell/bash.rs",
+    "apps/tui/src/within.rs",
+    "apps/server/src/commands/extras.rs",
+    "apps/server/src/compose.rs"
+   ],
+   "scores": [
+    0.98,
+    0.96,
+    0.96,
+    0.94,
+    0.92,
+    0.88,
+    0.81,
+    0.76,
+    0.73,
+    0.93,
+    0.7,
+    0.69
+   ],
+   "unsure": [
+    "docs/usage.md",
+    "apps/server/src/interrupt.rs",
+    "apps/tui/src/mention.rs",
+    "packages/tools/src/shell.rs"
+   ],
+   "millis": 3149,
+   "cost": 0.0027382739999999997,
+   "bytes": 10168,
+   "id": "concept-4",
+   "group": "concept",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 0.5
+  },
+  {
+   "files": [
+    "apps/tui/src/keys.rs",
+    "apps/server/src/interrupt.rs",
+    "docs/daemon.md",
+    "apps/tui/src/drawing.rs",
+    "packages/tools/src/shell/leaders.rs",
+    "apps/server/src/brake.rs",
+    "apps/server/src/gate.rs",
+    "apps/tui/src/queue.rs",
+    "apps/server/src/commands/run.rs",
+    "apps/tui/src/app.rs"
+   ],
+   "scores": [
+    0.98,
+    0.98,
+    0.95,
+    0.95,
+    0.93,
+    0.92,
+    0.88,
+    0.85,
+    0.72,
+    0.68
+   ],
+   "unsure": [
+    "docs/tools.md",
+    "docs/ci.md",
+    "docs/reference.md",
+    "apps/tui/src/time.rs",
+    "apps/tui/src/list.rs",
+    "packages/protocol/src/command.rs",
+    "apps/tui/src/quitting.rs",
+    "apps/tui/src/live.rs"
+   ],
+   "millis": 3082,
+   "cost": 0.0029515499999999994,
+   "bytes": 8181,
+   "id": "flow-1",
+   "group": "flow",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.4,
+   "rr": 0.5
+  },
+  {
+   "files": [
+    "packages/tools/src/fs/patch/cut.rs",
+    "packages/providers/openrouter/src/chat.rs",
+    "packages/agent/src/agent.rs",
+    "packages/providers/openrouter/src/stream.rs",
+    "docs/tools.md",
+    "docs/reference.md",
+    "packages/providers/openrouter/src/cut.rs",
+    "packages/agent/src/calls.rs",
+    "packages/agent/src/agent/handling.rs",
+    "packages/contracts/src/tool.rs",
+    "packages/tools/src/fs/patch/tool.rs"
+   ],
+   "scores": [
+    1,
+    0.98,
+    0.97,
+    0.97,
+    0.95,
+    0.93,
+    0.93,
+    0.91,
+    0.88,
+    0.72,
+    0.66
+   ],
+   "unsure": [
+    "AGENTS.md"
+   ],
+   "millis": 2727,
+   "cost": 0.001325772,
+   "bytes": 9291,
+   "id": "flow-2",
+   "group": "flow",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.2,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/cli/src/terminal/daemon.rs",
+    "apps/server/src/daemon.rs",
+    "docs/daemon.md",
+    "apps/server/src/commands/serve.rs",
+    "apps/cli/src/terminal/remote.rs"
+   ],
+   "scores": [
+    1,
+    0.97,
+    0.94,
+    0.77,
+    0.87
+   ],
+   "unsure": [
+    "scripts/runner/README.md",
+    "SECURITY.md",
+    "docs/usage.md",
+    "apps/cli/src/terminal.rs",
+    "apps/server/src/commands/run/front.rs"
+   ],
+   "millis": 2385,
+   "cost": 0.0033115740000000007,
+   "bytes": 7011,
+   "id": "flow-3",
+   "group": "flow",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.8,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/agent/src/history.rs"
+   ],
+   "scores": [
+    0.99
+   ],
+   "unsure": [
+    "AGENTS.md",
+    "packages/agent/src/prompt.md",
+    "packages/agent/src/agent.rs",
+    "apps/server/src/compose.rs",
+    "apps/server/src/instructions.rs"
+   ],
+   "millis": 4211,
+   "cost": 0.005396369999999998,
+   "bytes": 1667,
+   "id": "flow-4",
+   "group": "flow",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/tools/src/fs/atomic.rs",
+    "packages/session/src/lib.rs",
+    "packages/providers/kit/src/store.rs",
+    "scripts/checks/tools.sh",
+    "scripts/install.sh"
+   ],
+   "scores": [
+    1,
+    1,
+    0.99,
+    0.99,
+    0.98
+   ],
+   "unsure": [
+    "AGENTS.md",
+    "docs/tools.md"
+   ],
+   "millis": 1568,
+   "cost": 0.0013855380000000002,
+   "bytes": 5907,
+   "id": "cross-1",
+   "group": "cross",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/store.rs",
+    "packages/tools/src/shell/output/spill.rs",
+    "apps/server/src/logs.rs",
+    "apps/server/src/server/socket.rs",
+    "packages/providers/openai/src/tokens.rs"
+   ],
+   "scores": [
+    0.99,
+    0.98,
+    0.98,
+    0.97,
+    0.86
+   ],
+   "unsure": [
+    "SECURITY.md",
+    "docs/tools.md",
+    "scripts/runner/README.md"
+   ],
+   "millis": 2511,
+   "cost": 0.001071252,
+   "bytes": 6018,
+   "id": "cross-2",
+   "group": "cross",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/tools/src/shell/sandbox.rs",
+    "packages/tools/src/shell/sandbox/linux.rs",
+    "packages/tools/src/shell/sandbox/macos.rs",
+    "packages/tools/src/workspace.rs",
+    "apps/cli/src/hardening.rs",
+    "packages/tools/src/shell/bash.rs",
+    "packages/tools/src/shell/process.rs"
+   ],
+   "scores": [
+    0.94,
+    0.92,
+    0.88,
+    0.8,
+    0.76,
+    0.66,
+    0.55
+   ],
+   "unsure": [
+    "docs/modes.md",
+    "SECURITY.md",
+    "AGENTS.md",
+    "ARCHITECTURE.md"
+   ],
+   "millis": 2568,
+   "cost": 0.0031448760000000013,
+   "bytes": 6658,
+   "id": "cross-3",
+   "group": "cross",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 1
+  },
+  {
+   "files": [
+    "examples/github/triage.yml",
+    "examples/github/release.yml",
+    "examples/github/review.yml",
+    "examples/github/gate.yml",
+    "examples/github/jira.yml",
+    "examples/github/describe.yml",
+    "examples/github/ci-failure.yml",
+    "examples/github/audit.yml",
+    "packages/providers/models/data/providers/openrouter/provider.toml"
+   ],
+   "scores": [
+    0.95,
+    0.92,
+    0.9,
+    0.9,
+    0.89,
+    0.86,
+    0.84,
+    0.82,
+    0.74
+   ],
+   "unsure": [
+    "examples/breaking-changes/README.md"
+   ],
+   "millis": 2659,
+   "cost": 0.0021594719999999995,
+   "bytes": 6380,
+   "id": "cross-4",
+   "group": "cross",
+   "mode": "hybrid",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 1676,
+   "cost": 0.000823284,
+   "bytes": 0,
+   "id": "absent-1",
+   "group": "absent",
+   "mode": "hybrid",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 191,
+   "cost": 0,
+   "bytes": 0,
+   "id": "absent-2",
+   "group": "absent",
+   "mode": "hybrid",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 228,
+   "cost": 0,
+   "bytes": 0,
+   "id": "absent-3",
+   "group": "absent",
+   "mode": "hybrid",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 762,
+   "cost": 0.000110628,
+   "bytes": 0,
+   "id": "absent-4",
+   "group": "absent",
+   "mode": "hybrid",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [
+    ".github/workflows/site.yml"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    "MODELS.md"
+   ],
+   "millis": 2836,
+   "cost": 0.0027961500000000003,
+   "bytes": 1073,
+   "id": "config-1",
+   "group": "config",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/checks/run.sh",
+    "apps/server/src/input.rs",
+    "apps/server/src/logs.rs",
+    "packages/tools/src/shell/output/spill.rs"
+   ],
+   "scores": [
+    0.99,
+    0.75,
+    0.73,
+    0.51
+   ],
+   "unsure": [
+    ".github/workflows/ci.yml",
+    "apps/server/src/server/hub/ring.rs",
+    "packages/tools/src/fs/picture.rs",
+    "scripts/checks/plan.awk",
+    "apps/server/src/advice/state.rs",
+    "Cargo.toml",
+    "packages/tools/src/fs/diff.rs"
+   ],
+   "millis": 4731,
+   "cost": 0.005966268,
+   "bytes": 5120,
+   "id": "config-2",
+   "group": "config",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.25,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/setup"
+   ],
+   "scores": [
+    0.99
+   ],
+   "unsure": [
+    "CONTRIBUTING.md",
+    ".claude/settings.json"
+   ],
+   "millis": 1619,
+   "cost": 0.0009355079999999999,
+   "bytes": 192,
+   "id": "config-3",
+   "group": "config",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/checks/tools.sh"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    "scripts/runner/Dockerfile",
+    "action/run.sh"
+   ],
+   "millis": 2094,
+   "cost": 0.0022399020000000006,
+   "bytes": 1593,
+   "id": "config-4",
+   "group": "config",
+   "mode": "hybrid",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  }
+ ]
+}

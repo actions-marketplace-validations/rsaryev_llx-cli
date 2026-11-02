@@ -36,6 +36,8 @@ model descriptions among them: a search must not drown in them.
 - `words`: `llx grep --lexical`, the ranking by the question's words alone;
 - `judged`: `llx grep`, the decision model reading the best of them (an OpenRouter key; about
   $0.11 a run);
+- `hybrid` and `hybrid-words`: `llx grep -i -e PATTERN` with the question, the pattern `rg` is given
+  (below), with the decision model and without;
 - `rg`: `rg -c -i PATTERN`, the files by their count of matches, `PATTERN` the one an agent would
   type first (`rg` in each question).
 
@@ -69,6 +71,19 @@ an answer must name is now in the first ten; `extras.rs`, found that way, comes 
 still misses is the precision of a vague question (`flow`), where the decision model leans to yes
 on every file near the subject. Two runs of the same build differ by about 0.02 in MRR and a
 second in time: the decision model's answers and the network both vary.
+
+With the pattern an agent would type first (`rg` in each question) given as `-e` beside the
+question, on the same snapshot:
+
+| Mode | R@5 | R@10 | P@5 | MRR | none | time | cost | KB read |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| hybrid | 92% | 92% | 77% | 0.88 | 4/4 | 2.31 s | $0.0020 | 4.0 |
+| hybrid-words | 63% | 81% | 49% | 0.62 | 2/4 | 0.21 s | 0 | 13.9 |
+
+The pattern ranks rg's own matches far better than rg does (MRR 0.62 against 0.25 without a
+model), and with the model costs about a third of the question alone; but it finds no file it
+does not match, so where the first pattern misses (`flow`, `cross`), the question alone finds more.
+Give a pattern where a string the answer must have is known; else ask the question alone.
 
 ## How deep the decision model reads
 

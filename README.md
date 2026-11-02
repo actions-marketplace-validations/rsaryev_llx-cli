@@ -115,10 +115,11 @@ For a choice among a few options, `llx decide` asks a small decision model about
 $ git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 ```
 
-To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 2 to 3 s for $0.005 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone:
+To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 2 to 3 s for $0.005 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone. With `-e`, a pattern as grep's keeps only the files it matches and the question ranks them: where you know a string the answer has, about a third of the cost, and an empty answer as quick as `rg`'s:
 
 ```console
 $ llx grep "where is a failed HTTP request sent again"
+$ llx grep -e 'spawn|shell::query' "which files start a child process" src
 ```
 
 Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml) and [a weekly audit](examples/github/audit.yml) and [a Jira work item made a draft pull request](examples/github/jira.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
