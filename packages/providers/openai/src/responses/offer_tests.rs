@@ -12,11 +12,13 @@ fn request_body(selection: &Selection, request: Request, texts: Texts) -> Value 
 }
 
 const GRAMMAR: &str = "start: /.+/";
+const PATCH: &str = "*** Begin Patch\n*** Delete File: a\n*** End Patch\n";
 
-fn script() -> ToolSpec {
+/// A tool of free text, as `apply_patch` is.
+fn patch() -> ToolSpec {
     ToolSpec {
-        name: "exec".into(),
-        description: "Run a script".into(),
+        name: "apply_patch".into(),
+        description: "Change files".into(),
         input: Input::Text(GRAMMAR.into()),
     }
 }
@@ -41,7 +43,7 @@ fn selection() -> Selection {
     })
 }
 
-/// A conversation in which the model ran a script and read a file, and both answered.
+/// A conversation in which the model patched a file and read one, and both answered.
 fn conversation() -> Vec<Message> {
     vec![
         Message::User("goal".into()),
@@ -50,8 +52,8 @@ fn conversation() -> Vec<Message> {
             calls: vec![
                 ToolCall {
                     id: "s1".into(),
-                    name: "exec".into(),
-                    arguments: json!("return await tools.read({path: \"a\"})"),
+                    name: "apply_patch".into(),
+                    arguments: json!(PATCH),
                 },
                 ToolCall {
                     id: "r1".into(),
@@ -63,7 +65,7 @@ fn conversation() -> Vec<Message> {
         },
         Message::ToolResult {
             id: "s1".into(),
-            content: "text of a".into(),
+            content: "Done".into(),
             failed: false,
         },
         Message::ToolResult {
@@ -76,7 +78,7 @@ fn conversation() -> Vec<Message> {
 
 fn sent(texts: Texts) -> Value {
     let conversation = conversation();
-    let tools = [script(), read_tool()];
+    let tools = [patch(), read_tool()];
     let request = Request {
         conversation: &conversation,
         tools: &tools,
@@ -89,11 +91,11 @@ fn sent(texts: Texts) -> Value {
 }
 
 #[test]
-fn a_model_that_takes_custom_tools_is_offered_the_script_with_its_grammar() {
+fn a_model_that_takes_custom_tools_is_offered_the_patch_with_its_grammar() {
     let body = sent(Texts::Custom);
     assert_eq!(
         body["tools"][0],
-        json!({"type": "custom", "name": "exec", "description": "Run a script",
+        json!({"type": "custom", "name": "apply_patch", "description": "Change files",
             "format": {"type": "grammar", "syntax": "lark", "definition": GRAMMAR}})
     );
     // The other tools stay functions.
@@ -102,27 +104,30 @@ fn a_model_that_takes_custom_tools_is_offered_the_script_with_its_grammar() {
 }
 
 #[test]
-fn any_other_model_is_offered_the_script_as_a_function_with_one_string_argument() {
+fn any_other_model_is_offered_the_patch_as_a_function_with_one_string_argument() {
     let body = sent(Texts::Functions);
-    let exec = &body["tools"][0];
-    assert_eq!(exec["type"], "function");
-    assert_eq!(exec["parameters"]["required"], json!(["source"]));
-    assert_eq!(exec["parameters"]["properties"]["source"]["type"], "string");
+    let patch = &body["tools"][0];
+    assert_eq!(patch["type"], "function");
+    assert_eq!(patch["parameters"]["required"], json!(["source"]));
+    assert_eq!(
+        patch["parameters"]["properties"]["source"]["type"],
+        "string"
+    );
 }
 
 #[test]
-fn an_earlier_script_and_its_answer_go_back_as_custom_items_only_when_offered_so() {
+fn an_earlier_patch_and_its_answer_go_back_as_custom_items_only_when_offered_so() {
     let body = sent(Texts::Custom);
     let input = body["input"].as_array().unwrap();
     assert_eq!(
         input[1],
-        json!({"type": "custom_tool_call", "call_id": "s1", "name": "exec",
-            "input": "return await tools.read({path: \"a\"})"})
+        json!({"type": "custom_tool_call", "call_id": "s1", "name": "apply_patch",
+            "input": PATCH})
     );
     assert_eq!(input[2]["type"], "function_call");
     assert_eq!(
         input[3],
-        json!({"type": "custom_tool_call_output", "call_id": "s1", "output": "text of a"})
+        json!({"type": "custom_tool_call_output", "call_id": "s1", "output": "Done"})
     );
     assert_eq!(
         input[4],
@@ -133,27 +138,24 @@ fn an_earlier_script_and_its_answer_go_back_as_custom_items_only_when_offered_so
     let input = body["input"].as_array().unwrap();
     let arguments: Value = serde_json::from_str(input[1]["arguments"].as_str().unwrap()).unwrap();
     assert_eq!(input[1]["type"], "function_call");
-    assert_eq!(
-        arguments,
-        json!({"source": "return await tools.read({path: \"a\"})"})
-    );
+    assert_eq!(arguments, json!({"source": PATCH}));
     assert_eq!(input[3]["type"], "function_call_output");
 }
 
 #[test]
 fn a_custom_call_is_read_as_the_text_the_model_wrote() {
-    let item = json!({"type": "custom_tool_call", "call_id": "c9", "name": "exec",
-        "input": "return 1\n"});
+    let item = json!({"type": "custom_tool_call", "call_id": "c9", "name": "apply_patch",
+        "input": PATCH});
     let call = custom_call(&item).unwrap();
     assert_eq!(call.id, "c9");
-    assert_eq!(call.name, "exec");
-    assert_eq!(call.arguments, json!("return 1\n"));
-    assert!(custom_call(&json!({"type": "custom_tool_call", "name": "exec"})).is_none());
+    assert_eq!(call.name, "apply_patch");
+    assert_eq!(call.arguments, json!(PATCH));
+    assert!(custom_call(&json!({"type": "custom_tool_call", "name": "apply_patch"})).is_none());
 }
 
 #[test]
-fn a_function_call_of_a_script_is_taken_as_its_text() {
-    let specs = [script(), read_tool()];
+fn a_function_call_of_a_patch_is_taken_as_its_text() {
+    let specs = [patch(), read_tool()];
     let offer = Offer::new(&specs, Texts::Functions, &[]);
     let call = |name: &str, arguments: Value| ToolCall {
         id: "c".into(),
@@ -162,9 +164,9 @@ fn a_function_call_of_a_script_is_taken_as_its_text() {
     };
     assert_eq!(
         offer
-            .incoming(call("exec", json!({"source": "return 1"})))
+            .incoming(call("apply_patch", json!({"source": PATCH})))
             .arguments,
-        json!("return 1")
+        json!(PATCH)
     );
     let read = json!({"source": "kept"});
     assert_eq!(offer.incoming(call("read", read.clone())).arguments, read);

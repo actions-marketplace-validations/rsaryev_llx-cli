@@ -51,7 +51,7 @@ const APP: App = App {
     site: "https://llx.sh",
 };
 
-/// A store that keeps tokens in memory and counts the saves.
+/// A store that keeps tokens in memory.
 #[derive(Default)]
 struct Memory {
     kept: Mutex<Option<Tokens>>,
@@ -255,7 +255,7 @@ fn a_streamed_reply_becomes_text_calls_and_usage() {
         json!({"type": "response.output_item.done", "item": {"type": "message",
             "content": [{"type": "output_text", "text": " Done. "}]}}),
         json!({"type": "response.output_item.done", "item": {"type": "function_call",
-            "call_id": "c2", "name": "edit", "arguments": "{\"path\": \"a"}}),
+            "call_id": "c2", "name": "bash", "arguments": "{\"command\": \"l"}}),
         completed(),
     ]);
     let completion = read(&reply, "fallback").unwrap();
@@ -263,7 +263,7 @@ fn a_streamed_reply_becomes_text_calls_and_usage() {
     assert_eq!(completion.calls[0].id, "c2");
     assert_eq!(
         completion.calls[0].arguments,
-        json!("{\"path\": \"a"),
+        json!("{\"command\": \"l"),
         "cut arguments stay text"
     );
     let usage = &completion.usage;
@@ -685,10 +685,11 @@ fn the_models_reasoning_goes_back_with_the_next_request() {
     );
 }
 
-fn script_spec() -> ToolSpec {
+/// A tool of free text, as `apply_patch` is.
+fn patch_spec() -> ToolSpec {
     ToolSpec {
-        name: "exec".into(),
-        description: "Run a script".into(),
+        name: "apply_patch".into(),
+        description: "Change files".into(),
         input: Input::Text("start: /.+/".into()),
     }
 }
@@ -707,16 +708,16 @@ fn ask_with(model: &ChatModel, spec: &ToolSpec) -> Completion {
 }
 
 #[test]
-fn a_streamed_custom_call_is_the_script_as_the_model_wrote_it() {
-    let script = "const r = await tools.read({path: \"a\"});\nreturn r;";
+fn a_streamed_custom_call_is_the_patch_as_the_model_wrote_it() {
+    let patch = "*** Begin Patch\n*** Delete File: a\n*** End Patch\n";
     let reply = streamed(&[
         json!({"type": "response.output_item.added", "item": {"type": "custom_tool_call",
-            "call_id": "c1", "name": "exec", "input": ""}}),
+            "call_id": "c1", "name": "apply_patch", "input": ""}}),
         json!({"type": "response.custom_tool_call_input.delta", "call_id": "c1",
-            "delta": "const r = await"}),
+            "delta": "*** Begin Patch"}),
         json!({"type": "response.custom_tool_call_input.done", "call_id": "c1"}),
         json!({"type": "response.output_item.done", "item": {"type": "custom_tool_call",
-            "call_id": "c1", "name": "exec", "input": script}}),
+            "call_id": "c1", "name": "apply_patch", "input": patch}}),
         completed(),
     ]);
     let (model, http, _) = model(vec![(200, reply)], tokens(LATER));
@@ -724,26 +725,26 @@ fn a_streamed_custom_call_is_the_script_as_the_model_wrote_it() {
         texts: Texts::Custom,
         ..model
     };
-    let completion = ask_with(&model, &script_spec());
+    let completion = ask_with(&model, &patch_spec());
     assert_eq!(completion.calls.len(), 1);
-    assert_eq!(completion.calls[0].name, "exec");
-    assert_eq!(completion.calls[0].arguments, json!(script));
+    assert_eq!(completion.calls[0].name, "apply_patch");
+    assert_eq!(completion.calls[0].arguments, json!(patch));
     let sent: Value = serde_json::from_str(&http.sent()[0].body).unwrap();
     assert_eq!(sent["tools"][0]["type"], "custom");
     assert_eq!(sent["tools"][0]["format"]["syntax"], "lark");
 }
 
 #[test]
-fn a_script_called_as_a_function_is_the_text_of_its_one_argument() {
-    let arguments = json!({"source": "return 1"}).to_string();
+fn a_patch_called_as_a_function_is_the_text_of_its_one_argument() {
+    let arguments = json!({"source": "*** Begin Patch"}).to_string();
     let reply = streamed(&[
         json!({"type": "response.output_item.done", "item": {"type": "function_call",
-            "call_id": "c1", "name": "exec", "arguments": arguments}}),
+            "call_id": "c1", "name": "apply_patch", "arguments": arguments}}),
         completed(),
     ]);
     let (model, http, _) = model(vec![(200, reply)], tokens(LATER));
-    let completion = ask_with(&model, &script_spec());
-    assert_eq!(completion.calls[0].arguments, json!("return 1"));
+    let completion = ask_with(&model, &patch_spec());
+    assert_eq!(completion.calls[0].arguments, json!("*** Begin Patch"));
     let sent: Value = serde_json::from_str(&http.sent()[0].body).unwrap();
     assert_eq!(sent["tools"][0]["type"], "function");
 }
