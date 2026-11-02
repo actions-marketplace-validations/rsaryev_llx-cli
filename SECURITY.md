@@ -71,6 +71,10 @@ What the tools can reach of them:
   `~/.config/llx/` and the sessions directory (`~/.llx/sessions`, or `LLX_SESSIONS`).
 - On macOS a sandboxed command cannot read them either. On Linux it can: Landlock cannot take a
   path out of what it lets a command read. A command outside the sandbox can read them on both.
+- On Linux before 6.12 (Landlock's ABI 6), a sandboxed command can still send a signal to any
+  process of your user, llx and the daemon among them: only ABI 6 keeps signals inside the
+  sandbox. The seccomp filter does not refuse `kill`, as a command's own tools (`timeout`, a
+  shell's job control) signal the processes they start, and a filter cannot tell those apart.
 - Commands run without the variables of the chat model's provider's key (and of any provider
   switched to in the session) and without `OPENROUTER_API_KEY`. Another provider's key set in your
   environment still reaches them. Hiding them is no barrier: a command can read the key from llx's
