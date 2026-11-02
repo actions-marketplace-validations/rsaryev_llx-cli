@@ -296,7 +296,8 @@ fn brace(rest: &[char]) -> bool {
 }
 
 /// An output redirect kept in the part; one to a file, not `/dev/null` or a descriptor, makes the
-/// line unsure (the rule names the command, not what it writes).
+/// line unsure (the rule names the command, not what it writes). A descriptor is the whole word
+/// after `&`: digits, `-`, or digits and `-`; the shell takes `>&2x` as the file `2x`.
 fn redirect(chars: &[char], at: usize, part: &mut String, split: &mut Split) -> usize {
     let mut end = at + 1;
     if chars.get(end) == Some(&'>') {
@@ -308,29 +309,24 @@ fn redirect(chars: &[char], at: usize, part: &mut String, split: &mut Split) -> 
         .split(|c: char| c.is_whitespace() || ";|&".contains(c))
         .next()
         .unwrap_or_default();
-    let descriptor = rest
-        .strip_prefix('&')
-        .is_some_and(|fd| fd.starts_with(|c: char| c.is_ascii_digit() || c == '-'));
-    if !descriptor && target != "/dev/null" {
-        split.unsure = true;
-    }
-    if descriptor {
-        let fd: String = rest
-            .chars()
-            .skip(1)
-            .take_while(|c| c.is_ascii_digit() || *c == '-')
-            .collect();
-        part.extend(&chars[at..end]);
-        part.push('&');
-        part.push_str(&fd);
-        return end - at
-            + (chars[end..]
-                .iter()
-                .take_while(|c| c.is_whitespace())
-                .count())
-            + 1
-            + fd.len();
-    }
+    let descriptor = rest.strip_prefix('&').and_then(|after| {
+        let fd = after
+            .split(|c: char| c.is_whitespace() || ";|&<>()".contains(c))
+            .next()
+            .unwrap_or_default();
+        let digits = fd.strip_suffix('-').unwrap_or(fd);
+        (!fd.is_empty() && digits.chars().all(|c| c.is_ascii_digit())).then_some(fd)
+    });
     part.extend(&chars[at..end]);
-    end - at
+    let Some(fd) = descriptor else {
+        split.unsure |= target != "/dev/null";
+        return end - at;
+    };
+    part.push('&');
+    part.push_str(fd);
+    let space = chars[end..]
+        .iter()
+        .take_while(|c| c.is_whitespace())
+        .count();
+    end - at + space + 1 + fd.len()
 }

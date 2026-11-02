@@ -6,6 +6,7 @@
 - `llx decide QUESTION FILE…` asks about each file on its own, eight at once, and prints a line each (`CHOICE<TAB>FILE`, or with `--json` an object with its `file`) in the order given: one command for a directory, where a shell loop would not fit an agent's allow rule. With `--expect`, it exits 1 when any file's pick differs; a file that cannot be read or answered is named on stderr and ends the run with 3.
 - `llx decide --check` exits 0 when decide can run (an OpenRouter key is set or saved) and 3 when it cannot, asking no model.
 - A Claude Code plugin, `/plugin install llx --marketplace rsaryev/llx` ([examples/claude-code](examples/claude-code/README.md)): the `llx` subagent hands bulk reading to `llx exec` on another model, and where `llx decide --check` finds a key, Claude is told when `llx decide` pays. The same for Codex as lines of `AGENTS.md` ([examples/codex](examples/codex/README.md)).
+- An `--allow` rule no longer lets a command write a file through `>&` followed by a word that is not a descriptor (`echo hi >&2x` writes the file `2x`): such a line is asked, as any other redirect to a file.
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
 - The cursor no longer lands a row too low when rows wider than the terminal sit both above and below it in the live area.
 - Ctrl+G's draft for `$EDITOR` is made as a new file only the person can read: a link planted at its name in a shared `/tmp` is no longer written through.

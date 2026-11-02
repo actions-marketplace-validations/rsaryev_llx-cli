@@ -107,11 +107,16 @@ fn what_cannot_be_read_for_sure_is_never_allowed() {
         "sh -c 'rm -rf x'",
         "bash -c 'rm -rf x'",
         "cat <<EOF",
+        "echo hi >&2x",
+        "echo hi >&2\"x\"",
+        "echo hi 2>&1-x",
+        "echo hi >&-x",
     ] {
         assert!(!allowed("bash(echo *)", command), "{command}");
     }
     assert!(allowed("bash(echo *)", "echo hi > /dev/null"));
     assert!(allowed("bash(echo *)", "echo hi 2>&1"));
+    assert!(allowed("bash(echo *)", "echo hi >&2; echo x 2>&- 3>&1-"));
 }
 
 #[test]
