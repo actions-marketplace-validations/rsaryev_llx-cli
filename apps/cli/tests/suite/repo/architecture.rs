@@ -123,7 +123,7 @@ fn l3_tools_providers_and_stores_know_only_the_contracts() {
         if group == "packages" && PRIMITIVES.contains(&name.as_str()) {
             assert!(uses.is_empty(), "{name} depends on {uses:?}");
         } else if group == "packages"
-            && !matches!(name.as_str(), "contracts" | WIRE | CLIENT)
+            && !matches!(name.as_str(), "contracts" | WIRE)
             && !CORES.contains(&name.as_str())
         {
             assert_eq!(uses, &["contracts"], "{name} depends on {uses:?}");
@@ -169,20 +169,9 @@ fn l6_the_protocol_is_a_leaf() {
     assert!(external.is_empty(), "the protocol uses {external:?}");
 }
 
-/// The interface's side of the seam.
-const CLIENT: &str = "client";
-
-/// L8: the client knows the wire and nothing else: no session, tool, model or store.
-#[test]
-fn l8_the_client_knows_only_the_protocol() {
-    let packages = packages();
-    let uses = &packages[&("packages".into(), CLIENT.into())];
-    assert_eq!(uses, &[WIRE], "the client depends on {uses:?}");
-}
-
 /// What the interface must not name (L7): the server (whose library is `llx`), and every
-/// workspace package but the protocol and the client. Inside the interface's crate, `crate::` is
-/// the interface itself.
+/// workspace package but the protocol. Inside the interface's crate, `crate::` is the interface
+/// itself, its client to the server too.
 const BEYOND_THE_INTERFACE: &[&str] = &[
     "llx::",
     "contracts::",
@@ -200,20 +189,20 @@ const BEYOND_THE_INTERFACE: &[&str] = &[
 const INTERFACES: [&str; 1] = ["tui"];
 
 /// L7, on the manifest: each interface depends, among the workspace's crates, on the protocol
-/// and the client alone, in every section (its tests' too).
+/// alone, in every section (its tests' too).
 #[test]
-fn l7_the_interface_depends_only_on_the_protocol_and_the_client() {
+fn l7_the_interface_depends_only_on_the_protocol() {
     let packages = packages();
     for interface in INTERFACES {
         let uses = &packages[&("apps".into(), interface.into())];
-        assert_eq!(uses, &[CLIENT, WIRE], "{interface} depends on {uses:?}");
+        assert_eq!(uses, &[WIRE], "{interface} depends on {uses:?}");
     }
 }
 
 /// L7, on the sources: each interface (`apps/<interface>/src`, its tests too) speaks only
-/// through the protocol and the client: what it shows and what it may do, the server says.
+/// through the protocol, with its own client: what it shows and what it may do, the server says.
 #[test]
-fn l7_the_interface_knows_only_the_protocol_and_the_client() {
+fn l7_the_interface_knows_only_the_protocol() {
     for interface in INTERFACES {
         let files = sources_in(&root().join("apps").join(interface).join("src"));
         assert!(!files.is_empty(), "no sources of the interface {interface}");
@@ -227,8 +216,8 @@ fn l7_the_interface_knows_only_the_protocol_and_the_client() {
                 let named = named_beyond(line);
                 assert!(
                     named.is_none(),
-                    "{} names `{}` in `{}`: the interface knows only itself, `protocol` and \
-                     `client` (L7); have the server say it through the protocol (an `Event`, a \
+                    "{} names `{}` in `{}`: the interface knows only itself and `protocol` \
+                     (L7); have the server say it through the protocol (an `Event`, a \
                      `Done`), or move the presentation into `{interface}`",
                     shown(path),
                     named.unwrap_or_default(),
@@ -255,8 +244,6 @@ fn named_beyond(line: &str) -> Option<&'static str> {
 const BINARY: &str = "llx";
 /// The apps the binary composes (D7): the server and the interface.
 const COMPOSED: &[&str] = &["server", "tui"];
-/// The server (D7): the composition root, its library `llx`.
-const SERVER: &str = "server";
 
 /// L4: only apps compose packages, and nothing depends on an app but the binary on those it
 /// composes, in any section: no app dev-depends on another either (a test that needs both a
@@ -288,9 +275,9 @@ fn l4_only_apps_compose_packages() {
     }
 }
 
-/// The workspace's crates the binary knows (the layers' table): the server, the interface, the
-/// client, and the protocol its frames are (P7: the client re-exports none).
-const THE_BINARY_KNOWS: &[&str] = &["server", "tui", "client", "protocol"];
+/// The workspace's crates the binary knows (the layers' table): the server, the interface, and
+/// the protocol whose frames and offer it hands over (P7: neither re-exports one).
+const THE_BINARY_KNOWS: &[&str] = &["server", "tui", "protocol"];
 
 /// L4, D7: the binary is thin: no tool, provider, store or core of its own; what it runs, the
 /// server composes.
@@ -302,22 +289,6 @@ fn l4_the_binary_knows_only_what_it_composes() {
         .filter(|used| !THE_BINARY_KNOWS.contains(&used.as_str()))
         .collect();
     assert!(beyond.is_empty(), "the binary depends on {beyond:?}");
-}
-
-/// L8: the server serves the protocol and knows every package but the client, in any section:
-/// its own tests speak the protocol's frames as an interface does, with no client (D7).
-#[test]
-fn l8_the_server_knows_no_client() {
-    let packages = packages();
-    let uses = &packages[&("apps".into(), SERVER.into())];
-    assert!(
-        uses.iter().any(|used| used == WIRE),
-        "the server serves the protocol: {uses:?}"
-    );
-    assert!(
-        !uses.iter().any(|used| used == CLIENT),
-        "the server depends on the client: {uses:?}"
-    );
 }
 
 /// Words that name a particular tool or provider: the contracts and the agent must not say

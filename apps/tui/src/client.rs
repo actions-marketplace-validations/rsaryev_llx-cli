@@ -1,37 +1,15 @@
-//! The interface's side of the seam (ARCHITECTURE.md W1): one [`Client`] over the channels to
-//! the server in this process. A command waits for what is done with it; everything else the
-//! server sends goes to the interface as it comes.
+//! The interface's client to the server (ARCHITECTURE.md W1, L8): over the channels to the server
+//! in this process. A command waits for what is done with it, or is only sent; what the server
+//! could not do is shown to the person either way (W1); everything else the server sends goes to
+//! the interface as it comes.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender, SyncSender, sync_channel};
+use std::sync::mpsc::{Receiver, Sender, SyncSender, sync_channel};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
-use protocol::{Command, Done, Reply, ToClient, ToServer};
-
-/// Why a command came to nothing: the server gone or late, or what it said.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CallError {
-    /// The server is gone.
-    Gone,
-    /// No answer in time.
-    Timeout,
-    /// The server could not do it, and why.
-    Failed(String),
-}
-
-impl std::fmt::Display for CallError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Gone => f.write_str("the server is gone"),
-            Self::Timeout => f.write_str("the server did not answer in time"),
-            Self::Failed(why) => f.write_str(why),
-        }
-    }
-}
-
-impl std::error::Error for CallError {}
+use protocol::{Command, Done, Event, Reply, ToClient, ToServer};
 
 /// The commands sent and not yet done, each waiting where its answer goes, and whether the server
 /// is gone: one lock, so a command sent after the end is told so, never left waiting (R7).
@@ -43,16 +21,17 @@ struct Pending {
 
 /// The interface's connection to the server; cheap to clone, one per thread that calls.
 #[derive(Clone)]
-pub struct Client {
+pub(crate) struct Client {
     to_server: Sender<ToServer>,
     pending: Arc<Mutex<Pending>>,
     next: Arc<AtomicU64>,
 }
 
 impl Client {
-    /// A client over channels to a server in this process: frames from the server that are not
-    /// what a command came to go to `deliver`, in order, until the server is gone.
-    pub fn in_process(
+    /// A client over channels to the server in this process: frames from the server that are not
+    /// what a command came to go to `deliver`, in order, until the server is gone; a command the
+    /// server could not do goes there too, as the error the person is shown.
+    pub(crate) fn in_process(
         to_server: Sender<ToServer>,
         from_server: Receiver<ToClient>,
         deliver: impl Fn(ToClient) + Send + 'static,
@@ -65,6 +44,12 @@ impl Client {
                 for frame in from_server {
                     match frame {
                         ToClient::Done { id, done } => {
+                            if let Done::Failed { why } = &done {
+                                deliver(ToClient::Event {
+                                    session: None,
+                                    event: Event::Error(format!("llx: {why}")),
+                                });
+                            }
                             let reply = lock(&theirs).waiting.remove(&id);
                             if let Some(reply) = reply {
                                 let _ = reply.send(done);
@@ -87,48 +72,40 @@ impl Client {
         })
     }
 
-    /// `command`, and what was done with it, within `wait`.
-    pub fn call(&self, command: Command, wait: Duration) -> Result<Done, CallError> {
+    /// `command`, and what was done with it, within `wait`; `None` when the server is gone, late,
+    /// or could not do it (which the person is shown).
+    pub(crate) fn call(&self, command: Command, wait: Duration) -> Option<Done> {
         let (reply, done) = sync_channel(1);
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         {
             let mut pending = lock(&self.pending);
             if pending.gone {
-                return Err(CallError::Gone);
+                return None;
             }
             pending.waiting.insert(id, reply);
         }
         if self.to_server.send(ToServer::Call { id, command }).is_err() {
             lock(&self.pending).waiting.remove(&id);
-            return Err(CallError::Gone);
+            return None;
         }
-        match done.recv_timeout(wait) {
-            Ok(Done::Failed { why }) => Err(CallError::Failed(why)),
-            Ok(done) => Ok(done),
-            Err(RecvTimeoutError::Timeout) => {
-                lock(&self.pending).waiting.remove(&id);
-                Err(CallError::Timeout)
-            }
-            Err(RecvTimeoutError::Disconnected) => Err(CallError::Gone),
+        let done = done.recv_timeout(wait);
+        if done.is_err() {
+            lock(&self.pending).waiting.remove(&id);
         }
+        done.ok()
+            .filter(|done| !matches!(done, Done::Failed { .. }))
     }
 
-    /// `command`, not waiting for what is done with it.
-    pub fn send(&self, command: Command) -> Result<(), CallError> {
+    /// `command`, not waiting for what is done with it. A server gone already is said so to the
+    /// interface as it ends, so nothing is said here.
+    pub(crate) fn send(&self, command: Command) {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
-        self.frame(ToServer::Call { id, command })
+        let _ = self.to_server.send(ToServer::Call { id, command });
     }
 
     /// The person's reply to the question `id`.
-    pub fn reply(&self, id: u64, reply: Reply) -> Result<(), CallError> {
-        self.frame(ToServer::Reply { id, reply })
-    }
-
-    fn frame(&self, frame: ToServer) -> Result<(), CallError> {
-        if lock(&self.pending).gone {
-            return Err(CallError::Gone);
-        }
-        (self.to_server.send(frame)).map_err(|_gone| CallError::Gone)
+    pub(crate) fn reply(&self, id: u64, reply: Reply) {
+        let _ = self.to_server.send(ToServer::Reply { id, reply });
     }
 }
 
@@ -139,5 +116,5 @@ fn lock(pending: &Mutex<Pending>) -> MutexGuard<'_, Pending> {
 }
 
 #[cfg(test)]
-#[path = "lib_tests.rs"]
+#[path = "client_tests.rs"]
 mod tests;

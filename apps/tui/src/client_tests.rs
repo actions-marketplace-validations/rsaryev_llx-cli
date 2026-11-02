@@ -9,7 +9,7 @@ const WAIT: Duration = Duration::from_secs(5);
 /// A client and the server's ends of its channels, with what reaches the interface.
 #[expect(
     clippy::disallowed_methods,
-    reason = "the in-process transport's own channels, as the binary makes them"
+    reason = "the seam's own channels, as the binary makes them"
 )]
 fn connected() -> (
     Client,
@@ -42,28 +42,45 @@ fn answering(at_server: Receiver<ToServer>, from_server: Sender<ToClient>, done:
     });
 }
 
+/// The error the person is shown next, past nothing else.
+#[expect(
+    clippy::wildcard_enum_match_arm,
+    reason = "a test picks out the variant it checks"
+)]
+fn shown_error(seen: &Receiver<ToClient>) -> String {
+    match seen.recv_timeout(WAIT).unwrap() {
+        ToClient::Event {
+            session: None,
+            event: Event::Error(why),
+        } => why,
+        other => panic!("not an error: {other:?}"),
+    }
+}
+
 #[test]
 fn a_command_waits_for_what_is_done_with_it() {
     let (client, at_server, from_server, _seen) = connected();
     answering(at_server, from_server, Done::Work { running: vec![] });
     assert_eq!(
         client.call(Command::Work, WAIT),
-        Ok(Done::Work { running: vec![] })
+        Some(Done::Work { running: vec![] })
     );
 }
 
 #[test]
-fn what_the_server_could_not_do_comes_back_as_its_reason() {
-    let (client, at_server, from_server, _seen) = connected();
+fn what_the_server_could_not_do_is_shown_to_the_person_waited_for_or_only_sent() {
+    let (client, at_server, from_server, seen) = connected();
     let failed = Done::Failed {
-        why: "8 sessions are open".into(),
+        why: "no session s1 is open".into(),
     };
     answering(at_server, from_server, failed);
     let target = protocol::Target::New;
-    assert_eq!(
-        client.call(Command::Open { target }, WAIT),
-        Err(CallError::Failed("8 sessions are open".into()))
-    );
+    assert_eq!(client.call(Command::Open { target }, WAIT), None);
+    assert_eq!(shown_error(&seen), "llx: no session s1 is open");
+    // Sent, not waited for: what the person typed for a lane that ended.
+    let session = "s1".to_string();
+    client.send(Command::Close { session });
+    assert_eq!(shown_error(&seen), "llx: no session s1 is open");
 }
 
 #[test]
@@ -86,21 +103,17 @@ fn everything_else_the_server_says_reaches_the_interface_in_order() {
 }
 
 #[test]
-fn a_server_that_never_answers_times_out_and_one_that_is_gone_says_so() {
+fn a_server_that_never_answers_or_is_gone_comes_to_nothing() {
     let (client, at_server, from_server, _seen) = connected();
-    assert_eq!(
-        client.call(Command::List, Duration::from_millis(50)),
-        Err(CallError::Timeout)
-    );
+    assert_eq!(client.call(Command::List, Duration::from_millis(50)), None);
     drop((at_server, from_server));
-    assert_eq!(client.call(Command::List, WAIT), Err(CallError::Gone));
-    assert_eq!(client.send(Command::Leave), Err(CallError::Gone));
+    assert_eq!(client.call(Command::List, WAIT), None);
 }
 
 #[test]
 fn a_reply_reaches_the_server_under_its_question() {
     let (client, at_server, _from_server, _seen) = connected();
-    client.reply(9, Reply::Approval(Approval::Yes)).unwrap();
+    client.reply(9, Reply::Approval(Approval::Yes));
     assert_eq!(
         at_server.recv().unwrap(),
         ToServer::Reply {

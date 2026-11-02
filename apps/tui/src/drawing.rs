@@ -5,7 +5,7 @@ use std::io;
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
-use client::Client;
+use crate::client::Client;
 use protocol::{Command, Done, Event, ToClient};
 use ratatui::text::Line;
 
@@ -143,17 +143,17 @@ fn act(
 /// What the interface has to send, in order.
 fn flush(app: &mut App, client: &Client) {
     for out in app.outbox.drain(..) {
-        let _ = match out {
+        match out {
             Out::Call(command) => client.send(command),
             Out::Reply(id, reply) => client.reply(id, reply),
-        };
+        }
     }
 }
 
 /// Stop the task; asked a second time, quit at once, as Ctrl-C twice does outside the interface.
 fn stop(screen: &mut Terminal, app: &mut App, seat: &Seat, session: String) {
     let asked = seat.client.call(Command::Interrupt { session }, ANSWER);
-    if matches!(asked, Ok(Done::Interrupted { again: true })) {
+    if matches!(asked, Some(Done::Interrupted { again: true })) {
         let history = app.take_history();
         let _ = screen.frame(history, &[], None, app.height, app.width);
         let _ = screen.clear();

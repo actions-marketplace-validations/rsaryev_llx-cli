@@ -19,7 +19,7 @@ path = "src/lib.rs"
 [features]
 testing = []
 
-# The composition root (rule L4): the one crate that knows every package but the client (D7).
+# The composition root (rule L4): the one crate that knows every package (D7).
 [dependencies]
 agent.workspace = true
 contracts.workspace = true

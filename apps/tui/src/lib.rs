@@ -11,6 +11,7 @@ mod agents;
 mod app;
 mod attach;
 mod cells;
+mod client;
 mod clipboard;
 mod composer;
 mod drawing;
@@ -49,13 +50,13 @@ mod within;
 mod wrap;
 
 use std::io::{self, Write};
-use std::sync::mpsc::{Sender, channel};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
 
-use client::Client;
-use protocol::{Command, Done, Event, Offer, ToClient};
+use protocol::{Command, Done, Event, Offer, ToClient, ToServer};
 
 use self::app::App;
+use self::client::Client;
 use self::event::Input;
 pub use self::terminal::restore;
 pub use self::trace::Trace;
@@ -69,17 +70,11 @@ pub struct Running {
     farewell: Vec<ratatui::text::Line<'static>>,
 }
 
-/// Where the server's frames that are not answers go, until the server is gone.
-pub type Deliver = Box<dyn Fn(ToClient) + Send>;
-
-/// The client to the server, made with where its frames go: over channels to the server in this
-/// process.
-pub type Connect<'a> = Box<dyn FnOnce(Deliver) -> io::Result<Client> + 'a>;
-
-/// What the interface is given: its connection to the server, what the server offers (W3), the
-/// directory for `@` (where the sessions work), and how to end the process at once.
+/// What the interface is given: the channels to the server in this process and what it offers
+/// (W3), the directory for `@` (where the sessions work), and how to end the process at once.
 pub struct Start<'a> {
-    pub connect: Connect<'a>,
+    pub to_server: Sender<ToServer>,
+    pub from_server: Receiver<ToClient>,
     pub offer: Offer,
     pub root: &'a std::path::Path,
     pub quit_now: fn() -> !,
@@ -125,9 +120,9 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
     let reader = std::thread::Builder::new().name("llx-keys".into());
     reader.spawn(move || terminal::read_keys(&keys))?;
     let gone = Gone(inbox.clone());
-    let client = (start.connect)(Box::new(move |frame| {
+    let client = Client::in_process(start.to_server, start.from_server, move |frame| {
         let _ = gone.0.send(Input::Frame(frame));
-    }))?;
+    })?;
     let Offer {
         max_lanes,
         commands,
@@ -142,7 +137,7 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
     let asking = client.clone();
     // Asked only when the quit question needs it.
     app.work = Box::new(move || match asking.call(Command::Work, drawing::ANSWER) {
-        Ok(Done::Work { running, .. }) => running,
+        Some(Done::Work { running, .. }) => running,
         _ => vec![],
     });
     app.max_lanes = max_lanes;

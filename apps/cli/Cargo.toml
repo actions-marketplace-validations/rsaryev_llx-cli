@@ -24,12 +24,11 @@ name = "llx"
 path = "src/main.rs"
 doc = false
 
-# The binary (ARCHITECTURE.md D7): the server and the interface it composes, the client the
-# interface reaches the server through, and the protocol the server's `Front` speaks.
+# The binary (ARCHITECTURE.md D7): the server and the interface it composes, and the protocol the
+# server's `Front` hands over (the channels' frames and the offer).
 [dependencies]
 server.workspace = true
 tui.workspace = true
-client.workspace = true
 protocol.workspace = true
 
 # The process's hardening, on Linux: a call std has no wrapper for.

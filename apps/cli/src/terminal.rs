@@ -10,7 +10,6 @@ use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::mpsc::{Receiver, Sender};
 
-use client::Client;
 use protocol::{Offer, ToClient, ToServer};
 
 use llx::commands::run::{Front, Unready};
@@ -31,10 +30,9 @@ impl Front for Here {
         // A signal that quits at the prompt ends the process on the quitting thread: the
         // terminal is given back there.
         interrupt::on_quit(tui::restore);
-        let connect: tui::Connect =
-            Box::new(move |deliver| Client::in_process(to_server, from_server, deliver));
         let running = tui::start(tui::Start {
-            connect,
+            to_server,
+            from_server,
             offer,
             root,
             quit_now: interrupt::quit_now,

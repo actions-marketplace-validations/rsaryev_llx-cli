@@ -12,22 +12,20 @@
 #     openrouter            OpenRouter's chat and decision models, its key
 #     openai                OpenAI's models through a ChatGPT sign-in (the Responses API)
 #     models                the model catalog: models.dev's files built in, its API over them
-#   packages/client         the interface's side of the seam: one client, in process or over a socket
-#   packages/protocol       what the interface and the server say to each other: wire types only
+#   packages/protocol       what the interface and the server say to each other: the seam's types
 #   packages/queue          one queue for what reaches a run from outside its calls, each entry
 #                           with its own policy (agents' answers, monitors, schedules, ...)
 #   packages/session        a history store: sessions as JSON Lines files
 #   apps/server             the composition root (its library is `llx`): sessions, lanes,
 #                           agents, jobs, modes, the command line, served through the
 #                           protocol
-#   apps/tui                the terminal interface: keys and drawing, through the client only
+#   apps/tui                the terminal interface: keys and drawing, and its client to the server
 #   apps/cli                the `llx` binary: the process, the terminal's wiring, and the
 #                           integration tests
 [workspace]
 resolver = "3"
 members = [
     "packages/agent",
-    "packages/client",
     "packages/contracts",
     "packages/protocol",
     "packages/queue",
@@ -151,7 +149,6 @@ allow_attributes = "deny"
 
 [workspace.dependencies]
 agent = { path = "packages/agent" }
-client = { path = "packages/client" }
 contracts = { path = "packages/contracts" }
 protocol = { path = "packages/protocol" }
 models = { path = "packages/providers/models" }

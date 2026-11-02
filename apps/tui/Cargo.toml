@@ -1,6 +1,6 @@
 [package]
 name = "tui"
-description = "llx's terminal interface: what a person sees and types, speaking to the server only through the protocol and the client"
+description = "llx's terminal interface: what a person sees and types, speaking to the server only through the protocol, with its own client"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -13,10 +13,9 @@ publish = false
 [features]
 testing = ["dep:vt100"]
 
-# The interface (ARCHITECTURE.md L7): the protocol and the client among the workspace's crates,
-# and the terminal's libraries.
+# The interface (ARCHITECTURE.md L7): the protocol alone among the workspace's crates, and the
+# terminal's libraries.
 [dependencies]
-client.workspace = true
 protocol.workspace = true
 crossterm.workspace = true
 pulldown-cmark.workspace = true
