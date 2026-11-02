@@ -1,6 +1,6 @@
 //! When a schedule runs: a 5-field cron expression (`minute hour day-of-month month day-of-week`,
-//! local time) with `*`, values, ranges, steps and lists; or a delay
-//! (`45m`, `2h`). When both day fields are restricted, a day matches either, as vixie-cron does.
+//! local time) with `*`, values, ranges, steps and lists; or a delay (`45m`, `2h`). When both day
+//! fields are restricted (neither starts with `*`), a day matches either, as vixie-cron does.
 
 /// A parsed cron expression: the values each field allows.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -10,7 +10,8 @@ pub(crate) struct Cron {
     days: u64,
     months: u64,
     weekdays: u64,
-    /// Whether day-of-month and day-of-week were both restricted.
+    /// Whether day-of-month and day-of-week were both restricted: a field that starts with `*`
+    /// (`*/2` too) is not, as vixie-cron reads it.
     either_day: bool,
     text: String,
 }
@@ -45,7 +46,7 @@ impl Cron {
             days: field(day, 1, 31)?,
             months: field(month, 1, 12)?,
             weekdays,
-            either_day: day != "*" && weekday != "*",
+            either_day: !day.starts_with('*') && !weekday.starts_with('*'),
             text: fields.join(" "),
         })
     }

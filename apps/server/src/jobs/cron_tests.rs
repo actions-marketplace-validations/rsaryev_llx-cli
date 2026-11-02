@@ -33,6 +33,18 @@ fn both_day_fields_restricted_match_either() {
 }
 
 #[test]
+fn a_day_field_that_starts_with_a_star_leaves_the_other_to_decide() {
+    // As vixie-cron reads it: `*/2` is a star, so a day must match both day fields.
+    let cron = Cron::parse("0 0 */2 * 1").unwrap();
+    assert!(
+        cron.matches(at(0, 0, 3, 3, 1)),
+        "an odd day that is a Monday"
+    );
+    assert!(!cron.matches(at(0, 0, 3, 3, 2)), "an odd day, not a Monday");
+    assert!(!cron.matches(at(0, 0, 4, 3, 1)), "a Monday, not an odd day");
+}
+
+#[test]
 fn bad_expressions_say_what_is_wrong() {
     assert!(Cron::parse("* * *").unwrap_err().contains("not 5 fields"));
     assert!(Cron::parse("61 * * * *").unwrap_err().contains("0 to 59"));
