@@ -13,17 +13,6 @@ use serde_json::Value;
 const BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// OpenAI's own API: it takes a prompt cache key, and its own name for the output limit.
 const OPENAI_HOST: &str = "api.openai.com";
-
-/// Which fields a host's chat completions take beside the common ones.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Wire {
-    /// OpenRouter: its `reasoning` object, its usage report, cache marks on the messages.
-    OpenRouter,
-    /// OpenAI itself: `reasoning_effort`, `max_completion_tokens`, and the prompt cache's key.
-    OpenAi,
-    /// Any other host: `reasoning_effort` only; a field it does not know may be refused.
-    Plain,
-}
 /// A long reply with high reasoning is slow.
 const TIMEOUT: Duration = Duration::from_secs(600);
 /// How long OpenRouter's stream may stay silent before it is given up: a connection a sleep or a
@@ -32,6 +21,18 @@ const TIMEOUT: Duration = Duration::from_secs(600);
 const IDLE: Duration = Duration::from_secs(300);
 /// A decision is short and cheap: one that hangs is given up on sooner, and asked once more.
 const DECIDING: Duration = Duration::from_secs(90);
+
+/// Which fields a host's chat completions take beside the common ones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Wire {
+    /// OpenRouter: its `reasoning` object, its usage report, its sessions, cache marks on the
+    /// messages, and a streamed reply.
+    OpenRouter,
+    /// OpenAI itself: `reasoning_effort`, `max_completion_tokens`, and the prompt cache's key.
+    OpenAi,
+    /// Any other host: `reasoning_effort` only; a field it does not know may be refused.
+    Plain,
+}
 
 #[derive(Debug, PartialEq)]
 pub(crate) enum ApiError {

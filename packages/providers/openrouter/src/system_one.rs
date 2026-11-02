@@ -28,9 +28,8 @@ impl Decider for SystemOne {
                     Question::Choice {
                         instructions,
                         criteria,
-                    } => {
-                        json!({"type": "choice", "instructions": instructions, "criteria": criteria})
-                    }
+                    } => json!({"type": "choice", "instructions": instructions,
+                        "criteria": criteria}),
                     Question::Noul { instructions } => {
                         json!({"type": "noul", "instructions": instructions})
                     }

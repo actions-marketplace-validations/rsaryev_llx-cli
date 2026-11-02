@@ -40,16 +40,6 @@ struct Whole {
     usage: Option<Value>,
 }
 
-impl Whole {
-    /// Whether the model wrote anything yet: words, reasoning or a call.
-    fn written(&self) -> bool {
-        !self.content.is_empty()
-            || self.thought.iter().any(|(_, text)| !text.is_empty())
-            || !self.details.is_empty()
-            || !self.calls.is_empty()
-    }
-}
-
 /// One call as its deltas built it, at its index.
 #[derive(Default)]
 struct Call {
@@ -59,6 +49,15 @@ struct Call {
 }
 
 impl Whole {
+    /// Whether the model wrote anything yet: words, reasoning or a call.
+    fn written(&self) -> bool {
+        !self.content.is_empty()
+            || self.thought.iter().any(|(_, text)| !text.is_empty())
+            || !self.details.is_empty()
+            || !self.calls.is_empty()
+    }
+
+    /// What one event adds: who served it, the usage, and its choice's deltas.
     fn take(&mut self, event: &Value) {
         for (field, kept) in [("model", &mut self.model), ("provider", &mut self.provider)] {
             if kept.is_none()

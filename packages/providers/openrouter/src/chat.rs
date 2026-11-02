@@ -1,7 +1,8 @@
 //! The chat port over OpenAI's chat completions, with tool calling: OpenRouter's models, and any
 //! provider's that speaks the same wire. OpenRouter takes its own `reasoning` object, a usage
-//! report with the cost, and prompt-cache marks for the models that take them; the others take `reasoning_effort`, and OpenAI's
-//! own API a prompt cache's key per conversation and its own name for the output limit.
+//! report with the cost, a session per conversation and prompt-cache marks for the models that
+//! take them, and streams its reply; the others take `reasoning_effort`, and OpenAI's own API a
+//! prompt cache's key per conversation and its own name for the output limit.
 
 use contracts::catalog::{Effort, Selection};
 use contracts::chat::{
@@ -149,7 +150,7 @@ fn readable(message: &Value) -> Option<String> {
 /// The most a reply may write, in tokens, or the model's own limit when it is smaller.
 const MAX_OUTPUT: u64 = 32_000;
 
-/// The request's body: OpenRouter's own fields, or the generic ones.
+/// The request's body: OpenRouter's own fields, OpenAI's, or the plain ones any host takes.
 fn body(host: Wire, selection: &Selection, request: &Request) -> Value {
     let model = &selection.model().id;
     let messages: Vec<Value> = (request.conversation.iter())
@@ -297,8 +298,8 @@ fn function(spec: &ToolSpec) -> Value {
         "name": spec.name, "description": spec.description, "parameters": spec.input.schema()}})
 }
 
-/// The conversation with prompt-cache breakpoints on the system prompt and the newest message, so
-/// each turn re-reads only what was added since the last one.
+/// The conversation with prompt-cache breakpoints on the system prompt, the context after it and
+/// the newest message, so each turn re-reads only what was added since the last one.
 fn cached(mut messages: Vec<Value>) -> Vec<Value> {
     let mark = |message: &mut Value| {
         let content = &mut message["content"];
