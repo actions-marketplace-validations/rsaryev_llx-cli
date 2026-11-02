@@ -20,14 +20,14 @@ and Localix (rule ids, ratchets, poke-then-pull sync).
 
 llx is a model in a loop over five tools: `bash`, through which it reads, searches and runs the checks, `apply_patch`, through which it changes files (B1-B5), `ask`, `agents` and `jobs`. The loop decides; it knows no technology. Tools, stores and providers are technology behind ports. One composition root wires
 them for a session. A session runs in a server, and an interface shows it through a protocol,
-in the same process, or over the daemon's socket (`docs/daemon.md`). Nothing a
-person sees is known below the interface; nothing a model or a tool does is known above the
-server.
+in the same process: the server on its threads, the interface on its own, frames over channels
+between them. Nothing a person sees is known below the interface; nothing a model or a tool
+does is known above the server.
 
 ## The layers
 
 ```text
-                         apps/cli        the binary: the process, the terminal, which transport
+                         apps/cli        the binary: the process, the terminal
                         ╱        ╲
            apps/tui             apps/server             composition root: the command line,
            keys, drawing        sessions, lanes, agents, jobs, modes, the gate's and the person's answers
@@ -36,20 +36,20 @@ server.
                 │                 │        packages/tools, session, providers/*   adapters
                 │                 │
           packages/protocol                 packages/contracts, queue, providers/kit
-          wire types only                   vocabulary: ports, primitives
+          the seam's types only             vocabulary: ports, primitives
 ```
 
-The server's package is `server`, its library `llx`: the log's targets (`llx::server::hub`) and
+The server's package is `server`, its library `llx`: the log's targets (`llx::server::serve`) and
 `RUST_LOG=llx=debug` are its modules' paths.
 
 | Layer | Crates | Knows |
 |---|---|---|
 | Vocabulary | `contracts` (ports, no logic), `queue`, `providers/kit` | no workspace crate |
-| Wire | `protocol` | no workspace crate: serde only |
+| Seam | `protocol` | no crate at all |
 | Core | `agent` | `contracts` |
 | Adapters | `tools`, `session` | `contracts` |
 | Adapters | `providers/{models,openai,openrouter}` | `contracts`, `kit` |
-| Client | `client` (in process, and the socket) | `protocol` |
+| Client | `client` (in process, over channels) | `protocol` |
 | Server | `apps/server` (library `llx`) | every package but `client` |
 | Interface | `apps/tui` | `client`, `protocol` |
 | Binary | `apps/cli` | `server`, `tui`, `client`, `protocol` (the client's frames, P7) |
@@ -68,16 +68,16 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **L5** _checked_: `contracts` and `agent` name no tool or provider (no browser, page, URL,
   OpenRouter, OpenAI, model name). The agent learns a tool's world from `ToolSpec::description`,
   the run's place from the app's context.
-- **L6** _checked_: `protocol` depends on no workspace crate. Its types are wire
-  DTOs; domain types never derive its serde shapes, and it never re-exports one.
+- **L6** _checked_: `protocol` depends on no crate. Its types are the seam's own, never the
+  domain's: the server maps its values onto them (`server/wire.rs`), and the protocol never
+  re-exports one.
 - **L7** _checked_ on `apps/tui`'s manifest and sources: the interface depends only on `client`
   and `protocol`: never on
   the agent, tools, providers, the session store or the server, nor on the app's other modules.
   What it needs to show, the protocol carries.
 - **L8** _checked_ (the server's manifest has no `client`, the client's only `protocol`): the
   server is the only crate that serves the protocol and
-  the only one that knows every package; the client knows only the protocol, and is the only
-  one that knows the socket.
+  the only one that knows every package; the client knows only the protocol.
 - **L9**: a new edge between crates is a design change, recorded here first. A new `pub` item is
   an API change: visibility is the tightest that compiles (`pub(super)`, `pub(crate)`), and
   `pub use` across crates is not used to reach past a layer. (The agent's conversation and history
@@ -155,9 +155,8 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **K2**: sessions, approvals, the person, modes, agents and jobs are the server's; keys, the
   composer, drawing, `$EDITOR` and the clipboard the interface's.
 - **K3**: one person, one question at a time: every approval and `ask` goes through
-  `gate::one_question`, whichever thread asks. A person is one interface: a desk's lock
-  (`Shared::asking`), or the process's own for the terminal it asks at; a question waiting at
-  one terminal of the daemon (or in sessions moved to the background) never holds another's.
+  `gate::one_question`, whichever thread asks. A person is one interface: the desk's lock
+  (`Shared::asking`), or the process's own for the terminal it asks at.
 - **K4**: something that reaches a run from outside its calls is a kind in `arrivals.rs` (its
   policy and tag) posted to the lane's queue; the agent's inbox knows no source.
 - **K5**: a mode is a named set of rules (`allow`, `deny`) and what its commands reach (`reach`:
@@ -180,30 +179,25 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 ## Protocol rules (the seam between interface and server)
 
-- **W1**: newline-delimited JSON frames, each `{method, params}` (`protocol`'s `frame.rs`): a
-  call (`command/call`) carries an `id` and gets exactly one `command/done` with that id (a failed
-  one too, `Failed` with why); a question (`person/ask`) has an id its `person/reply` and
-  `person/resolved` name; every other frame is a notification, with no id.
-- **W2**: methods are `resource/verb` with a singular resource (`command/call`, `person/reply`,
-  `session/event`); a frame's params hold protocol types (`Command`, `Done`, `Event`, `Asked`,
-  `Reply`); unions are tagged (`type`); a frame's id is a number, a session's a string; times are
-  `*_at` milliseconds since the epoch.
-- **W3**: `initialize` comes first and once on a connection that opens sessions (`status` and
-  `shutdown`, the daemon's own, need none): the client's version, place and build; the server's
-  version and what it offers. The protocol grows by optional fields, new commands and new events:
-  a side ignores a field it does not know, a client drops an event it cannot read, and a command
-  the server cannot read is answered `Failed`. A breaking change is a new protocol version, and a
-  build mismatch restarts an idle daemon.
-- **W4**: one client interface, two transports: in process (channels) and the socket, with the
-  same frames, so every in-process test covers the daemon's path.
-- **W5**: a question the server asks a person belongs to the session: sent to every attached
-  client, the first answer wins, `resolved` tells the rest, replayed on attach, aborted when its
-  task stops.
-- **W6**: events are numbered and kept in a bounded ring; a client that attaches is given what
-  it keeps, after a gap and every session's state when its bounds let some go. A live-only event
-  (a step under a call) is never replayed. A slow client is cut off, never waited for.
-- **W7**: a request carries what the server needs to act on it (the session's id); no hidden
-  state per connection but who is attached.
+- **W1**: frames are values on two channels, `ToServer` and `ToClient` (`protocol`'s
+  `frame.rs`), never encoded: a call (`ToServer::Call`) carries an `id` and gets exactly one
+  `ToClient::Done` with that id (a failed one too, `Failed` with why); a question
+  (`ToClient::Ask`) has an id its `ToServer::Reply` and `ToClient::Resolved` name; every other
+  frame is a notification, with no id.
+- **W2**: a frame holds protocol types only (`Command`, `Done`, `Event`, `Asked`, `Reply`); a
+  frame's id is a number, a session's a string; times are `*_at` milliseconds since the epoch.
+- **W3**: `Initialize` comes first and once; the server answers with what it offers (its
+  commands, its modes, the lanes it opens at most). The sessions work where the process does: the
+  workspace the command line names, with the process's environment.
+- **W4**: (retired with the daemon: one transport, the channels.)
+- **W5**: a question the server asks a person belongs to the session: it waits under its id
+  until the reply, and `Resolved` tells the interface it no longer waits (answered, or withdrawn
+  when its task stops, its lane closes or the person leaves).
+- **W6**: the server never waits on the interface: its frames go out on a channel that never
+  blocks, read on the interface's own thread. (The ring a later client was given is retired with
+  the daemon.)
+- **W7**: a request carries what the server needs to act on it (the session's id); the seam keeps
+  no hidden state.
 - **W8**: one request's panic or failure never ends the server: it becomes that request's error.
 - **W9**: (retired.)
 
@@ -219,15 +213,15 @@ command is cut.
   searching and running, and `apply_patch` (`tools/src/fs/patch/`), for every file it adds,
   changes, deletes or moves. No other tool reads or writes a file for it; a capability is a
   command, or a program the shell has.
-- **B2**: what the shell offers is the app's context to say, found on the session's `PATH` (the
-  client's, in the daemon) without running anything: the runtimes a script can be written in
+- **B2**: what the shell offers is the app's context to say, found on the process's `PATH`
+  without running anything: the runtimes a script can be written in
   (`python3`, `node`, `bun`), named only when present. How to change a file well is the tools'
   descriptions' and the prompt's to say, in general terms (C7).
 - **B3**: a confined command runs in the operating system's sandbox, never a check of its text:
   on macOS Seatbelt (`sandbox-exec`, closed by default), on Linux Landlock with a seccomp filter.
   It reads every file but the app's own (the workspace's denied paths: its keys and sessions; on
   macOS only, as Landlock cannot take a path out of what it lets read), opens no network or local
-  socket and reaches no other process (no Apple events, no launchd, no daemon of ours). What it
+  socket and reaches no other process (no Apple events, no launchd). What it
   writes is the verdict's: a read-only command (a `read-only` mode's, K5; `Verdict::ReadOnly`)
   writes only `/dev/null` and a temporary directory of its own; a workspace command (a
   `workspace` mode's; `Verdict::Workspace`) writes there and inside the workspace too, but never
@@ -364,28 +358,27 @@ command is cut.
   unasked is an `Event` variant (`event.rs`).
 - **A rule:** here, with an id, and its test in the same commit when a test can state it.
 
-## The daemon's steps (docs/daemon.md)
+## The seam's steps
 
 - **D1** (done): the seam as the protocol, in process: `protocol` and `client` exist; the
   interface speaks only through them. L6-L8 are checked.
-- **D2** (done): sessions carry their place (directory, environment).
-- **D3** (done): the socket and `llx serve`.
-- **D4** (done): attach and detach: the ring, replayed questions, the quit question, back to
-  the sessions moved to the background.
+- **D2**, **D3**, **D4**: (retired with the daemon, `llx serve`, by the owner's decision: a
+  session runs in the process of the terminal that shows it, so it carries no place of its own,
+  no socket serves it, and nothing attaches to it later or keeps it in the background. It cost
+  more code and bugs than it was worth, and no measured speed.)
 - **D5**, **D6**: (retired.)
 - **D7** (done): the split into crates. `apps/tui`, the interface: `client`, `protocol` and its
   terminal libraries; the exec trace too (`Trace`), drawn from the protocol's events. `apps/server`,
   the composition root: sessions, lanes, agents, jobs, modes, every package but `client`, and the
-  command line's `Cli` (the daemon reads a client's words with it); its run takes the terminal
-  from the binary through its `Front` port. `apps/cli`, the binary: `main.rs`, the process's
-  hardening, `terminal` (the `Front`: an interface in process or attached to the daemon, each
-  lane's trace), the daemon's client side (`reach`, `spawn`, `status`, `stop`), the tests that
-  drive the interface's `App` against a desk, and the integration tests.
+  command line's `Cli`; its run takes the terminal from the binary through its `Front` port.
+  `apps/cli`, the binary: `main.rs`, the process's hardening, `terminal` (the `Front`: the
+  interface in this process, each lane's trace), the tests that drive the interface's `App`
+  against a desk, and the integration tests.
 
 ## Budgets
 
 - 50,000 lines of working code (S2), 300 per file (S1).
 - The release binary under 5 MiB (CI: `scripts/check --only size`, which warns past 4 MB; raised
-  from 3 MiB by the owner for the daemon and a release that unwinds a panic, W8); a bundled data
+  from 3 MiB by the owner for a release that unwinds a panic, W8); a bundled data
   file counts.
 - Line coverage at least 85% (`scripts/coverage.sh`), raised with coverage, never lowered.
