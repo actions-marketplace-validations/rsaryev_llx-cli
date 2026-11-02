@@ -49,10 +49,9 @@ fn a_conversation_goes_out_in_the_wire_format_with_cache_marks() {
 fn a_tool_call_with_unreadable_arguments_arrives_as_their_text() {
     // A reply cut short leaves `{"command": "cargo te` behind: it must not become an empty call
     // that fails as "missing field command".
-    let call = read_call(
-        &json!({"id": "c2", "function": {"name": "bash", "arguments": "{\"command\": \"a"}}),
-    );
-    assert_eq!(call.map(|c| c.arguments), Some(json!("{\"command\": \"a")));
+    let cut = "{\"command\": \"cargo te";
+    let call = read_call(&json!({"id": "c2", "function": {"name": "bash", "arguments": cut}}));
+    assert_eq!(call.map(|c| c.arguments), Some(json!(cut)));
 }
 
 #[test]

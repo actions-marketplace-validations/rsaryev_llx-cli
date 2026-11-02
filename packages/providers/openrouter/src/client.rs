@@ -79,6 +79,7 @@ pub struct OpenRouter {
 }
 
 impl OpenRouter {
+    /// OpenRouter itself, called with `key`.
     pub fn new(key: String, app: App) -> Self {
         Self::standing_in(BASE_URL, key, app)
     }

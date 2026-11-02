@@ -32,6 +32,8 @@ impl Login {
         &self.address
     }
 
+    /// A sign-in started: the callback waiting on a free port, and the address to open, which
+    /// comes back to it.
     pub fn start(app: App) -> Result<Self, String> {
         let (verifier, challenge) = oauth::pkce()?;
         // OpenRouter sends no `state` back; a random route keeps stray requests from completing

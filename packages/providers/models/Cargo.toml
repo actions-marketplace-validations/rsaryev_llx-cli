@@ -16,7 +16,7 @@ serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
 miniz_oxide.workspace = true
 
-# models.dev's TOML files are read at build time only: the binary holds their data, not a parser.
+# models.dev's TOML files are read at build time only: the binary holds their data, no TOML parser.
 [build-dependencies]
 miniz_oxide.workspace = true
 serde.workspace = true

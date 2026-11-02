@@ -57,7 +57,7 @@ impl Whole {
             || !self.calls.is_empty()
     }
 
-    /// What one event adds: who served it, the usage, and its choice's deltas.
+    /// What one event adds: who served it, the usage, its choice's finish and deltas.
     fn take(&mut self, event: &Value) {
         for (field, kept) in [("model", &mut self.model), ("provider", &mut self.provider)] {
             if kept.is_none()

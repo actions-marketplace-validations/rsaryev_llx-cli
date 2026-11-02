@@ -119,10 +119,12 @@ impl Catalog {
         found.is_some_and(|p| p.models().any(|(_, m)| calls(m, CHAT_COMPLETIONS)))
     }
 
+    /// Provider `id`: this catalog's, else the built-in one.
     pub fn provider(&self, id: &str) -> Option<&Provider> {
         (self.providers.get(id)).or_else(|| self.under()?.provider(id))
     }
 
+    /// `provider`'s model `id`, when it has one that reads as a model.
     pub fn model(&self, provider: &str, id: &str) -> Option<&Model> {
         self.provider(provider)?.model(id)
     }
