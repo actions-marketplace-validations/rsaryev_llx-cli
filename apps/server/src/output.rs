@@ -205,7 +205,7 @@ impl Output {
         *lock(&self.session) = Arc::from(start.session);
         logged::started(start);
         if let Some(ui) = &self.ui {
-            ui.send(Event::TaskStarted(start.goal.to_string()));
+            ui.send(Event::TaskStarted(crate::server::wire::shown(start.goal)));
             return;
         }
         if self.json {

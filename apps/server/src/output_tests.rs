@@ -410,3 +410,28 @@ fn the_interface_is_sent_an_answer_once() {
         assert_eq!(answers, usize::from(sent), "shown: {shown}");
     }
 }
+
+#[test]
+#[expect(
+    clippy::wildcard_enum_match_arm,
+    reason = "a test picks out the variant it checks"
+)]
+fn a_task_that_came_back_from_the_background_starts_as_where_it_came_from() {
+    // The person reads `$ tests · Exit code: 1` as the task opens, as a saved session shows it,
+    // never the tagged message the model reads.
+    let (ui, frames) = crate::testing::fake_ui();
+    let output = crate::testing::quiet().in_ui(Some(ui.for_lane("lane")));
+    let came = crate::arrivals::background("tests", "Exit code: 1\nOutput:\nFAIL").render();
+    output.started(&Start {
+        goal: &came,
+        session: "s",
+        model: "m",
+        workspace: "/w",
+    });
+    let started =
+        (crate::testing::events(&frames).into_iter()).find_map(|(_, event)| match event {
+            Event::TaskStarted(goal) => Some(goal),
+            _ => None,
+        });
+    assert_eq!(started.as_deref(), Some("$ tests · Exit code: 1"));
+}
