@@ -234,7 +234,15 @@ impl Cli {
                 None => &mut exec.run,
             },
             Some(Command::Resume(args)) => &mut args.run,
-            _ => &mut self.run,
+            None
+            | Some(
+                Command::Decide(_)
+                | Command::Grep(_)
+                | Command::Sessions
+                | Command::Logout
+                | Command::Doctor(_)
+                | Command::Serve(_),
+            ) => &mut self.run,
         }
     }
 }

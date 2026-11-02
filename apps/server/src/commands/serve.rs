@@ -153,10 +153,17 @@ fn attach(connection: Connection, host: &Arc<Host>, front: &'static dyn Front) {
     let Ok((peer, requests)) = served else {
         return;
     };
+    // Nothing the desk is asked counts before the handshake has said where the client is.
     let place = loop {
         match requests.recv() {
             Ok(Request::Attach(place)) => break place,
-            Ok(_) => {}
+            Ok(
+                Request::Open(_)
+                | Request::List
+                | Request::Quit
+                | Request::Background
+                | Request::Gone,
+            ) => {}
             Err(_gone) => return,
         }
     };

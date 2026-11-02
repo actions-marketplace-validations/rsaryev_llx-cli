@@ -31,7 +31,7 @@ pub(crate) fn prompt(arg: Option<&str>) -> Result<Prompt, Failure> {
             }
             Some(read_stdin()?)
         }
-        _ => None,
+        (_, Stdin::Terminal) => None,
     };
     assemble(arg, piped.as_deref())
 }
@@ -86,7 +86,7 @@ fn waiting(arg: Option<&str>, stdin: Stdin) -> Option<&'static str> {
         (Some(_), Stdin::Stream) => {
             Some("llx: reading additional input from stdin (</dev/null to skip it)\n")
         }
-        _ => None,
+        (Some(_), Stdin::Terminal | Stdin::File) => None,
     }
 }
 
