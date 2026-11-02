@@ -60,9 +60,11 @@ impl Lanes {
         done(live.len())
     }
 
-    /// Stop every lane's task.
+    /// Stop every lane's task: the ids copied out first, as a stop runs its lane's callback and
+    /// rings the questions' bell (R6).
     pub(super) fn stop_all(&self) {
-        for id in lock(&self.live).iter() {
+        let live = lock(&self.live).clone();
+        for id in &live {
             crate::interrupt::stop(id);
         }
     }
