@@ -1,0 +1,21 @@
+#!/bin/sh
+# The skill's reference, written from the help the llx built here prints: everything after the
+# marker line of skills/llx/SKILL.md becomes `llx exec --help`, `llx grep --help` and
+# `llx decide --help`, each in a block of its own. Run it after changing their help text; a test
+# (apps/cli/tests/suite/repo/skill.rs) fails while the skill's copy differs.
+set -eu
+cd "$(dirname "$0")/.." || exit 1
+cargo build -q -p llx
+llx=target/debug/llx
+skill=skills/llx/SKILL.md
+marker='<!-- Written by scripts/skill-help from the help llx prints; a test checks it matches. -->'
+grep -qxF "$marker" "$skill" || { echo "skill-help: $skill has no marker line: $marker" >&2; exit 1; }
+tmp=$(mktemp)
+awk -v marker="$marker" '{ print } $0 == marker { exit }' "$skill" >"$tmp"
+for command in exec grep decide; do
+  printf '\n### `llx %s --help`\n\n```text\n' "$command" >>"$tmp"
+  "$llx" "$command" --help >>"$tmp"
+  printf '```\n' >>"$tmp"
+done
+cat "$tmp" >"$skill" && rm -f "$tmp"
+echo "skill-help: $skill's reference written from $llx"

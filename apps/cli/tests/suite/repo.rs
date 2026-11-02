@@ -1,6 +1,7 @@
 //! The repository itself, as ARCHITECTURE.md binds it: its layers (`architecture`), the core that
-//! names no effect (`core`), the code rules (`code`) and the size budget (`budget`); and its own
-//! scripts, run as a contributor runs them (`scripts`).
+//! names no effect (`core`), the code rules (`code`) and the size budget (`budget`); its own
+//! scripts, run as a contributor runs them (`scripts`); and the skill's reference, the help llx
+//! prints (`skill`).
 
 use std::path::{Path, PathBuf};
 
@@ -9,6 +10,7 @@ mod budget;
 mod code;
 mod core;
 mod scripts;
+mod skill;
 
 /// The workspace's root.
 fn root() -> PathBuf {

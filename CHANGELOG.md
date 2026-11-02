@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The skill describes llx instead of sending the agent to its help first: what each part is for, with examples to run as they are (a pull-request review workflow for the action, a gate, helpers in parallel, `llx grep`, `llx decide`), and at its end `llx exec --help`, `llx grep --help` and `llx decide --help` as the release prints them (`scripts/skill-help` writes them, a test checks them). In Claude Code the skill asks once before it is used, as it grants commands; `Skill(llx:llx)` allows it where no one can answer.
 - An answer given while background agents still worked, then stopped while it waited for them, read twice in the session: once as the words said as the wait began, once more as the task's answer. It is shown once; stdout, `-o` and `--json` have it as before.
 - `llx grep` with an empty question is a usage error (exit 3), as a broken pattern is: it searched by no word and exited 1, as if no file answered.
 - In a read-only mode (`plan`) the context says when to ask the person with `ask`, as the other modes do at a terminal: it was left out, so a plan's open questions were guessed.
