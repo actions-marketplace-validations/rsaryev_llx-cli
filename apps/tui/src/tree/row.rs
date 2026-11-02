@@ -24,24 +24,24 @@ pub(super) fn session_row<'a>(
     now: Instant,
     spinner: &dyn Fn(Instant) -> Span<'static>,
 ) -> Row<'a> {
-    let (glyph, detail) = match (&view.parent, &view.state) {
-        (None, _) if view.busy.is_some() => (
-            view.busy.map_or_else(|| Span::raw("●"), spinner),
+    let (glyph, detail) = match (&view.parent, &view.state, view.busy) {
+        (None, _, Some(since)) => (
+            spinner(since),
             doing(&view.running).unwrap_or_else(|| "working".into()),
         ),
-        (None, AgentState::Ended(status)) => {
+        (None, AgentState::Ended(status), None) => {
             let (glyph, word) = ended(status);
             let unseen = if view.unseen { " · unseen" } else { "" };
             (glyph, format!("{word}{unseen}"))
         }
-        (None, _) => (Span::styled("●", style::code()), "idle".into()),
-        (_, AgentState::Idle) => (Span::styled("○", style::dim()), "starting".to_string()),
-        (_, AgentState::Working) => (
-            view.busy.map_or_else(|| Span::raw("○"), spinner),
+        (None, _, None) => (Span::styled("●", style::code()), "idle".into()),
+        (_, AgentState::Idle, _) => (Span::styled("○", style::dim()), "starting".to_string()),
+        (_, AgentState::Working, busy) => (
+            busy.map_or_else(|| Span::raw("○"), spinner),
             doing(&view.running).unwrap_or_else(|| "thinking".into()),
         ),
-        (_, AgentState::Ended(status)) => ended(status),
-        (_, AgentState::Closed) => (Span::styled("○", style::dim()), "closed".into()),
+        (_, AgentState::Ended(status), _) => ended(status),
+        (_, AgentState::Closed, _) => (Span::styled("○", style::dim()), "closed".into()),
     };
     Row {
         chosen,
