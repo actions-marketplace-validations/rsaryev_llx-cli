@@ -114,10 +114,16 @@ fn commands_never_see_the_key_of_the_provider_in_use() {
 }
 
 /// In `plan` the model's commands run in the sandbox: one reads, its write fails and the file
-/// stays; in `bypass` the same command changes it.
+/// stays; in `bypass` the same command changes it. In `default` it changes it on macOS, and only
+/// reads on Linux, where Landlock could keep no `.git` in the workspace from it (B3).
 #[test]
 fn each_modes_commands_change_what_its_reach_lets_them() {
-    let modes = [("bypass", true), ("default", true), ("plan", false)];
+    let default_writes = cfg!(target_os = "macos");
+    let modes = [
+        ("bypass", true),
+        ("default", default_writes),
+        ("plan", false),
+    ];
     for (mode, changed) in modes {
         let command = json!({"command": "cat a.txt && echo two > a.txt"});
         let mut replies = vec![crate::testing::call("c1", "bash", command)];

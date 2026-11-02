@@ -81,8 +81,8 @@ interface cannot start) it is a usage error pointing to `llx exec`, which prints
 ### The screen
 
 - What finished goes into the terminal's own scrollback, so scrolling, selecting and copying are the terminal's. Only the bottom is redrawn: the call running, `Working (12s · esc stop)`, the messages you queued meanwhile, and the prompt `❯`.
-- Under the prompt, a list shows the session, the agents it started (as a branch) and the jobs running; with no agents and no jobs it is gone. Time and tokens follow each row's status. The other sessions take one line, `← 2 other sessions (1 working, 1 waiting for you)`.
-- ↓ from an empty prompt gives the list the keys: ↑↓ choose, Enter or → shows an agent's transcript or what a command in the background prints (as it prints, `x` to stop it), `x` stops an agent or a job, Esc or ← go back. A command in the background that ended stays listed with how (red when it failed or was stopped, the model told either way) until `x` removes it.
+- Under the prompt, a list shows the session, the agents it started (as a branch) and its jobs; with no agents and no jobs it is gone. Each row ends its time and tokens, or how a job runs or ended, at the right edge, as the footer ends its spend. The other sessions take one line, `← 2 other sessions (1 working, 1 waiting for you)`.
+- ↓ from an empty prompt gives the list the keys: ↑↓ choose, Enter or → shows an agent's transcript, what a command in the background prints (as it prints) or what a monitor's last check printed, `x` stops an agent or a job, Esc or ← go back. A command or a monitor that ended stays listed with how (`✓`, or red `✗` when it failed or was stopped) until `x` removes it. One you stop opens no task: the model reads it with your next.
 - Each session gets a short title from its first task, made in the background by the same model at its lowest reasoning level (the task never waits for it), shown in the list and saved with the session.
 - A `bash` call shows its command and the end of its output.
 - Markdown answers support tables with aligned columns, wrapped cells and inline styles. On very narrow terminals, cells are shown vertically.

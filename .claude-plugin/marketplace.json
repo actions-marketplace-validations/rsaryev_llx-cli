@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "llx",
-      "description": "llx in your agent: a coding agent and one-task runs for scripts and CI, helpers on any model, a search of the code by what a question means (llx grep) and fast decisions (llx decide)",
+      "description": "llx in your agent: a coding agent and one-task runs for scripts and CI, helpers on any model, and fast decisions (llx decide), with rg a search of the code by what it does",
       "source": "./",
       "strict": false,
       "skills": [

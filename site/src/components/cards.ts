@@ -96,7 +96,7 @@ export const CARDS: Card[] = [
   },
   {
     title: 'Agents in parallel, jobs in the background',
-    text: 'One task, split: each agent is a session of its own, running at once, answering back to the one that started it. Jobs watch a command or run on a schedule and report back while the work goes on.',
+    text: 'One task, split: each agent is a session of its own, running at once, answering back to the one that started it. Jobs wait for something to happen, keep a long command running, or run on a schedule, and report back once, while the work goes on.',
     panel: [
       {
         ui: [
@@ -185,7 +185,7 @@ export const CARDS: Card[] = [
           [['hi', 'apply_patch'], ['dim', 'add, change, delete, move files']],
           [['hi', 'ask'], ['dim', 'a question to the person']],
           [['hi', 'agents'], ['dim', 'other agents, in parallel']],
-          [['hi', 'jobs'], ['dim', 'monitors and schedules']],
+          [['hi', 'jobs'], ['dim', 'monitors, schedules, commands in the background']],
           [['acc', 'result'], ['dim', 'the data of --schema, asked for at the end']],
         ],
       },
