@@ -73,10 +73,11 @@ fn doing(running: &[Running]) -> Option<String> {
     })
 }
 
-/// How long the agent has worked and the tokens it used: `1m 08s · 54.1k tokens`.
-pub(crate) fn spent(agent: &SessionView, now: Instant) -> String {
-    let millis = agent.worked + agent.busy.map_or(0, |since| time::elapsed_ms(now, since));
-    match (millis < 1000, agent.tokens) {
+/// How long a session has worked, its task running too, and the tokens it used: `1m 08s · 54.1k
+/// tokens`; nothing before its first second.
+pub(crate) fn spent(view: &SessionView, now: Instant) -> String {
+    let millis = view.worked + view.busy.map_or(0, |since| time::elapsed_ms(now, since));
+    match (millis < 1000, view.tokens) {
         (true, 0) => String::new(),
         (_, 0) => cells::clock(millis / 1000),
         (_, count) => format!("{} · {} tokens", cells::clock(millis / 1000), tokens(count)),
@@ -159,7 +160,7 @@ pub(crate) fn columns(
     ]
 }
 
-/// How an agent's last task ended, as a mark and a word.
+/// How a session's last task ended, as a mark and a word.
 fn ended(status: &str) -> (Span<'static>, String) {
     let (style, mark, word, _) = cells::ending(status);
     (Span::styled(mark, style), word.into())

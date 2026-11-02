@@ -7,14 +7,14 @@
 //! switch, and a search looks in every one.
 //!
 //! ```text
-//! Run this command?
+//! • Run this command?
 //!   cargo test --workspace
 //!
 //! ❯ 1. Yes
 //!   2. Yes, and don't ask again for bash
 //!   3. No, and tell llx what to do differently
 //!
-//!   ↑↓ to choose · enter to confirm · esc to say no
+//!   enter select · esc no · ctrl-c stop
 //! ```
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};

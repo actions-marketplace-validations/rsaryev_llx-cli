@@ -155,6 +155,8 @@ pub(crate) struct Running {
     pub since: Instant,
 }
 
+/// Where a session stands, as its row says it: an agent from its start to its close, a lane by
+/// how its last task ended.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) enum AgentState {
     /// Started, and given nothing yet.

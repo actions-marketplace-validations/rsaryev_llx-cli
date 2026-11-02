@@ -1,5 +1,6 @@
-//! The terminal itself: its modes, the keys read from it, and the person's editor, which has it
-//! for a while.
+//! The terminal itself: its modes and the signals that give it back, the keys read from it, and
+//! what has it for a while (the person's editor, a suspend); the farewell printed once it is the
+//! person's again.
 
 use std::io::{self, Write};
 use std::sync::mpsc::Sender;

@@ -1,5 +1,6 @@
-//! The keys the interface takes outside a question: stopping and quitting, sending, the
-//! plan-mode switch, and the commands `/` offers.
+//! The keys the interface takes outside a question: stopping and quitting, sending (now, or for
+//! after the task with Tab), the next mode (Shift+Tab) and the reasoning level (Shift+Up/Down),
+//! the editor, the clipboard's picture and a suspend, and what `/` and `@` offer.
 
 use std::path::PathBuf;
 use std::time::Instant;
@@ -284,10 +285,10 @@ impl App {
 }
 
 /// The commands that take a mode's name after them.
-const MODE: [&str; 2] = ["mode", "permissions"];
+pub(super) const MODE: [&str; 2] = ["mode", "permissions"];
 
 /// What follows a mode command and its space, when `text` starts with one.
-fn mode_typed(text: &str) -> Option<&str> {
+pub(super) fn mode_typed(text: &str) -> Option<&str> {
     let typed = text.strip_prefix('/')?;
     MODE.iter()
         .find_map(|name| typed.strip_prefix(name)?.strip_prefix(' '))

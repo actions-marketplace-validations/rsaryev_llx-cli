@@ -123,6 +123,7 @@ fn list(root: &Path) -> Vec<String> {
     out
 }
 
+/// The files under `dir` onto `out`, as paths from `root`, until there are [`MOST`].
 fn walk(root: &Path, dir: &Path, out: &mut Vec<String>) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;

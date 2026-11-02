@@ -1,12 +1,14 @@
 //! Where the person types: a few lines of text with a cursor, the earlier entries a key away, and
-//! the slash commands offered as they are typed.
+//! the marks that stand for what is attached or pasted (`marks.rs`). What `/` and `@` offer is
+//! the keys' (`keys.rs`).
 //!
 //! Enter sends; Shift+Enter, Alt+Enter or Ctrl+J start a new line, as does a line ending in `\`;
 //! a paste keeps its lines. Left and right move by character, with Alt (or Ctrl) by word; Home,
 //! End, Ctrl+A and Ctrl+E go to the line's ends; Up and Down move between lines, and past the
-//! first or the last one walk the earlier entries. Ctrl+U, Ctrl+K and Ctrl+W delete to the
-//! start, to the end and the word before. Shift with Left, Right, Home or End selects; Backspace
-//! or Delete takes the selection away, and what is typed or pasted replaces it.
+//! first or the last one walk the earlier entries; Ctrl+R finds an earlier one with the words
+//! typed. Ctrl+U, Ctrl+K and Ctrl+W delete to the start, to the end and the word before. Shift
+//! with Left, Right, Home or End selects; Backspace or Delete takes the selection away, and what
+//! is typed or pasted replaces it.
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 

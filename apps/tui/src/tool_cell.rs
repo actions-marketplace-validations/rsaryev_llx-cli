@@ -1,11 +1,15 @@
-//! A tool call as a block: a bullet, what it does in a few words, and the end of what it printed.
+//! A tool call as a block: a bullet, what it does in a few words, and what it printed, its first
+//! rows and its last with how many between were left out.
 //!
 //! ```text
 //! • Ran cargo test --workspace
 //!   │ --all-targets
-//!   └ test result: ok. 133 passed
+//!   └ Compiling llx v0.1.0
+//!     Finished `test` profile
 //!     … +41 lines
-//!     finished in 0.9s
+//!     running 2 tests
+//!     test parses ... ok
+//!     test result: ok. 2 passed
 //! ```
 //!
 //! The bullet is dim while the call runs (the live area draws a spinner there), green when it is

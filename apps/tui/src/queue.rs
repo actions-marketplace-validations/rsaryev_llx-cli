@@ -5,6 +5,8 @@
 
 use std::time::{Duration, Instant};
 
+use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+
 use super::app::{Action, App, Open};
 use super::event::Out;
 use super::questions;
@@ -17,7 +19,8 @@ const SETTLE: Duration = Duration::from_millis(300);
 pub(crate) struct Asked {
     pub(crate) select: Select,
     pub(crate) open: Open,
-    /// The lane that asked: Ctrl-C stops it, and its `Dismiss` closes the question.
+    /// The lane that asked: it waits for the person meanwhile, Ctrl-C stops it, and a refusal's
+    /// words wait there for the call refused. Empty for the interface's own question.
     pub(crate) asker: String,
 }
 
@@ -141,12 +144,7 @@ impl App {
     }
 
     /// A key while a question is open: Ctrl-C says no and stops the lane that asked.
-    pub(super) fn question_key(
-        &mut self,
-        key: crossterm::event::KeyEvent,
-        now: Instant,
-    ) -> Option<Action> {
-        use crossterm::event::{KeyCode, KeyModifiers};
+    pub(super) fn question_key(&mut self, key: KeyEvent, now: Instant) -> Option<Action> {
         let stop = key.modifiers.contains(KeyModifiers::CONTROL) && key.code == KeyCode::Char('c');
         if !stop && self.settling.is_some_and(|until| now < until) {
             return None;

@@ -36,6 +36,8 @@ use protocol::{Saved, Target};
 
 /// Rows shown at once; a longer list scrolls with the row chosen.
 const WINDOW: usize = 14;
+
+/// A row of the list: a lane open (by its id), "+ New session", or a saved session.
 #[derive(Debug, Clone, PartialEq)]
 enum Row {
     Live(String),

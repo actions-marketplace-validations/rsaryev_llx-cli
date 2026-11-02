@@ -37,8 +37,9 @@ pub(super) use row::{columns, spent};
 
 /// Agents' rows shown at most, and jobs'; the rest are counted.
 pub(super) const ROWS: usize = 5;
-/// Columns a lane's name takes at most, and an agent's or a job's.
+/// Columns a lane's name takes at most, here and in the ← list.
 pub(super) const NAME: usize = 36;
+/// Columns an agent's name takes at most, and a job's.
 const AGENT: usize = 20;
 /// A lane whose question waits for the person, open or held until it is shown.
 const WAITS: &str = "waiting for you";
