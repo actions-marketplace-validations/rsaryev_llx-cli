@@ -1,11 +1,16 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "llx",
-  "owner": { "name": "rsaryev" },
+  "owner": {
+    "name": "rsaryev"
+  },
   "plugins": [
     {
       "name": "llx",
       "source": "./examples/claude-code",
-      "description": "A subagent that hands bulk reading to llx on any model, and llx decide's fast judgments where an OpenRouter key is set"
+      "description": "Search the code by what a question means (llx grep), fast judgments on long texts (llx decide), and a subagent that hands bulk reading to llx on any model",
+      "category": "development"
     }
-  ]
+  ],
+  "description": "llx for Claude Code"
 }

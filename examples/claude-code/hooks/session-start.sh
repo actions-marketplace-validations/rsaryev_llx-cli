@@ -1,16 +1,14 @@
 #!/bin/sh
-# SessionStart: what this session's stdout adds to Claude's context. Only what can run here is
-# said: nothing without llx, the subagent's line with it, and the guides to llx grep and llx
-# decide only where `llx decide --check` finds an OpenRouter key (it asks no model and costs
-# nothing): without a decision model, grep is a search by words, which Claude has already. Every
-# failure says nothing, so a session never starts with a broken hook in its way.
+# SessionStart: the plugin's settings handed to llx in Claude's commands. It adds nothing to
+# Claude's context: the skills say when llx grep and llx decide pay, and send Claude to their
+# --help, which is the installed llx's own; the subagent's description says when it does. Every
+# failure is silent, so a session never starts with a broken hook in its way.
 #
 # The plugin's settings (asked as it is enabled; the key kept in the keychain) reach this hook as
 # CLAUDE_PLUGIN_OPTION_*, and reach Claude's commands through CLAUDE_ENV_FILE, which Claude Code
 # runs before each of them: the provider and the model as llx's own variables, the key only to
 # llx (a function, not an export), so no other program Claude runs is handed it. A setting the
 # environment already has is left as it is.
-here=$(dirname "$0")
 command -v llx >/dev/null 2>&1 || exit 0
 
 # A setting given, or nothing: empty, or a placeholder Claude Code left unsubstituted.
@@ -39,14 +37,10 @@ if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
   fi
 fi
 
-cat "$here/subagent.md" 2>/dev/null
-if [ -n "$key" ]; then
-  OPENROUTER_API_KEY=$key llx decide --check >/dev/null 2>&1 || exit 0
-else
-  llx decide --check >/dev/null 2>&1 || exit 0
-fi
-echo
-cat "$here/grep.md" 2>/dev/null
-echo
-cat "$here/decide.md" 2>/dev/null
+
+# One line for Claude's context, where llx can run: on a search Claude reaches for its own Grep
+# unless told, and a skill's description alone does not turn it (the evals measured both).
+cat <<'EOF'
+llx is installed here. To find where or how something is done in the code when you do not know the exact name, load the `llx:grep` skill (it allows the command) and search with `llx grep "<the question in plain words>"` before Grep, `grep -r` or rg: it finds the files by what the question means. For a judgment with a few options about a long text or many files, load the `llx:decide` skill.
+EOF
 exit 0

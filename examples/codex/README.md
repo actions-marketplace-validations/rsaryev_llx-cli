@@ -5,8 +5,9 @@ repository's, or `~/.codex/AGENTS.md` for every project): Codex then hands bulk 
 `llx exec` on another model, searches the code by meaning with `llx grep`, and asks
 `llx decide` for the judgments that would cost it a long read.
 
-- Keep the `llx grep` and `llx decide` items only where `llx decide --check` exits 0: they need
-  an OpenRouter key (`OPENROUTER_API_KEY`, or one saved with `/login` in llx).
+- The lines point at llx's `--help` rather than repeat it: the help is the installed version's
+  own, so they never go stale. `llx grep` and `llx decide` need an OpenRouter key
+  (`OPENROUTER_API_KEY`, or one saved with `/login` in llx); `llx decide --check` says.
 - llx needs the network and sets up its own sandbox, so approve its commands outside Codex's
   (or let them run there with Codex's network access on).
 - The same lines work for any agent that reads `AGENTS.md`.

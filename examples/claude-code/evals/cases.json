@@ -1,0 +1,41 @@
+{
+  "repo": "https://github.com/vercel-labs/agent-browser",
+  "commit": "5868f7c0",
+  "about": "Questions about another project's code, asked of Claude Code with the plugin and without. `must`: the files the answer must name. `uses`: what Claude should run: `grep` (llx grep: the question's words are not the code's), `decide` (llx decide), `none` (neither: an exact name is rg's), `any` (the words are the code's: rg does as well).",
+  "cases": [
+    {
+      "id": "c1",
+      "uses": "any",
+      "prompt": "Where are saved logins and browser state encrypted before they are written to disk? Name the files.",
+      "must": [
+        "cli/src/native/auth.rs",
+        "cli/src/native/state.rs"
+      ]
+    },
+    {
+      "id": "c4",
+      "uses": "grep",
+      "prompt": "What closes a background browser that nobody has sent a command to for a long time? Name the file and the function.",
+      "must": [
+        "cli/src/native/daemon.rs"
+      ]
+    },
+    {
+      "id": "c3",
+      "uses": "none",
+      "prompt": "Where is the function find_package_root defined?",
+      "must": [
+        "cli/src/skills.rs"
+      ]
+    },
+    {
+      "id": "d1",
+      "uses": "decide",
+      "prompt": "Which of the skill-data/*/SKILL.md files are about automating a desktop or chat app rather than web pages? Answer with their paths.",
+      "must": [
+        "skill-data/electron/SKILL.md",
+        "skill-data/slack/SKILL.md"
+      ]
+    }
+  ]
+}

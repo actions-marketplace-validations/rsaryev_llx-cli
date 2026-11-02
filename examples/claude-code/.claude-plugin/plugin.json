@@ -1,6 +1,6 @@
 {
   "name": "llx",
-  "description": "llx in Claude Code: a subagent that hands bulk reading to llx on any provider and model, and llx decide's fast, cheap judgments where an OpenRouter key is set",
+  "description": "llx in Claude Code: a search of the code by what a question means (llx grep), fast cheap judgments on long or many texts (llx decide), and a subagent that hands bulk reading to llx on any provider and model",
   "author": {
     "name": "rsaryev"
   },
@@ -8,8 +8,10 @@
   "repository": "https://github.com/rsaryev/llx",
   "license": "MIT",
   "keywords": [
-    "subagent",
+    "search",
+    "grep",
     "decide",
+    "subagent",
     "llx",
     "cost"
   ],

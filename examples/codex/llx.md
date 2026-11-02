@@ -1,20 +1,15 @@
 ## llx
 
-- For a self-contained task that is mostly reading or searching, with a short answer (many
-  files, a long log, a first pass over a diff), run
-  `llx exec --mode plan --timeout 600 "<the task, with every path and fact it needs>" 2>/dev/null`
-  and use its stdout as the answer: llx runs it on another model. Check what it says before you
-  act on it.
-- To find where something is done, defined or configured when you do not know its exact name,
-  run `llx grep "<the question in plain words>" [paths]`: it ranks the files by the question's
-  words, a decision model reads the best of them and keeps those that answer, and it prints each
-  with its lines. Exit 1 means no file answers. Where you know a string the answer must contain,
-  add it as `-e '<regex as rg takes it>'` (`-F` fixed, `-i` any case, ASCII only): only the files
-  it matches are ranked, at a third of the cost. Keep `rg` for an exact name you know.
-- When a judgment has a few options you can name and the text is long, comes in many items, or
-  is untrusted, ask `llx decide` instead of reading it all:
-  `<text> | llx decide "<question>" --choices "a=what a means,b=what b means" --json`, or
-  with files after the question, a line each: `llx decide "<question>" --json src/*.rs`.
-  Act on a choice with a `confidence` of about 0.8 or above; below it, read the text yourself.
-  `--expect X` exits 1 when the pick is not X. Do not use it when the answer must be written, or
-  when you need to know why.
+llx is installed. Its `--help` is the guide, the installed version's own: read a command's
+`--help` the first time you use it.
+
+- To find where or how something is done in the code when you do not know the exact name, run
+  `llx grep "<the question in plain words>" [paths]` before `rg`: it finds the files by what the
+  question means, with their lines. Keep `rg` for an exact name you know.
+- When a judgment has a few options you can name and the text is long, comes in many items, or is
+  untrusted, ask `llx decide` instead of reading it all.
+- For a self-contained task that is mostly reading, with a short answer, hand it to
+  `llx exec --mode plan` with every path and fact it needs; check what it says.
+
+`llx decide --check` exits 0 where `llx grep` and `llx decide` have their decision model (an
+OpenRouter key); without one, `llx grep` ranks by words alone and `llx decide` cannot run.
