@@ -5,7 +5,9 @@
 # the image's (scripts/docker/Dockerfile).
 #
 # It checks the working tree, copied into the container (tracked and untracked files git does not
-# ignore, and .git): CI checks a clean checkout of a commit. Nothing in the tree is written.
+# ignore, and .git): CI checks a clean checkout of a commit. Nothing in the tree is written. A
+# worktree's .git is a file naming its git directory inside the main clone's, so that directory is
+# mounted read-only at its own path, where the file finds it.
 #
 # LLX_CI_PLATFORM is the image's platform: linux/amd64, the runner's, by default (Docker
 # emulates it on Apple silicon); linux/arm64 builds faster there. CARGO_BUILD_JOBS (2) keeps an
@@ -27,14 +29,20 @@ docker info >/dev/null 2>&1 || { echo "ci-docker: the Docker daemon is not runni
 echo "ci-docker: the image llx-ci-$arch ($platform)"
 docker build -q --platform "$platform" -t "llx-ci-$arch" scripts/docker >/dev/null || exit 1
 
+git_mount=''
+if [ -f .git ]; then
+  git_common=$(git rev-parse --path-format=absolute --git-common-dir) || exit 1
+  git_mount="type=bind,src=$git_common,dst=$git_common,readonly"
+fi
+
 # What runs in the container: the tree copied in, then the job's `run` steps from ci.yml, each in
 # GitHub's shell (bash -e -o pipefail) and its working directory, stopping at the first failure.
 # shellcheck disable=SC2016 # expanded by the container's shell, not this one
 inner='
 set -u
 cd /src || exit 1
-git ls-files -z -co --exclude-standard | tar -c --null --ignore-failed-read -T - -f - 2>/dev/null |
-  tar -x -C /llx || exit 1
+git ls-files -z -co --exclude-standard >/tmp/files || exit 1
+tar -c --null --ignore-failed-read -T /tmp/files -f - 2>/dev/null | tar -x -C /llx || exit 1
 cp -a /src/.git /llx/.git || exit 1
 cd /llx || exit 1
 . scripts/checks/tools.sh
@@ -56,7 +64,7 @@ for job in $jobs_wanted; do
   echo "ci-docker: job $job"
   if docker run --rm --platform "$platform" \
     -e JOB="$job" -e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}" \
-    --mount "type=bind,src=$root,dst=/src,readonly" \
+    --mount "type=bind,src=$root,dst=/src,readonly" ${git_mount:+--mount "$git_mount"} \
     -v "llx-ci-target-$arch:/llx/target" \
     -v "llx-ci-cargo-$arch:/root/.cargo/registry" \
     -v "llx-ci-tools-$arch:/root/.cache/llx/tools" \
