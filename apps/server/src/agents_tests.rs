@@ -289,6 +289,67 @@ fn wait_takes_the_answer_and_it_is_not_given_twice() {
 }
 
 #[test]
+fn a_wait_for_an_agent_that_is_not_there_or_still_thinking_says_so() {
+    let mut chat = Router::new(&[
+        (
+            "main",
+            vec![
+                call(
+                    "c1",
+                    json!({"action": "spawn", "task": "count", "name": "a"}),
+                ),
+                call("c2", json!({"action": "wait", "agents": ["b"]})),
+                call(
+                    "c3",
+                    json!({"action": "wait", "agents": ["a"], "timeout_ms": 1000}),
+                ),
+                says("Done."),
+            ],
+        ),
+        ("a", vec![says("12 tests.")]),
+    ]);
+    // `a` thinks until the main agent asks past its timed-out wait: the wait can only time out.
+    chat.slow = vec!["a"];
+    chat.hold = true;
+    chat.main_script = 3;
+    composed_with(crate::modes::built("bypass"), true, &chat, |rig| {
+        rig.task("count the tests");
+        let results = results(rig);
+        let (failed, unknown) = &results[1];
+        assert!(*failed, "{unknown}");
+        assert!(unknown.contains("no agent `b`; there are `a`"), "{unknown}");
+        let (_, late) = &results[2];
+        assert!(late.starts_with("Timed out after 1 s"), "{late}");
+        assert!(late.contains("Still working: `a`."), "{late}");
+        0
+    });
+}
+
+#[test]
+fn a_wait_with_no_agent_started_ends_at_once_and_says_why() {
+    let chat = Router::new(&[(
+        "main",
+        vec![
+            call("c1", json!({"action": "wait", "agents": ["scout"]})),
+            call("c2", json!({"action": "wait"})),
+            says("Done."),
+        ],
+    )]);
+    composed_with(crate::modes::built("bypass"), true, &chat, |rig| {
+        rig.task("wait for nothing");
+        let results = results(rig);
+        let (failed, named) = &results[0];
+        assert!(*failed && named.contains("none was started"), "{named}");
+        let (failed, any) = &results[1];
+        assert!(
+            !*failed && any.starts_with("No agent you wait for is working"),
+            "{any}"
+        );
+        0
+    });
+}
+
+#[test]
 fn send_goes_on_in_the_agents_conversation_and_close_ends_it() {
     let mut chat = Router::new(&[
         (
