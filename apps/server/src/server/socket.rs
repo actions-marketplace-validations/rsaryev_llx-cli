@@ -132,12 +132,20 @@ pub(crate) fn connection(stream: UnixStream) -> std::io::Result<Connection> {
     Ok(Connection { incoming, out })
 }
 
-/// Each line as a frame to serve; one that is not a frame is dropped, and the client is told.
-/// When the client hangs up, the connection is over both ways.
+/// Each line as a frame to serve; one that is not a frame (not JSON, or not even text) is
+/// dropped, and the client is told. When the client hangs up, the connection is over both ways.
 fn read(stream: UnixStream, to_server: &SyncSender<ToServer>, told: &Sender<ToClient>) {
     let shut = stream.try_clone();
-    for line in BufReader::new(stream).lines() {
-        let Ok(line) = line else { break };
+    let mut reader = BufReader::new(stream);
+    // Bytes, not text: a line that is not UTF-8 is one more line that is not a frame, never the
+    // connection's end. One buffer for every line, as `write` keeps one.
+    let mut line = vec![];
+    loop {
+        line.clear();
+        match reader.read_until(b'\n', &mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {}
+        }
         match read_frame(&line) {
             Ok(frame) => {
                 if to_server.send(frame).is_err() {
@@ -154,15 +162,17 @@ fn read(stream: UnixStream, to_server: &SyncSender<ToServer>, told: &Sender<ToCl
     }
 }
 
-/// `line` as a frame; else what the client is told: a call it cannot read is answered failed
-/// under its id (W1: every call gets its answer), any other line is said dropped.
-fn read_frame(line: &str) -> Result<ToServer, Box<ToClient>> {
-    let error = match serde_json::from_str(line) {
+/// `line` (its newline is whitespace JSON allows) as a frame; else what the client is told: a call
+/// it cannot read is answered failed under its id (W1: every call gets its answer), any other line
+/// is said dropped.
+fn read_frame(line: &[u8]) -> Result<ToServer, Box<ToClient>> {
+    let error = match serde_json::from_slice(line) {
         Ok(frame) => return Ok(frame),
         Err(error) => error,
     };
-    // Read again, as any JSON, only to find the id of a call.
-    let value = serde_json::from_str::<serde_json::Value>(line).ok();
+    // Read again, as any JSON and with what is not text replaced, only to find the id of a call.
+    let text = String::from_utf8_lossy(line);
+    let value = serde_json::from_str::<serde_json::Value>(&text).ok();
     let call = value.filter(|value| {
         value.get("method").and_then(serde_json::Value::as_str) == Some("command/call")
     });

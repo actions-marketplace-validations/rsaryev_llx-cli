@@ -239,6 +239,42 @@ fn a_replay_longer_than_the_queue_never_cuts_the_client() {
 }
 
 #[test]
+fn a_call_that_is_not_text_is_answered_failed_and_the_connection_goes_on() {
+    let path = place("bytes");
+    let _daemon = daemon(&path);
+    let mut client = Connected::to(&path);
+    // What the person typed, with a byte in it that no UTF-8 text has.
+    let typed = Input {
+        session: "s1".into(),
+        text: "~".into(),
+        ..Input::default()
+    };
+    let call = ToServer::Call {
+        id: 9,
+        command: Command::Input(typed),
+    };
+    let mut line = serde_json::to_vec(&call).unwrap();
+    for byte in line.iter_mut().filter(|byte| **byte == b'~') {
+        *byte = 0xff;
+    }
+    line.push(b'\n');
+    client.to.write_all(&line).unwrap();
+    let failed = client.next();
+    assert!(
+        matches!(
+            &failed,
+            ToClient::Done {
+                id: 9,
+                done: Done::Failed { .. }
+            }
+        ),
+        "{failed:?}"
+    );
+    let work = Done::Work { running: vec![] };
+    assert_eq!(client.call(7, Command::Work), work);
+}
+
+#[test]
 fn a_call_the_server_cannot_read_is_answered_failed_under_its_id() {
     let path = place("unknown");
     let _daemon = daemon(&path);
