@@ -7,7 +7,6 @@
 use super::rank::Mask;
 
 /// Lines `start..end` of a file, 0-based, and what they are worth to the question.
-#[derive(Debug, Clone, PartialEq)]
 pub(super) struct Block {
     pub(super) start: usize,
     pub(super) end: usize,
@@ -51,8 +50,8 @@ pub(super) fn blocks(
             let inside = hits.iter().filter(|(at, _)| (start..end).contains(at));
             let (mask, count) = inside.fold((0, 0.0), |(mask, n), (_, hit)| (mask | hit, n + 1.0));
             // Worth over the square root of its length: a short part that has the words beats
-            // a long one that has them once more.
-            // A whole unit says more than the same lines cut out around a hit.
+            // a long one that has them once more; and a whole unit says more than the same
+            // lines cut out around a hit.
             let length = (end - start).max(1) as f64;
             let whole = if whole { WHOLE_WORTH } else { 1.0 };
             let score = whole * (worth(mask) + 0.05 * f64::min(count, 10.0)) / length.sqrt();

@@ -10,16 +10,8 @@ use crate::cli::PatternArgs;
 use crate::error::Failure;
 
 /// The patterns of one search, as one regex: any of them.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(super) struct Pattern(Regex);
-
-impl PartialEq for Pattern {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.as_str() == other.0.as_str()
-    }
-}
-
-impl Eq for Pattern {}
 
 impl Pattern {
     /// How many times it matches in `line`.
@@ -63,8 +55,8 @@ pub(super) fn applied(pattern: Option<&Pattern>, terms: &mut Vec<Term>, docs: &m
     terms.insert(0, Term::pattern(pattern.clone()));
 }
 
-/// The pattern's weight raised to the question's heaviest word's: every file has it, so by its
-/// rarity alone it would weigh nothing, yet its lines are what was asked for.
+/// The pattern's weight set to twice the question's heaviest word's (2 at least): every file has
+/// it, so by its rarity alone it would weigh nothing, yet its lines are what was asked for.
 pub(super) fn weighed(pattern: Option<&Pattern>, weights: &mut [f64]) {
     if pattern.is_none() {
         return;

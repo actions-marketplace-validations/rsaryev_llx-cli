@@ -50,7 +50,7 @@ type Lead = Option<(usize, usize)>;
 
 /// A file the search shows: its index among those read, how well it answers, its parts, and the
 /// part the decision model said answers best.
-pub(super) struct Found {
+struct Found {
     doc: usize,
     score: f64,
     blocks: Vec<Block>,
@@ -159,22 +159,18 @@ pub(crate) fn search(ask: &Ask, reader: Reader) -> Result<Searched, Failure> {
 }
 
 /// The files the model reads: the best by their words first, then the rest, at most `judge` of
-/// them, or every one but the tests when there are no more than half again as many. A test
-/// answers a question about the code too rarely to take a place, unless the question is about
-/// tests.
+/// them, or every one [`worth_reading`] when there are no more than half again as many.
 fn candidates(docs: &[Doc], ranked: &[rank::Scored], terms: &[Term], judge: usize) -> Vec<usize> {
-    let tests_asked = asks_about_tests(terms);
-    let kept = |doc: &usize| tests_asked || docs.get(*doc).is_some_and(|d| !rank::is_test(&d.path));
+    let kept = worth_reading(docs, terms);
     let mut seen = vec![false; docs.len()];
     let mut order: Vec<usize> = ranked
         .iter()
         .map(|scored| scored.doc)
-        .filter(kept)
+        .filter(|&doc| kept(doc))
         .collect();
     order.iter().for_each(|&doc| seen[doc] = true);
     let rest: Vec<usize> = (0..docs.len())
-        .filter(|&doc| !seen[doc])
-        .filter(kept)
+        .filter(|&doc| !seen[doc] && kept(doc))
         .collect();
     if order.len() + rest.len() <= judge + judge / 2 {
         order.extend(rest);
@@ -191,11 +187,12 @@ fn bar(best: f64) -> f64 {
     YES.max(best - BELOW_BEST)
 }
 
-/// Whether the question is about tests: then a test file is read as any other.
-fn asks_about_tests(terms: &[Term]) -> bool {
-    terms
-        .iter()
-        .any(|term| term.finds("test") || term.finds("tests"))
+/// Whether the model reads the file at an index of `docs`, in either round: every one but the
+/// tests. A test answers a question about the code too rarely to take a place, unless the
+/// question is about tests: then it is read as any other.
+fn worth_reading<'a>(docs: &'a [Doc], terms: &[Term]) -> impl Fn(usize) -> bool + 'a {
+    let tests_asked = (terms.iter()).any(|term| term.finds("test") || term.finds("tests"));
+    move |doc| tests_asked || docs.get(doc).is_some_and(|d| !rank::is_test(&d.path))
 }
 
 /// The files the model judged likely to answer, most likely first, and those it was unsure of.
@@ -299,16 +296,16 @@ fn with_blocks(
         let share = (left / (shown - n).max(1)).clamp(8, 40).min(left);
         let hits = rank::hits(&doc.text, terms);
         found.blocks = blocks::blocks(&doc.text, &hits, weights, share, found.lead);
+        // No line has the question's words (a file found by its path, or kept by the model for
+        // what it does): its start.
         if found.blocks.is_empty() {
             let end = doc.text.lines().count().min(share);
-            found.blocks = vec![Block {
+            let start = Block {
                 start: 0,
                 end,
                 score: 0.0,
-            }]
-            .into_iter()
-            .filter(|b| b.end > 0)
-            .collect();
+            };
+            found.blocks = (end > 0).then_some(start).into_iter().collect();
         }
         left -= found
             .blocks

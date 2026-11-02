@@ -13,12 +13,12 @@ use contracts::model::Decider;
 use super::judge::{self, Parts};
 use super::listing::Doc;
 use super::terms::Term;
-use super::{JUDGED_LINES, MAYBE, asks_about_tests, bar, rank};
+use super::{JUDGED_LINES, MAYBE, bar, worth_reading};
 
 /// A module more than this share of the files name links nothing: `std::fmt`, `crate::error`.
 const COMMON: f64 = 0.25;
 /// At most this many files are reached through links.
-pub(super) const MOST_LINKED: usize = 12;
+const MOST_LINKED: usize = 12;
 /// The lines shown before and after each line that names a linked module.
 const BEFORE: usize = 3;
 const AFTER: usize = 8;
@@ -214,9 +214,7 @@ pub(super) fn second_round(
     for (doc, yes) in &judged {
         settled[*doc] = !yes.is_some_and(|yes| (MAYBE..shown).contains(&yes));
     }
-    let tests_asked = asks_about_tests(terms);
-    let kept = |doc: usize| tests_asked || docs.get(doc).is_some_and(|d| !rank::is_test(&d.path));
-    let reached = linked(docs, &kept_files, &settled, kept);
+    let reached = linked(docs, &kept_files, &settled, worth_reading(docs, terms));
     let parts: Vec<(&Doc, Parts)> = (reached.iter())
         .filter_map(|(doc, modules)| {
             let doc = docs.get(*doc)?;

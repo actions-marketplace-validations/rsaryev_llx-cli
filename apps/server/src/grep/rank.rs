@@ -7,7 +7,6 @@ use super::listing::Doc;
 use super::terms::{self, Term};
 
 /// A file's place in the ranking.
-#[derive(Debug, Clone, PartialEq)]
 pub(super) struct Scored {
     /// Its index among the files read.
     pub(super) doc: usize,

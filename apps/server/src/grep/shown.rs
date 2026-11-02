@@ -15,6 +15,7 @@ use crate::error::{self, Failure};
 /// A line longer than this is cut: a minified line says nothing more past it.
 const LINE_WIDTH: usize = 240;
 
+/// `outcome` printed as `args` asks, of the `read` files, in `took`.
 pub(super) fn print(
     outcome: &Outcome,
     docs: &[Doc],

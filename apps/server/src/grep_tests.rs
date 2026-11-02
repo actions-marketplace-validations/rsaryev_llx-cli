@@ -78,11 +78,7 @@ fn a_file_the_model_was_unsure_of_is_read_again_where_it_names_a_kept_files_modu
             // Above 0.5, but too far below the best to be shown: read again too.
             ("extras.rs", (0.6, 0.85)),
         ]),
-        Mutex::new(BTreeMap::new()),
-    );
-    // The first round, as `grep` read them.
-    let table = Table(
-        table.0,
+        // The first round, as `grep` read them.
         Mutex::new(BTreeMap::from([
             ("doctor.rs".to_string(), 1),
             ("extras.rs".to_string(), 1),

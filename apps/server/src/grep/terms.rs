@@ -5,13 +5,12 @@
 use super::pattern::Pattern;
 
 /// One word of the question, as it is looked for.
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct Term {
-    /// The word as asked, lower-cased: what is shown.
+    /// The word as asked, lower-cased: a text's word that starts with it is this term (`kill`
+    /// finds `killpg`).
     pub(super) word: String,
-    /// The word without its ending: a text's word is this term when it is this with an
-    /// inflection's ending (`renames` finds `rename` and `renamed`, not `renamer`), or starts with
-    /// the whole word (`kill` finds `killpg`).
+    /// The word without its ending: a text's word is this term too when it is this with an
+    /// inflection's ending (`renames` finds `rename` and `renamed`, not `renamer`).
     pub(super) stem: String,
     /// A short word is matched whole (or with a plural `s`), never as a prefix: `id` is not
     /// `idle`.
