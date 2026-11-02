@@ -188,7 +188,9 @@ miniz_oxide = "0.9.1"
 sha2 = "0.11.1"
 # models.dev's files, read by the catalog's build script alone: none of it reaches the binary.
 toml = "0.8"
-ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
+# The OS's TLS and its trust store (`RootCerts::PlatformVerifier`, the kit's one agent): not
+# `native-tls`, which also builds in Mozilla's root certificates (about 130 KB) that agent never reads.
+ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls-no-default"] }
 
 # A small, self-contained binary: TLS is the OS's, and the code is optimized for size ("z"): the
 # time goes to the network and the model, not here.

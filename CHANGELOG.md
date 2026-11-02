@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The binary no longer carries Mozilla's root certificates, which it never read: TLS verifies with the system's trust store, as before (`RootCerts::PlatformVerifier`). 132 KB less (2.76 MB on macOS).
 - The skill describes llx instead of sending the agent to its help first: what each part is for, with examples to run as they are (a pull-request review workflow for the action, a gate, helpers in parallel, `llx decide`, and a search of the code by what it does as `rg` and `llx decide` make it), and at its end `llx exec --help` and `llx decide --help` as the release prints them (`scripts/skill-help` writes them, a test checks them). In Claude Code the skill asks once before it is used, as it grants commands; `Skill(llx:llx)` allows it where no one can answer.
 - An answer given while background agents still worked, then stopped while it waited for them, read twice in the session: once as the words said as the wait began, once more as the task's answer. It is shown once; stdout, `-o` and `--json` have it as before.
 - In a read-only mode (`plan`) the context says when to ask the person with `ask`, as the other modes do at a terminal: it was left out, so a plan's open questions were guessed.
