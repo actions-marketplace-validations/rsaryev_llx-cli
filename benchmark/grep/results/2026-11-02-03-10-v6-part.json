@@ -1,0 +1,735 @@
+{
+ "commit": "f19ba1cb",
+ "modes": [
+  "judged"
+ ],
+ "results": [
+  {
+   "files": [
+    "packages/contracts/src/model.rs"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    "apps/server/src/providers.rs"
+   ],
+   "millis": 1321,
+   "cost": 0.0014689920000000001,
+   "bytes": 526,
+   "id": "symbol-1",
+   "group": "symbol",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/daemon.rs"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [],
+   "millis": 1422,
+   "cost": 0.0023328900000000002,
+   "bytes": 607,
+   "id": "symbol-2",
+   "group": "symbol",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/exit.rs",
+    "docs/reference.md",
+    "apps/server/src/commands/doctor.rs",
+    "docs/ci.md",
+    "action/run.sh",
+    "apps/server/src/error.rs",
+    "examples/breaking-changes/check.sh",
+    "apps/server/src/commands/decide.rs",
+    "scripts/check",
+    "site/public/llms.txt",
+    "apps/server/src/commands/decide/files.rs"
+   ],
+   "scores": [
+    1,
+    0.98,
+    0.97,
+    0.96,
+    0.96,
+    0.95,
+    0.9,
+    0.86,
+    0.86,
+    0.82,
+    0.76
+   ],
+   "unsure": [
+    "apps/server/src/commands.rs",
+    "scripts/install.sh",
+    "site/src/components/cards.ts",
+    "examples/claude-code/hooks/session-start.sh",
+    "CHANGELOG.md",
+    "apps/server/src/commands/run/ended.rs",
+    "packages/tools/src/shell/sandbox.rs",
+    "docs/modes.md"
+   ],
+   "millis": 2328,
+   "cost": 0.005268984000000001,
+   "bytes": 9472,
+   "id": "symbol-3",
+   "group": "symbol",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.4,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/store.rs",
+    "apps/tui/src/questions.rs",
+    "apps/server/src/compose/rig.rs",
+    "apps/tui/src/live.rs",
+    "apps/tui/src/composer/render.rs",
+    "apps/tui/src/printable.rs"
+   ],
+   "scores": [
+    1,
+    0.96,
+    0.9,
+    0.86,
+    0.77,
+    0.77
+   ],
+   "unsure": [
+    "apps/tui/src/queue.rs",
+    "apps/tui/src/composer.rs",
+    "apps/server/src/arrivals.rs",
+    "packages/providers/openai/src/tokens.rs",
+    "apps/tui/src/here.rs",
+    "apps/server/src/picker.rs",
+    "apps/server/src/printable.rs",
+    "apps/tui/src/select.rs"
+   ],
+   "millis": 2405,
+   "cost": 0.005250084,
+   "bytes": 5676,
+   "id": "symbol-4",
+   "group": "symbol",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.2,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/server/src/jobs/monitor.rs",
+    "apps/server/src/daemon.rs",
+    "apps/server/src/agents/tool.rs",
+    "apps/server/src/jobs/tool.rs"
+   ],
+   "scores": [
+    0.99,
+    0.98,
+    0.88,
+    0.83
+   ],
+   "unsure": [
+    "apps/server/src/rules/git.rs",
+    "apps/server/src/agents/child.rs",
+    "apps/server/src/agents.rs",
+    "apps/server/src/commands/extras.rs",
+    "apps/server/src/commands/doctor.rs",
+    "apps/server/src/jobs.rs",
+    "apps/server/src/agents/fork.rs",
+    "apps/server/src/meta/title.rs"
+   ],
+   "millis": 2607,
+   "cost": 0.005185151999999999,
+   "bytes": 6704,
+   "id": "concept-1",
+   "group": "concept",
+   "mode": "judged",
+   "r5": 0.3333333333333333,
+   "r10": 0.3333333333333333,
+   "p5": 0.75,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/openrouter/src/client.rs",
+    "packages/providers/kit/src/retry.rs",
+    "packages/providers/openai/src/responses.rs"
+   ],
+   "scores": [
+    0.98,
+    0.95,
+    0.86
+   ],
+   "unsure": [
+    "packages/providers/kit/src/loopback.rs",
+    "packages/providers/kit/src/lib.rs",
+    "packages/providers/kit/src/http.rs",
+    "docs/recipes.md",
+    "packages/providers/openrouter/src/chat.rs",
+    "examples/github/ci-failure.yml",
+    "packages/providers/models/src/source.rs",
+    "packages/providers/openai/src/auth.rs"
+   ],
+   "millis": 2229,
+   "cost": 0.005647656000000001,
+   "bytes": 4641,
+   "id": "concept-2",
+   "group": "concept",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 0.5
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/cache.rs",
+    "packages/providers/openrouter/src/chat.rs"
+   ],
+   "scores": [
+    1,
+    0.93
+   ],
+   "unsure": [
+    "packages/providers/openai/src/responses/route.rs"
+   ],
+   "millis": 2456,
+   "cost": 0.004288283999999999,
+   "bytes": 2525,
+   "id": "concept-3",
+   "group": "concept",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/tools/src/shell/process.rs",
+    "scripts/hooks/claude-stop",
+    "packages/tools/src/shell/sweep.rs",
+    "apps/server/src/jobs/monitor.rs",
+    "docs/tools.md",
+    "apps/cli/src/terminal/daemon.rs",
+    ".config/nextest.toml",
+    "packages/tools/src/shell/leaders.rs",
+    "apps/tui/src/within.rs",
+    "packages/tools/src/shell/query.rs",
+    "packages/tools/src/shell/bash.rs"
+   ],
+   "scores": [
+    0.97,
+    0.97,
+    0.96,
+    0.9,
+    0.9,
+    0.87,
+    0.83,
+    0.8,
+    0.77,
+    0.75,
+    0.74
+   ],
+   "unsure": [
+    "apps/server/src/compose.rs",
+    "benchmark/run.ts",
+    "docs/usage.md",
+    "apps/tui/src/mention.rs",
+    "packages/tools/src/shell.rs",
+    "apps/server/src/jobs/tool.rs",
+    "ARCHITECTURE.md",
+    "apps/server/src/jobs.rs"
+   ],
+   "millis": 2181,
+   "cost": 0.005777393999999999,
+   "bytes": 9985,
+   "id": "concept-4",
+   "group": "concept",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/tui/src/keys.rs",
+    "apps/server/src/interrupt.rs",
+    "apps/tui/src/drawing.rs",
+    "packages/tools/src/shell/leaders.rs",
+    "apps/server/src/brake.rs",
+    "apps/server/src/compose.rs",
+    "apps/server/src/commands/serve.rs",
+    "docs/daemon.md",
+    "apps/server/src/jobs.rs",
+    "packages/tools/src/shell/process.rs",
+    "apps/server/src/agents/child.rs",
+    "apps/server/src/server/serve.rs"
+   ],
+   "scores": [
+    0.98,
+    0.97,
+    0.94,
+    0.93,
+    0.9,
+    0.9,
+    0.87,
+    0.85,
+    0.85,
+    0.83,
+    0.76,
+    0.75
+   ],
+   "unsure": [
+    "packages/protocol/src/command.rs",
+    "apps/server/src/commands/run.rs",
+    "docs/tools.md",
+    "apps/tui/src/queue.rs",
+    "apps/tui/src/lib.rs",
+    "apps/server/src/compose/rig.rs",
+    "packages/tools/src/shell/sweep.rs",
+    "apps/cli/src/terminal/remote.rs"
+   ],
+   "millis": 3189,
+   "cost": 0.005809986,
+   "bytes": 8748,
+   "id": "flow-1",
+   "group": "flow",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.4,
+   "rr": 0.5
+  },
+  {
+   "files": [
+    "packages/tools/src/fs/patch/cut.rs",
+    "packages/providers/openrouter/src/chat.rs",
+    "packages/agent/src/agent.rs",
+    "packages/providers/openrouter/src/stream.rs",
+    "packages/agent/src/calls.rs",
+    "packages/providers/openrouter/src/cut.rs",
+    "docs/reference.md",
+    "packages/providers/openai/src/responses.rs",
+    "docs/tools.md",
+    "packages/agent/src/agent/handling.rs",
+    "ARCHITECTURE.md",
+    "apps/server/src/advice/state.rs",
+    "packages/tools/src/shell/output.rs",
+    "packages/contracts/src/chat.rs"
+   ],
+   "scores": [
+    1,
+    0.98,
+    0.97,
+    0.97,
+    0.96,
+    0.96,
+    0.95,
+    0.95,
+    0.93,
+    0.92,
+    0.88,
+    0.8,
+    0.8,
+    0.79
+   ],
+   "unsure": [
+    "packages/tools/src/shell/output/shown.rs",
+    "action/run.sh",
+    "packages/tools/src/shell/process.rs",
+    "packages/contracts/src/tool.rs",
+    "apps/server/src/instructions.rs",
+    "packages/tools/src/fs/patch/tool.rs",
+    "packages/tools/src/fs/patch.rs",
+    "apps/server/src/output/observer.rs"
+   ],
+   "millis": 2665,
+   "cost": 0.0059183879999999975,
+   "bytes": 9677,
+   "id": "flow-2",
+   "group": "flow",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.2,
+   "rr": 1
+  },
+  {
+   "files": [
+    "apps/cli/src/terminal/daemon.rs",
+    "apps/server/src/daemon.rs",
+    "docs/daemon.md"
+   ],
+   "scores": [
+    1,
+    0.99,
+    0.94
+   ],
+   "unsure": [
+    "apps/cli/src/terminal/remote.rs",
+    "apps/cli/src/terminal.rs",
+    "apps/server/src/commands/serve.rs",
+    "apps/server/src/jobs/tool.rs",
+    "apps/server/src/commands/run.rs",
+    "apps/server/src/cli.rs",
+    "apps/server/src/commands/run/front.rs"
+   ],
+   "millis": 2707,
+   "cost": 0.005502797999999999,
+   "bytes": 6301,
+   "id": "flow-3",
+   "group": "flow",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/agent/src/history.rs",
+    "apps/server/src/advice/state.rs"
+   ],
+   "scores": [
+    0.99,
+    0.95
+   ],
+   "unsure": [
+    "AGENTS.md",
+    "packages/agent/src/prompt.md",
+    "packages/tools/src/shell/output/shown.rs",
+    "packages/agent/src/lib.rs",
+    "packages/agent/src/conversation.rs",
+    "packages/tools/src/shell/output.rs"
+   ],
+   "millis": 2359,
+   "cost": 0.0048768299999999995,
+   "bytes": 3027,
+   "id": "flow-4",
+   "group": "flow",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.5,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/session/src/lib.rs",
+    "packages/tools/src/fs/atomic.rs",
+    "packages/providers/kit/src/store.rs",
+    "scripts/checks/tools.sh",
+    "scripts/install.sh"
+   ],
+   "scores": [
+    1,
+    0.99,
+    0.99,
+    0.99,
+    0.98
+   ],
+   "unsure": [
+    "AGENTS.md",
+    "docs/tools.md",
+    "packages/tools/src/fs/patch/run.rs"
+   ],
+   "millis": 2245,
+   "cost": 0.005517750000000001,
+   "bytes": 5557,
+   "id": "cross-1",
+   "group": "cross",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.6,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/providers/kit/src/store.rs",
+    "packages/tools/src/shell/output/spill.rs",
+    "apps/server/src/logs.rs",
+    "apps/server/src/server/socket.rs",
+    "packages/providers/openai/src/tokens.rs",
+    "SECURITY.md"
+   ],
+   "scores": [
+    0.99,
+    0.98,
+    0.98,
+    0.97,
+    0.83,
+    0.77
+   ],
+   "unsure": [
+    "apps/server/src/cli.rs",
+    "docs/tools.md",
+    "docs/daemon.md",
+    "scripts/runner/README.md",
+    "scripts/runner/compose.yml"
+   ],
+   "millis": 2345,
+   "cost": 0.005158608000000001,
+   "bytes": 8164,
+   "id": "cross-2",
+   "group": "cross",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "packages/tools/src/shell/sandbox.rs",
+    "packages/tools/src/shell/inherit.rs",
+    "packages/tools/src/shell/sandbox/linux.rs",
+    "packages/tools/src/shell/sandbox/macos.rs"
+   ],
+   "scores": [
+    0.96,
+    0.9,
+    0.89,
+    0.85
+   ],
+   "unsure": [
+    "action/run.sh",
+    "docs/modes.md",
+    "packages/tools/src/workspace.rs",
+    "scripts/ci-docker",
+    "apps/server/src/daemon.rs",
+    "AGENTS.md",
+    "packages/tools/src/shell/process.rs",
+    "apps/cli/src/hardening.rs"
+   ],
+   "millis": 2474,
+   "cost": 0.005249412,
+   "bytes": 6123,
+   "id": "cross-3",
+   "group": "cross",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 0.75,
+   "rr": 1
+  },
+  {
+   "files": [
+    "examples/github/triage.yml",
+    "examples/github/release.yml",
+    "examples/github/review.yml",
+    "examples/github/gate.yml",
+    "apps/server/src/providers.rs",
+    "examples/github/audit.yml",
+    "examples/github/jira.yml",
+    "apps/server/src/providers/deciding.rs",
+    "examples/github/describe.yml",
+    "examples/github/ci-failure.yml",
+    "packages/providers/models/data/providers/openrouter/provider.toml",
+    "examples/github/llx.yml"
+   ],
+   "scores": [
+    0.94,
+    0.91,
+    0.91,
+    0.9,
+    0.89,
+    0.84,
+    0.83,
+    0.81,
+    0.8,
+    0.78,
+    0.74,
+    0.72
+   ],
+   "unsure": [],
+   "millis": 2381,
+   "cost": 0.004562082000000002,
+   "bytes": 6595,
+   "id": "cross-4",
+   "group": "cross",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 0.2
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 2635,
+   "cost": 0.005158565999999999,
+   "bytes": 0,
+   "id": "absent-1",
+   "group": "absent",
+   "mode": "judged",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 2854,
+   "cost": 0.004259976,
+   "bytes": 0,
+   "id": "absent-2",
+   "group": "absent",
+   "mode": "judged",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [
+    "packages/providers/openrouter/src/chat.rs",
+    "apps/server/src/output/spent.rs"
+   ],
+   "millis": 2710,
+   "cost": 0.004945206000000001,
+   "bytes": 0,
+   "id": "absent-3",
+   "group": "absent",
+   "mode": "judged",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [],
+   "scores": [],
+   "unsure": [],
+   "millis": 2801,
+   "cost": 0.0047585579999999995,
+   "bytes": 0,
+   "id": "absent-4",
+   "group": "absent",
+   "mode": "judged",
+   "r5": 0,
+   "r10": 0,
+   "p5": 1,
+   "rr": 0,
+   "none": true
+  },
+  {
+   "files": [
+    ".github/workflows/site.yml"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    "MODELS.md",
+    "scripts/runner/README.md"
+   ],
+   "millis": 2953,
+   "cost": 0.0038070059999999995,
+   "bytes": 1110,
+   "id": "config-1",
+   "group": "config",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/checks/run.sh"
+   ],
+   "scores": [
+    0.99
+   ],
+   "unsure": [
+    "apps/server/src/logs.rs",
+    ".github/workflows/ci.yml",
+    "packages/tools/src/fs/picture.rs",
+    "scripts/checks/plan.awk",
+    "docs/daemon.md"
+   ],
+   "millis": 2839,
+   "cost": 0.005323877999999998,
+   "bytes": 1819,
+   "id": "config-2",
+   "group": "config",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/setup"
+   ],
+   "scores": [
+    0.99
+   ],
+   "unsure": [
+    ".claude/settings.json",
+    "CONTRIBUTING.md",
+    "scripts/hooks/pre-commit"
+   ],
+   "millis": 2987,
+   "cost": 0.004666325999999999,
+   "bytes": 192,
+   "id": "config-3",
+   "group": "config",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  },
+  {
+   "files": [
+    "scripts/checks/tools.sh"
+   ],
+   "scores": [
+    1
+   ],
+   "unsure": [
+    ".github/workflows/ci.yml",
+    "scripts/runner/Dockerfile",
+    "action/run.sh"
+   ],
+   "millis": 3116,
+   "cost": 0.004762758000000001,
+   "bytes": 1492,
+   "id": "config-4",
+   "group": "config",
+   "mode": "judged",
+   "r5": 1,
+   "r10": 1,
+   "p5": 1,
+   "rr": 1
+  }
+ ]
+}

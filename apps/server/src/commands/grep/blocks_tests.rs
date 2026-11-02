@@ -63,7 +63,7 @@ fn spans(found: &[Block]) -> Vec<(usize, usize)> {
 
 #[test]
 fn a_hit_in_a_short_function_shows_it_whole_with_its_comments() {
-    let found = blocks(CODE, &[(5, 1)], &[1.0], 100);
+    let found = blocks(CODE, &[(5, 1)], &[1.0], 100, None);
     assert_eq!(spans(&found), [(2, 8)]);
 }
 
@@ -73,7 +73,7 @@ fn a_hit_in_a_long_function_shows_the_lines_around_it() {
         .lines()
         .position(|line| line.contains("needle"))
         .unwrap();
-    let found = blocks(CODE, &[(needle, 1)], &[1.0], 100);
+    let found = blocks(CODE, &[(needle, 1)], &[1.0], 100, None);
     // Five lines from the hit on, but the file ends first.
     assert_eq!(spans(&found), [(needle - 3, CODE.lines().count())]);
 }
@@ -86,9 +86,9 @@ fn the_parts_with_rarer_words_come_first_within_the_budget() {
         .unwrap();
     // The short function has the common word, the needle the rare one: the budget fits one.
     let end = CODE.lines().count();
-    let found = blocks(CODE, &[(5, 0b01), (needle, 0b10)], &[0.1, 5.0], 8);
+    let found = blocks(CODE, &[(5, 0b01), (needle, 0b10)], &[0.1, 5.0], 8, None);
     assert_eq!(spans(&found), [(needle - 3, end)]);
-    let both = blocks(CODE, &[(5, 0b01), (needle, 0b10)], &[0.1, 5.0], 100);
+    let both = blocks(CODE, &[(5, 0b01), (needle, 0b10)], &[0.1, 5.0], 100, None);
     assert_eq!(spans(&both), [(2, 8), (needle - 3, end)]);
 }
 
@@ -99,7 +99,7 @@ fn hits_all_through_a_file_stay_parts_no_longer_than_a_unit() {
         writeln!(text, "check_{n}() {{\n  check\n}}").unwrap();
     }
     let hits: Vec<(usize, u32)> = (0..600).map(|at| (at, 1)).collect();
-    let found = blocks(&text, &hits, &[1.0], 1000);
+    let found = blocks(&text, &hits, &[1.0], 1000, None);
     assert!(
         found.iter().all(|block| block.end - block.start <= 40),
         "{:?}",
@@ -115,6 +115,32 @@ fn a_shell_comment_above_a_function_comes_with_it() {
         &[(4, 1)],
         &[1.0],
         100,
+        None,
     );
     assert_eq!(spans(&found), [(2, 6)]);
+}
+
+#[test]
+fn the_part_the_model_picked_is_shown_first_and_the_rest_fill_the_budget() {
+    let needle = CODE
+        .lines()
+        .position(|line| line.contains("needle"))
+        .unwrap();
+    // By the words alone the needle wins the budget; the model's pick takes its place.
+    let found = blocks(
+        CODE,
+        &[(5, 0b01), (needle, 0b10)],
+        &[0.1, 5.0],
+        8,
+        Some((2, 8)),
+    );
+    assert_eq!(spans(&found), [(2, 8)]);
+    let found = blocks(
+        CODE,
+        &[(5, 0b01), (needle, 0b10)],
+        &[0.1, 5.0],
+        100,
+        Some((2, 8)),
+    );
+    assert_eq!(spans(&found), [(2, 8), (needle - 3, CODE.lines().count())]);
 }

@@ -24,12 +24,13 @@ const MOST_HITS: usize = 64;
 const WHOLE_WORTH: f64 = 2.0;
 
 /// The best of `text`'s parts for `hits` (each line's terms), `weights` each term's worth, in
-/// at most `budget` lines, in the file's order.
+/// at most `budget` lines, in the file's order; `lead`, the part the decision model picked, first.
 pub(super) fn blocks(
     text: &str,
     hits: &[(usize, Mask)],
     weights: &[f64],
     budget: usize,
+    lead: Option<(usize, usize)>,
 ) -> Vec<Block> {
     let lines: Vec<&str> = text.lines().collect();
     let worth = |mask: Mask| -> f64 {
@@ -61,8 +62,15 @@ pub(super) fn blocks(
     units.sort_by(|a, b| b.score.total_cmp(&a.score).then(a.start.cmp(&b.start)));
     // The best units that fit, each whole and apart from the others: units overlap (a function
     // and the `if` inside it), and hits all through a file would chain into the whole of it.
-    let mut left = budget;
-    let mut kept: Vec<Block> = vec![];
+    let mut kept: Vec<Block> = (lead.into_iter())
+        .filter(|(start, end)| start < end && *end <= lines.len())
+        .map(|(start, end)| Block {
+            start,
+            end: end.min(start + budget),
+            score: f64::MAX,
+        })
+        .collect();
+    let mut left = budget - kept.iter().map(|k| k.end - k.start).sum::<usize>();
     for mut unit in units {
         let overlaps = kept
             .iter()

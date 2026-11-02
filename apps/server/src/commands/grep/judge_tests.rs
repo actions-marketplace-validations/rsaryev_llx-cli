@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use contracts::model::{Answer, DecideError, Decider, Decision, Question};
 use serde_json::Value;
 
-use super::{clipped, judged};
+use super::{Parts, clipped, judged};
 use crate::commands::grep::listing::Doc;
 
 /// A decision model that says yes with the probability its table gives the file's path, and
@@ -29,18 +29,33 @@ impl Decider for Table {
             .ok_or_else(|| DecideError::Unavailable("down".into()))?;
         let probabilities =
             BTreeMap::from([("yes".to_string(), yes), ("no".to_string(), 1.0 - yes)]);
-        let key = questions.keys().next().unwrap().clone();
         let answer = Answer::Choice {
             choice: "yes".into(),
             probabilities,
             confidence: yes,
         };
+        let mut answers = BTreeMap::from([("answers".to_string(), answer)]);
+        if questions.contains_key("part") {
+            let part = Answer::Choice {
+                choice: "2".into(),
+                probabilities: BTreeMap::new(),
+                confidence: 0.9,
+            };
+            answers.insert("part".into(), part);
+        }
         Ok(Decision {
-            answers: BTreeMap::from([(key, answer)]),
+            answers,
             model: "jev".into(),
             cost: 0.001,
             millis: 300,
         })
+    }
+}
+
+fn none() -> Parts {
+    Parts {
+        text: String::new(),
+        spans: vec![],
     }
 }
 
@@ -62,13 +77,11 @@ fn each_file_is_judged_and_one_the_model_could_not_answer_is_none() {
         doc("b.rs", "fn b() {}"),
         doc("c.rs", "fn c() {}"),
     );
-    let asked = [
-        (&a, String::new()),
-        (&b, String::new()),
-        (&c, String::new()),
-    ];
+    let asked = [(&a, none()), (&b, none()), (&c, none())];
     let verdicts = judged(&table, "where is a", &asked).unwrap();
     assert_eq!(verdicts.yes, [Some(0.9), Some(0.1), None]);
+    // Short files are read whole: no part is asked for.
+    assert_eq!(verdicts.lead, [None, None, None]);
     assert_eq!(verdicts.model, "jev");
     assert!((verdicts.cost - 0.002).abs() < 1e-9);
 }
@@ -80,7 +93,13 @@ fn a_long_file_is_read_as_its_start_and_its_best_parts() {
         read: Mutex::new(vec![]),
     };
     let long = doc("long.rs", &"x".repeat(20_000));
-    judged(&table, "q", &[(&long, "the best part\n".into())]).unwrap();
+    let parts = Parts {
+        text: "[part 1: lines 1-1]\nfirst\n[part 2: lines 9-12]\nthe best part\n".into(),
+        spans: vec![(0, 1), (8, 12)],
+    };
+    let verdicts = judged(&table, "q", &[(&long, parts)]).unwrap();
+    // The part the model named, by its number.
+    assert_eq!(verdicts.lead, [Some((8, 12))]);
     let read = table.read.lock().unwrap()[0]["text"]
         .as_str()
         .unwrap()

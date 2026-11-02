@@ -5,6 +5,7 @@
 //! one, the ranking by words is the answer. Each file is shown with the parts that matter, whole
 //! functions or sections where they are short.
 
+use std::fmt::Write as _;
 use std::time::Instant;
 
 use crate::cli::GrepArgs;
@@ -37,11 +38,13 @@ const JUDGED_LINES: usize = 60;
 /// How many files are read from disk at once.
 const READERS: usize = 8;
 
-/// A file the search shows: its index among those read, how well it answers, its parts.
+/// A file the search shows: its index among those read, how well it answers, its parts, and the
+/// part the decision model said answers best.
 pub(super) struct Found {
     doc: usize,
     score: f64,
     blocks: Vec<Block>,
+    lead: Option<(usize, usize)>,
 }
 
 /// How the files were picked.
@@ -79,7 +82,7 @@ pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
     let outcome = match decider {
         Some(decider) => {
             let candidates = candidates(&docs, &ranked, &terms, args.judge);
-            let parts: Vec<(&Doc, String)> = (candidates.iter())
+            let parts: Vec<(&Doc, judge::Parts)> = (candidates.iter())
                 .filter_map(|&doc| docs.get(doc))
                 .map(|doc| (doc, best_parts(doc, &terms, &weights, JUDGED_LINES)))
                 .collect();
@@ -143,24 +146,26 @@ fn picked(candidates: &[usize], verdicts: &judge::Verdicts, ranked: &[rank::Scor
             .position(|scored| scored.doc == doc)
             .unwrap_or(usize::MAX)
     };
-    let mut judged: Vec<(usize, f64)> = (candidates.iter().zip(&verdicts.yes))
-        .filter_map(|(&doc, yes)| Some((doc, (*yes)?)))
-        .collect();
+    let mut judged: Vec<(usize, f64, Option<(usize, usize)>)> =
+        (candidates.iter().zip(&verdicts.yes).zip(&verdicts.lead))
+            .filter_map(|((&doc, yes), lead)| Some((doc, (*yes)?, *lead)))
+            .collect();
     judged.sort_by(|a, b| b.1.total_cmp(&a.1).then(place(a.0).cmp(&place(b.0))));
-    let best = judged.first().map_or(1.0, |(_, yes)| *yes);
+    let best = judged.first().map_or(1.0, |(_, yes, _)| *yes);
     let shown = YES.max(best - BELOW_BEST);
     let found = (judged.iter())
-        .filter(|(_, yes)| *yes >= shown)
-        .map(|&(doc, score)| Found {
+        .filter(|(_, yes, _)| *yes >= shown)
+        .map(|&(doc, score, lead)| Found {
             doc,
             score,
             blocks: vec![],
+            lead,
         })
         .collect();
     let maybe = (judged.iter())
-        .filter(|(_, yes)| (MAYBE..shown).contains(yes))
+        .filter(|(_, yes, _)| (MAYBE..shown).contains(yes))
         .take(MOST_UNSURE)
-        .copied()
+        .map(|&(doc, yes, _)| (doc, yes))
         .collect();
     Outcome {
         found,
@@ -181,6 +186,7 @@ fn by_words(ranked: &[rank::Scored], args: &GrepArgs, why: Option<String>) -> Ou
             doc: scored.doc,
             score: scored.score / best,
             blocks: vec![],
+            lead: None,
         })
         .collect();
     Outcome {
@@ -206,7 +212,7 @@ fn with_blocks(
         };
         let share = (left / (shown - n).max(1)).clamp(8, 40).min(left);
         let hits = rank::hits(&doc.text, terms);
-        found.blocks = blocks::blocks(&doc.text, &hits, weights, share);
+        found.blocks = blocks::blocks(&doc.text, &hits, weights, share, found.lead);
         if found.blocks.is_empty() {
             let end = doc.text.lines().count().min(share);
             found.blocks = vec![Block {
@@ -228,17 +234,27 @@ fn with_blocks(
     outcome
 }
 
-/// The text of `doc`'s best parts for `terms`, in at most `lines` lines.
-fn best_parts(doc: &Doc, terms: &[Term], weights: &[f64], lines: usize) -> String {
+/// `doc`'s best parts for `terms`, in at most `lines` lines, each headed with its lines.
+fn best_parts(doc: &Doc, terms: &[Term], weights: &[f64], lines: usize) -> judge::Parts {
     let hits = rank::hits(&doc.text, terms);
     let text: Vec<&str> = doc.text.lines().collect();
-    let mut parts = String::new();
-    for block in blocks::blocks(&doc.text, &hits, weights, lines) {
+    let mut parts = judge::Parts {
+        text: String::new(),
+        spans: vec![],
+    };
+    for block in blocks::blocks(&doc.text, &hits, weights, lines, None) {
+        let n = parts.spans.len() + 1;
+        let _ = writeln!(
+            parts.text,
+            "[part {n}: lines {}-{}]",
+            block.start + 1,
+            block.end
+        );
         for line in text.iter().take(block.end).skip(block.start) {
-            parts.push_str(line);
-            parts.push('\n');
+            parts.text.push_str(line);
+            parts.text.push('\n');
         }
-        parts.push_str("…\n");
+        parts.spans.push((block.start, block.end));
     }
     parts
 }

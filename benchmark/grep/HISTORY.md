@@ -7,3 +7,4 @@ over all the questions, for each mode of `llx grep`.
 - 2026-11-02 v2 (numbers in any spelling, tests out of the judged files, `data/` at half): judged R@5 90% P@5 79% MRR 0.85; words R@5 80% P@5 43% MRR 0.68
 - 2026-11-02 v4 (parts chosen whole and apart, not chained): judged R@5 97% P@5 77% MRR 0.89; words R@5 80% P@5 43% MRR 0.68
 - 2026-11-02 v5 (shown within 0.25 of the best, the rest named as unsure): judged R@5 97% P@5 81% MRR 0.86; words R@5 80% P@5 43% MRR 0.68
+- 2026-11-02 v6 (the model also names a long file's best part, shown first): judged R@5 97% P@5 81% MRR 0.91, $0.0048 a question
