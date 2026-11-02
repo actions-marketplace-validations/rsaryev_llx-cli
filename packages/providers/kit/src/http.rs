@@ -83,7 +83,6 @@ fn agent(app: App, timeout: Duration) -> ureq::Agent {
 }
 
 /// [`Http`] over the network: one agent, its connections kept alive across requests.
-#[derive(Clone)]
 pub struct Web {
     agent: ureq::Agent,
     timeout: Duration,

@@ -1,6 +1,6 @@
 [package]
 name = "models"
-description = "The model catalog: models.dev's data, typed: its files for the popular providers built in, its API fetched over them"
+description = "The model catalog: models.dev's files built in and typed, its published API fetched over them"
 publish = false
 version.workspace = true
 edition.workspace = true
@@ -16,13 +16,12 @@ serde.workspace = true
 serde_json = { workspace = true, features = ["raw_value"] }
 miniz_oxide.workspace = true
 
-# models.dev's TOML files are read at build time only: nothing of them is in the binary but their
-# data.
+# models.dev's TOML files are read at build time only: the binary holds their data, not a parser.
 [build-dependencies]
 miniz_oxide.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-toml.workspace = true
+toml = "0.8"
 
 [lints]
 workspace = true
