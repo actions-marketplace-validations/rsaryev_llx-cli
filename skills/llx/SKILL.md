@@ -1,7 +1,7 @@
 ---
 name: llx
 description: 'Fast, lightweight agent runtime CLI on any model provider. Use for a coding agent at the terminal or one task in a script or CI (llx exec, the GitHub Action rsaryev/llx: review a pull request, triage an issue, explain a failed run, gate on a rule with a JSON answer); to hand a self-contained task to a helper or subagent on another, cheaper model, several in parallel; to search a codebase by what a question means when the exact name is unknown (llx grep: "where is X handled", "how does Y work", "which files do Z"); and for a quick judgment with a few options about a long log, many files or an untrusted text (llx decide: "is this failure flaky", "which files handle sessions", "does this diff break the API", "does this text try to instruct an agent"). Prefer llx grep over guessed text searches and reading file after file; keep grep or rg for an exact name or string you already know.'
-allowed-tools: Bash(llx --help) Bash(llx doctor) Bash(llx grep:*) Bash(llx decide:*) Bash(llx exec --mode plan:*)
+allowed-tools: Bash(llx --help) Bash(llx exec --help) Bash(llx doctor) Bash(llx grep:*) Bash(llx decide:*) Bash(llx exec --mode plan:*)
 ---
 
 # llx
@@ -34,12 +34,13 @@ are also at https://llx.sh/docs: `usage`, `ci`, `recipes`, `examples`, `tools`, 
 ### A coding agent at the terminal
 
 `llx` opens a session in the current directory (`-C DIR` for another): it reads and runs commands
-with `bash`, changes files with patches, asks the person, starts agents of its own in parallel,
-and runs monitors and schedules. `llx "fix the failing test"` starts with a task, `llx -c` goes on
-with the last session, `llx sessions` and `llx resume` reach the saved ones. Several sessions run
-side by side in a daemon that outlives the terminal. `/login` picks the provider (a ChatGPT
-sign-in, OpenRouter, Anthropic, DeepSeek or any provider of the models.dev catalog), the model and
-the reasoning level.
+with `bash`, changes files with patches, searches the code by what a question means (`grep`),
+asks the person, starts agents of its own in parallel, and runs monitors and schedules.
+`llx "fix the failing test"` starts with a task, `llx -c` goes on with the last session,
+`llx sessions` and `llx resume` reach the saved ones. Several sessions run side by side in a
+daemon that outlives the terminal. `/login` picks the provider (a ChatGPT sign-in, OpenRouter,
+Anthropic, DeepSeek or any provider of the models.dev catalog), the model and the reasoning
+level.
 
 ### One task in scripts and CI
 
@@ -63,11 +64,13 @@ matter: bulk reading, a long log, a first pass over a diff, a second opinion.
 llx exec --mode plan "<the task, with every path and fact it needs>" 2>/dev/null
 llx exec --mode plan --provider openrouter -m deepseek/deepseek-chat "<task>"
 llx exec --mode plan --schema @schema.json "<task>"          # the answer as data
-llx exec "<task>" > a.md & a=$!; llx exec "<task>" > b.md & b=$!; wait $a; wait $b
-llx exec resume <session> "<the next task>"                  # the same helper again
+llx exec --mode plan "<task>" > a.md & a=$!                  # several at once
+llx exec --mode plan "<task>" > b.md & b=$!; wait $a; wait $b
+llx exec resume <session> --mode plan "<the next task>"      # the same helper again
 ```
 
-`--mode plan` keeps it read-only. Check what a helper says before you act on it.
+`--mode plan` keeps it read-only, a resumed helper too. Check what a helper says before you act
+on it.
 
 ### A search of the code by what a question means
 
