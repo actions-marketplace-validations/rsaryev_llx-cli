@@ -44,18 +44,20 @@ a change is called done. `--no-verify` skips the hooks. Agents in Claude Code ru
 
 Under it are the usual commands, which you can still run alone: `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets -- -D warnings` (then, on libraries and binaries,
-`-D unused_crate_dependencies`), `cargo test --workspace`, the release binary's size (under 5 MiB, warned above
-4 MB), the site's build, the action's tests, and the linters: shellcheck, actionlint, the example
-workflows' conventions, the Markdown's relative links and gitleaks on every commit and on the
-working tree's changes, at pinned versions it downloads once.
-Two checks CI does not run; run them yourself before a release ([RELEASING.md](RELEASING.md)):
+`-D unused_crate_dependencies`), `cargo test --workspace`, the release binary's size (under
+5 MiB, warned above 4 MB), the site's build, the action's tests, the checks' own tests, and the
+linters: shellcheck, actionlint, the example workflows' conventions, the Markdown's relative
+links and gitleaks on every commit and on the working tree's changes, at pinned versions it
+downloads once. Two checks CI does not run; run them yourself before a release
+([RELEASING.md](RELEASING.md)):
 the minimum Rust version (`cargo +1.88 check --workspace --all-targets --locked`) and the line
 coverage, at least 85% (`scripts/check --all --coverage`, or `scripts/coverage.sh` alone).
 The code stays under 50,000 lines of working code and 300 per file (ARCHITECTURE.md S1, S2).
 
 A pull request from a fork runs CI on GitHub's runners once a maintainer approves the run (the
-project's own runners take only branches of this repository: [scripts/runner/](scripts/runner/README.md)).
-Before you open one, `scripts/check` on your machine runs what CI will.
+project's own runners take only branches of this repository:
+[scripts/runner/](scripts/runner/README.md)). Before you open one, `scripts/check` on your
+machine runs what CI will.
 
 ## Code
 
