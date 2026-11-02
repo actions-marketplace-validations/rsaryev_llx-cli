@@ -24,11 +24,13 @@ commands yourself.
   macOS a nested repository's) and a scratch directory of its own, and opens no network or local
   socket. On Linux where the workspace has a `.git` of its own, and wherever the workspace is your
   home directory or holds it, the sandbox lets a command write only its scratch directory. On
-  Linux a nested repository's `.git` in a workspace with none of its own is not kept: Landlock
-  cannot take a path out of the tree it lets write. Patches to the workspace's files are made
-  without asking. A command the model escalates (`escalate`: it must leave the sandbox), or a
-  patch inside `.git`, is asked first, and refused where no one can be asked
-  (`llx exec` with no terminal, as in CI).
+  Linux, in a workspace with no `.git` of its own, a command can still write a nested repository's
+  `.git` or make a new `.git`, at the workspace's root too (in a workspace inside a repository,
+  git then finds that one first): Landlock cannot take a path out of the tree it lets write, and a
+  hook written there, or a command its config names, runs unconfined when git next runs there.
+  Patches to the workspace's files are made without asking. A command the model escalates
+  (`escalate`: it must leave the sandbox), or a patch inside `.git`, is asked first, and refused
+  where no one can be asked (`llx exec` with no terminal, as in CI).
 - **The `plan` mode** runs commands without asking in a read-only sandbox, refuses every patch,
   and refuses every escalation.
 - **What runs outside the sandbox.** Outside `plan`, a command you allow runs as it is, with no
