@@ -26,7 +26,6 @@ use crate::desk::{Work, run};
 use crate::meta::title::Namer;
 use crate::mode::Mode;
 use crate::output::Output;
-use crate::server::serve::serve;
 use crate::server::{Peer, Ui};
 use crate::sync::lock;
 
@@ -235,11 +234,11 @@ pub(crate) fn served_titled(
     let (shared, seat) = setup(&scratch, bypass, true).split();
     #[expect(
         clippy::disallowed_methods,
-        reason = "the seam's channels and the desk's requests, as the binary makes them"
+        reason = "the seam's channels, as the binary makes them"
     )]
-    let ((to_server, incoming), (out, frames), (to_desk, asked)) =
-        (channel(), channel(), channel());
-    let peer = Peer::new(out);
+    let ((to_server, incoming), (out, frames)) = (channel(), channel());
+    // Served as a session's interface is (`run/interface.rs`): its own thread, ended with it.
+    let (peer, asked) = crate::commands::run::serving(incoming, out).unwrap();
     let ui = Ui::new(Arc::clone(&peer));
     let seat = Seat {
         ui: Some(ui.clone()),
@@ -260,8 +259,6 @@ pub(crate) fn served_titled(
     std::thread::scope(|scope| {
         let task = task.map(str::to_string);
         let desk = scope.spawn(|| run(&shared, &ui, asked, seat, task, &start, quit));
-        let served = Arc::clone(&peer);
-        scope.spawn(move || serve(&incoming, &served, &to_desk));
         person(Link { frames, to_server }, &Server(Arc::clone(&peer)));
         let deadline = Instant::now() + Duration::from_secs(10);
         while !desk.is_finished() {

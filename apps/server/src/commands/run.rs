@@ -34,6 +34,8 @@ use crate::server::Ui;
 
 pub(crate) use self::ended::Ended;
 pub use self::front::{Front, Unready};
+#[cfg(any(test, feature = "testing"))]
+pub(crate) use self::interface::serving;
 
 /// The workspace `options` name (`-C`, else the current directory), where the sessions work.
 pub(crate) fn root(options: &RunOptions) -> Result<Workspace, Failure> {

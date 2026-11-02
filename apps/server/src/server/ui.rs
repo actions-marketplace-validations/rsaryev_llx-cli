@@ -77,6 +77,13 @@ impl Peer {
         }
     }
 
+    /// The person left (said so, or the interface is gone): every prompt ends with nothing, and
+    /// every question waiting with it.
+    pub(crate) fn left(&self) {
+        self.inputs.leave();
+        self.abandon(None);
+    }
+
     /// Nobody will answer what session `lane` (every session, for `None`) waits for: the person
     /// left, or the lane was closed. Its questions end with nothing; each thread that asked one
     /// tells the interface, after its question (R7: told here, it could come first).

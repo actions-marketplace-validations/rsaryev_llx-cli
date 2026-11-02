@@ -22,8 +22,7 @@ pub(crate) fn serve(incoming: &Receiver<ToServer>, peer: &Peer, desk: &Sender<Re
             }
         }
     }
-    peer.inputs.leave();
-    peer.abandon(None);
+    peer.left();
 }
 
 /// [`done`], a panic in it that command's failure, never the connection's end (W8). The lints
@@ -86,8 +85,7 @@ fn done(command: Command, peer: &Peer, desk: &Sender<Request>) -> Done {
         Command::List => to_desk(Request::List),
         Command::QuitAll => to_desk(Request::Quit),
         Command::Leave => {
-            peer.inputs.leave();
-            peer.abandon(None);
+            peer.left();
             Done::Ok
         }
         Command::Work => Done::Work {
