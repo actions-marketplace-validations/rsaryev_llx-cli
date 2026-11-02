@@ -37,6 +37,18 @@ fn entry(id: &str) -> ModelEntry {
     }
 }
 
+/// A request of `conversation` as `calling` says, with no tool, deadline, level or task.
+fn asking<'a>(conversation: &'a [Message], calling: Calling<'a>) -> Request<'a> {
+    Request {
+        conversation,
+        tools: &[],
+        calling,
+        deadline: None,
+        effort: None,
+        task: TaskId::NONE,
+    }
+}
+
 /// The request body as `complete` builds it, its tools offered as `texts` says.
 fn request_body(selection: &Selection, request: Request, texts: Texts) -> Value {
     let offer = Offer::new(request.tools, texts, request.conversation);
@@ -160,12 +172,8 @@ fn a_conversation_goes_out_as_input_items_with_the_level_chosen() {
     };
     let conversation = conversation();
     let request = Request {
-        conversation: &conversation,
         tools: std::slice::from_ref(&spec),
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
+        ..asking(&conversation, Calling::Any)
     };
     let selection = Selection::new(entry("gpt-6-sol"))
         .with_effort(Effort::High)
@@ -207,14 +215,7 @@ fn a_conversation_goes_out_as_input_items_with_the_level_chosen() {
     let off = Selection::new(entry("gpt-6-sol"))
         .with_effort(Effort::Off)
         .unwrap();
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Any);
     assert_eq!(
         request_body(&off, request, Texts::Functions)["reasoning"],
         json!({"effort": "none"})
@@ -222,12 +223,8 @@ fn a_conversation_goes_out_as_input_items_with_the_level_chosen() {
 
     // The `result` call with `--schema`'s data is asked for by name: the reply is that call.
     let only = Request {
-        conversation: &[],
         tools: std::slice::from_ref(&spec),
-        calling: Calling::Only("result"),
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
+        ..asking(&[], Calling::Only("result"))
     };
     assert_eq!(
         request_body(&off, only, Texts::Functions)["tool_choice"],
@@ -235,14 +232,7 @@ fn a_conversation_goes_out_as_input_items_with_the_level_chosen() {
     );
 
     // A model with no level is sent none, and a request with no tools names none.
-    let bare = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let bare = asking(&[], Calling::Nothing);
     let body = request_body(&Selection::new(entry("gpt-next")), bare, Texts::Functions);
     assert!(body.get("reasoning").is_none() && body.get("tools").is_none());
 }
@@ -290,14 +280,7 @@ fn a_failed_or_cut_stream_is_an_error() {
 fn a_request_names_the_account_and_the_token() {
     let (model, http, _) = model(vec![(200, streamed(&[completed()]))], tokens(LATER));
     let conversation = conversation();
-    let request = Request {
-        conversation: &conversation,
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&conversation, Calling::Nothing);
     model.complete(request).unwrap();
     let sent = &http.sent()[0];
     assert_eq!(
@@ -321,14 +304,7 @@ fn a_token_about_to_lapse_is_refreshed_and_kept_first() {
         (200, streamed(&[completed()])),
     ];
     let (model, http, memory) = model(replies, tokens(1));
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Nothing);
     model.complete(request).unwrap();
     let sent = http.sent();
     assert_eq!(sent[0].address, "https://auth.openai.com/oauth/token");
@@ -367,14 +343,7 @@ fn a_refused_token_is_refreshed_once_then_the_refusal_is_said() {
         (401, r#"{"detail": "nope"}"#.into()),
     ];
     let (model, http, _) = model(replies, tokens(LATER));
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Nothing);
     let refused = model.complete(request).unwrap_err().to_string();
     assert!(
         refused.contains("nope") && refused.contains("/login"),
@@ -389,14 +358,7 @@ fn a_usage_limit_says_so() {
         vec![(429, r#"{"error": {"message": "try later"}}"#.into())],
         tokens(LATER),
     );
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Nothing);
     let refused = model.complete(request).unwrap_err().to_string();
     assert!(refused.contains("usage limit") && refused.contains("try later"));
 }
@@ -428,14 +390,7 @@ fn a_picture_goes_in_as_a_user_message_with_an_input_image() {
 
 #[test]
 fn a_stream_that_went_out_unanswered_is_sent_once_more_and_no_further() {
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Nothing);
     let (model, http, _) = model_of(
         Scripted::answering(vec![
             Err(HttpError::Unanswered("socket dropped".into())),
@@ -494,14 +449,7 @@ fn a_request_that_never_went_out_is_sent_again() {
         ]),
         tokens(LATER),
     );
-    let request = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Nothing,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&[], Calling::Nothing);
     assert!(model.complete(request).is_ok());
     assert_eq!(http.sent().len(), 2);
 }
@@ -520,14 +468,7 @@ fn each_conversation_is_a_session_of_its_own_at_the_backend_all_its_requests_one
         ]
     };
     let ask = |conversation: &[Message]| {
-        let request = Request {
-            conversation,
-            tools: &[],
-            calling: Calling::Any,
-            deadline: None,
-            effort: None,
-            task: TaskId::NONE,
-        };
+        let request = asking(conversation, Calling::Any);
         model.complete(request).unwrap();
     };
     let mut later = start("fix the parser");
@@ -590,14 +531,7 @@ fn a_note_the_model_wrote_beside_its_calls_goes_back_in_its_phase() {
             failed: false,
         },
     ];
-    let request = Request {
-        conversation: &conversation,
-        tools: &[],
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&conversation, Calling::Any);
     let body = request_body(
         &Selection::new(entry("gpt-6-sol")),
         request,
@@ -634,14 +568,7 @@ fn the_models_reasoning_goes_back_with_the_next_request() {
             failed: false,
         },
     ];
-    let request = Request {
-        conversation: &conversation,
-        tools: &[],
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&conversation, Calling::Any);
     let body = request_body(
         &Selection::new(entry("gpt-6-sol")),
         request,
@@ -655,14 +582,7 @@ fn the_models_reasoning_goes_back_with_the_next_request() {
     assert_eq!(input.len(), 4);
 
     // After `/model` switched, the reasoning another model sealed stays out: it cannot open it.
-    let request = Request {
-        conversation: &conversation,
-        tools: &[],
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let request = asking(&conversation, Calling::Any);
     let other = request_body(
         &Selection::new(entry("gpt-6-luna")),
         request,
@@ -671,14 +591,7 @@ fn the_models_reasoning_goes_back_with_the_next_request() {
     assert_eq!(other["input"][1]["type"], "function_call");
 
     // A model that does not reason is asked for nothing.
-    let bare = Request {
-        conversation: &[],
-        tools: &[],
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
-    };
+    let bare = asking(&[], Calling::Any);
     assert_eq!(
         request_body(&Selection::new(entry("gpt-next")), bare, Texts::Functions)["include"],
         json!([])
@@ -697,12 +610,8 @@ fn patch_spec() -> ToolSpec {
 fn ask_with(model: &ChatModel, spec: &ToolSpec) -> Completion {
     let conversation = [Message::User("goal".into())];
     let request = Request {
-        conversation: &conversation,
         tools: std::slice::from_ref(spec),
-        calling: Calling::Any,
-        deadline: None,
-        effort: None,
-        task: TaskId::NONE,
+        ..asking(&conversation, Calling::Any)
     };
     model.complete(request).unwrap()
 }
@@ -769,12 +678,8 @@ fn tokens_sent(replies: Vec<Option<&str>>, asked: &[(&[Message], u64)]) -> Vec<O
     for (conversation, task) in asked {
         model
             .complete(Request {
-                conversation,
-                tools: &[],
-                calling: Calling::Any,
-                deadline: None,
-                effort: None,
                 task: TaskId(*task),
+                ..asking(conversation, Calling::Any)
             })
             .unwrap();
     }
@@ -869,12 +774,8 @@ fn the_deadline_of_a_request_reaches_the_http_client() {
     let at = Instant::now() + Duration::from_secs(5);
     model
         .complete(Request {
-            conversation: &conversation,
-            tools: &[],
-            calling: Calling::Nothing,
             deadline: Some(at),
-            effort: None,
-            task: TaskId::NONE,
+            ..asking(&conversation, Calling::Nothing)
         })
         .unwrap();
     assert_eq!(http.sent()[0].deadline, Some(at));
@@ -892,12 +793,8 @@ fn a_refresh_is_held_to_the_deadline_of_the_request_it_comes_before() {
     let at = Instant::now() + Duration::from_secs(5);
     model
         .complete(Request {
-            conversation: &[],
-            tools: &[],
-            calling: Calling::Nothing,
             deadline: Some(at),
-            effort: None,
-            task: TaskId::NONE,
+            ..asking(&[], Calling::Nothing)
         })
         .unwrap();
     let sent = http.sent();
@@ -919,16 +816,7 @@ fn a_refresh_goes_to_the_token_endpoints_own_client() {
         tokens(1),
         Selection::new(entry("gpt-6-sol")),
     );
-    model
-        .complete(Request {
-            conversation: &[],
-            tools: &[],
-            calling: Calling::Nothing,
-            deadline: None,
-            effort: None,
-            task: TaskId::NONE,
-        })
-        .unwrap();
+    model.complete(asking(&[], Calling::Nothing)).unwrap();
     let addresses = |http: &Scripted| -> Vec<String> {
         http.sent().into_iter().map(|sent| sent.address).collect()
     };
@@ -942,12 +830,8 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
     let conversation = conversation();
     model
         .complete(Request {
-            conversation: &conversation[..2],
-            tools: &[],
-            calling: Calling::Any,
-            deadline: None,
             effort: Some(Effort::Low),
-            task: TaskId::NONE,
+            ..asking(&conversation[..2], Calling::Any)
         })
         .unwrap();
     let sent: Value = serde_json::from_str(&http.sent()[0].body).unwrap();
