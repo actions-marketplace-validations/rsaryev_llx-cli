@@ -1,0 +1,51 @@
+{
+ "when": "2026-11-02 23:55",
+ "task": "evalkit",
+ "tests": 238,
+ "provider": "openai",
+ "model": "gpt-6-luna",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "B9 with the fixes from localix: advice reads arrivals, no monitor for a moved job, the history shows its end (bd01149d)",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 2,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.2.0",
+   "commit": "bd01149d",
+   "bytes": 2407792,
+   "sha256": "136a21d8e49b"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 802.8,
+   "pass": 238,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 191,
+   "input_tokens": 25064734,
+   "cached_tokens": 24836736,
+   "output_tokens": 61035,
+   "cost_usd": 0.3017,
+   "cache_pct": 99,
+   "calls": 190,
+   "failed_commands": 15,
+   "patches": 104,
+   "failed_patches": 1,
+   "model_s": 781,
+   "advised": 2
+  }
+ ]
+}
