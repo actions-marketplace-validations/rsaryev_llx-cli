@@ -288,7 +288,7 @@ command is cut.
 - **R9**: wait on events, not on time: a `Condvar`, `recv_timeout`, a deadline. A `sleep` is a
   backoff, and says so where it is (_checked_).
 - **R10** _checked_: a child process always has a deadline and a way to be stopped. The
-  server's short local queries (`/diff`'s `git`, `doctor`'s shell) go through
+  server's short local queries (`/diff`'s `git`, `llx grep`'s `git ls-files`, `doctor`'s shell) go through
   `tools::shell::query`, which kills one at its deadline with all it started; the interface's
   (the clipboard's tool, the pasted picture's, `@`'s `git`) through `apps/tui/src/within.rs`, as it may
   not reach `tools` (L7). (Debt: the provider kit's browser opener, which may not reach `tools`

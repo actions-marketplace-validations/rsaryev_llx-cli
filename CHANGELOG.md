@@ -21,6 +21,10 @@
 - A `bash` deny rule refuses a monitor that runs the command too: `--deny 'bash(rm *)'` no longer lets `jobs` run `rm` under a mode or a rule that allows `jobs`.
 - A patch to a file inside a nested repository's `.git` (`sub/.git/hooks/pre-commit`) is asked as one that must leave the sandbox, as one inside the workspace's own `.git` is: a hook written there would run at the next commit there.
 - A browser sign-in (`/login`) no longer waits for the browser to close where `xdg-open` keeps it in the foreground (Linux with no desktop it knows): the opener is left in the background, and its output never reaches the terminal.
+- An invalid patch's error names the line as the model wrote it: a heredoc around the patch and blank lines before it are counted (`apply_patch` said `line 4` for the fifth).
+- `llx decide QUESTION FILE…` names a file it could not read or answer once on stderr (`llx decide: FILE: could not read the file: …`), no longer `llx decide: FILE: llx: …`.
+- A line sent to the daemon's socket that is not UTF-8 no longer ends the connection: it is dropped and said as any line that is not a frame, and a call in it is answered failed under its id.
+- The GitHub Action's step summary names a `grep` call by its question, as it names a command by its first line, not by its arguments' JSON.
 - With `--schema`, a field the schema's `required` names is checked where it lists no `properties` beside it: `{"type": "object", "required": ["price"]}` no longer takes `{}` as matching data.
 - A sign-in's callback, or the address pasted in its place, reads a percent escape only as `%` and two hex digits: `%+1` is no longer the byte 1, but `%`, a space and `1`.
 - Agents started in the same second are no longer given the same session id (a chance in 65,536 for each two of them), which mixed up their saved sessions, their stops, their answers and their views: a process counts its ids up from one random draw.
