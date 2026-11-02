@@ -28,8 +28,19 @@ export type Did = {
 };
 
 const REPO = path.join(import.meta.dir, "../..");
-const lines = (file: string) =>
-  fs.existsSync(file) ? fs.readFileSync(file, "utf8").split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l)) : [];
+const BUILT = path.join(REPO, "target/release/llx");
+
+/** The JSON lines of a log; a line cut off as its agent was killed is left out, not the run. */
+function lines(file: string) {
+  if (!fs.existsSync(file)) return [];
+  return fs.readFileSync(file, "utf8").split("\n").filter((l) => l.startsWith("{")).flatMap((l) => {
+    try {
+      return [JSON.parse(l)];
+    } catch {
+      return [];
+    }
+  });
+}
 
 /** The agent `spec` names: `[label=]kind[:path]` (`llx`, `codex`, `base=llx:/tmp/old/llx`). */
 export function agent(spec: string): Agent {
@@ -39,7 +50,7 @@ export function agent(spec: string): Agent {
   if (!KINDS.includes(kind)) throw new Error(`--agent ${spec}: the agent is one of ${KINDS.join(", ")}`);
   const label = eq < 0 ? kind : spec.slice(0, eq);
   const given = colon < 0 ? null : path.resolve(rest.slice(colon + 1));
-  const binary = given ?? (kind === "llx" ? path.join(REPO, "target/release/llx") : Bun.which("codex"));
+  const binary = given ?? (kind === "llx" ? BUILT : Bun.which("codex"));
   if (!binary || !fs.existsSync(binary)) throw new Error(`${kind}: no binary at ${binary} (cargo build --release?)`);
   const version = sh([binary, "--version"]).stdout.trim();
   // llx built from this repository is known by its commit; any other binary by its bytes.
@@ -47,7 +58,7 @@ export function agent(spec: string): Agent {
   if (kind === "llx") {
     const data = fs.readFileSync(binary);
     [bytes, sha256] = [data.length, createHash("sha256").update(data).digest("hex").slice(0, 12)];
-    if (fs.realpathSync(binary) === fs.realpathSync(path.join(REPO, "target/release/llx"))) {
+    if (fs.existsSync(BUILT) && fs.realpathSync(binary) === fs.realpathSync(BUILT)) {
       const git = (...a: string[]) => sh(["git", "-C", REPO, ...a]).stdout.trim();
       commit = git("rev-parse", "--short", "HEAD") + (git("status", "--porcelain", "--", "apps", "packages") ? "-dirty" : "");
     }
@@ -101,14 +112,16 @@ export function did(kind: Kind, events: string, stderr: string, extra: Record<st
       const calls = ev.filter((e) => e.type === "tool.call");
       const results = ev.filter((e) => e.type === "tool.result");
       const done = ev.filter((e) => e.type === "run.completed").at(-1) ?? {};
-      const exit = (r: { output?: string }) => Number(r.output?.match(/^Exit code: (-?\d+)/)?.[1] ?? 0);
+      // A command failed unless it exited 0: a code, a timeout, a signal, or a call refused.
+      const exited0 = (r: { output?: string }) => r.output?.match(/^Exit code: (-?\d+)/)?.[1] === "0";
+      // The advisor's word on stderr; llx's other notes there (an elided context, a wait) are not.
       const advised = fs.existsSync(stderr)
-        ? fs.readFileSync(stderr, "utf8").split("\n").filter((l) => l.startsWith("✻ ")).length : 0;
+        ? fs.readFileSync(stderr, "utf8").split("\n").filter((l) => l.startsWith("✻ A review of your answer")).length : 0;
       return {
         status: done.status ?? null,
         requests: turns.map((t) => ({ input: t.input_tokens ?? 0, cached: t.cached_tokens ?? 0, output: t.output_tokens ?? 0 })),
         calls: calls.length,
-        failed_commands: results.filter((r) => r.name === "bash" && exit(r) !== 0).length,
+        failed_commands: results.filter((r) => r.name === "bash" && !exited0(r)).length,
         patches: calls.filter((c) => c.name === "apply_patch").length,
         failed_patches: results.filter((r) => r.name === "apply_patch" && r.failed).length,
         model_s: Math.round(turns.reduce((s, t) => s + (t.model_ms ?? 0), 0) / 100) / 10,
