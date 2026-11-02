@@ -165,3 +165,17 @@ fn a_second_round_file_far_below_that_rounds_best_is_named_as_unsure() {
         [2]
     );
 }
+
+#[test]
+fn a_decision_model_that_could_not_be_asked_is_said_once_in_the_summary() {
+    // Only the OS refusing the judge's threads comes here: the reason, with no `llx:` of its own.
+    let failure = crate::error::Failure::Environment("could not start a thread: no room".into());
+    let outcome = super::unjudged(&[], 8, &failure);
+    let said = super::shown::summary(&outcome, 3, std::time::Duration::ZERO);
+    assert!(said.starts_with("llx grep: "), "{said}");
+    assert!(
+        said.contains("by their words alone (could not start a thread: no room)"),
+        "{said}"
+    );
+    assert_eq!(said.matches("llx").count(), 1, "{said}");
+}

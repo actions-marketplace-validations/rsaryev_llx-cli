@@ -145,7 +145,7 @@ pub(crate) fn search(ask: &Ask, reader: Reader) -> Result<Searched, Failure> {
                     );
                     by_words(&ranked, ask.limit, Some(why))
                 }
-                Err(failure) => by_words(&ranked, ask.limit, failure.message()),
+                Err(failure) => unjudged(&ranked, ask.limit, &failure),
             }
         }
         Reader::Words(why) => by_words(&ranked, ask.limit, why),
@@ -278,6 +278,12 @@ fn by_words(ranked: &[rank::Scored], limit: usize, why: Option<String>) -> Outco
         maybe: vec![],
         how: How::Words(why),
     }
+}
+
+/// The files by their words, when the decision model could not be asked at all: why, in the
+/// summary, as the failure's reason (its `message` is a line of its own, headed `llx:` already).
+fn unjudged(ranked: &[rank::Scored], limit: usize, failure: &Failure) -> Outcome {
+    by_words(ranked, limit, Some(failure.to_string()))
 }
 
 /// Each file shown given its parts, within `--lines` in all: the best file the most.
