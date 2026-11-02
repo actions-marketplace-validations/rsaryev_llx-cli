@@ -13,9 +13,10 @@ pub mod run;
 pub(crate) mod serve;
 pub(crate) mod sessions;
 pub(crate) mod signin;
+
 use clap::Parser;
 
-use crate::cli::{Cli, Command, ExecCommand, joined};
+use crate::cli::{Cli, Command, ExecCommand, ResumeArgs, joined};
 use crate::error::{self, Failure};
 use crate::{compose, exit, logs};
 use run::{At, Front, Kind};
@@ -83,7 +84,8 @@ pub(crate) fn dispatch(cli: Cli, at: At) -> Result<i32, Failure> {
     }
 }
 
-fn resumed(args: crate::cli::ResumeArgs, kind: Kind, at: At) -> Result<i32, Failure> {
+/// `resume` and `exec resume`: the session `args` names, going on as `kind`.
+fn resumed(args: ResumeArgs, kind: Kind, at: At) -> Result<i32, Failure> {
     let (id, prompt) = args.target();
     let id = id.map(str::to_string);
     sessions::resume(id.as_deref(), prompt.as_deref(), args.run, kind, at)
