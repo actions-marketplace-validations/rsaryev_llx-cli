@@ -65,6 +65,8 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         (timeout, needs): (Duration, Needs),
     ) -> Result<ToolOutput, ToolError> {
         let dir = self.jobs.kit.workspace.root();
+        // Refused before the person is asked about it; looked at again where it is listed (R7).
+        room_for_a_monitor(&self.jobs.lock())?;
         let scope = self.ask(command, &watched(command, dir, needs), needs)?;
         let timeout = match self.jobs.kit.session {
             true => timeout,
@@ -75,16 +77,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         let until = Instant::now() + timeout;
         let (id, name) = {
             let mut state = self.jobs.lock();
-            let running = state
-                .jobs
-                .iter()
-                .filter(|job| matches!(job.what, What::Monitor { .. }))
-                .count();
-            if running >= MAX_MONITORS {
-                return Err(ToolError::Failed(format!(
-                    "{running} monitors run already: stop one first"
-                )));
-            }
+            room_for_a_monitor(&state)?;
             let (id, name) = new_job(&mut state, name);
             state.jobs.push(Job {
                 id: id.clone(),
@@ -203,15 +196,12 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
                 format!("in {} min", seconds / 60),
             ),
         };
+        // As a monitor's: refused before the person is asked, and looked at again (R7).
+        room_for_a_schedule(&self.jobs.lock())?;
         self.ask("", &format!("schedule {said}: {prompt}"), Needs::Sandbox)?;
         let (id, name) = {
             let mut state = self.jobs.lock();
-            let kept = state.jobs.len();
-            if kept >= MAX_SCHEDULES {
-                return Err(ToolError::Failed(format!(
-                    "{kept} jobs are kept: stop one first"
-                )));
-            }
+            room_for_a_schedule(&state)?;
             let (id, name) = new_job(&mut state, name);
             let stop = Arc::new(AtomicBool::new(false));
             let known = self.jobs.known(&id, &stop);
@@ -293,6 +283,30 @@ impl Tool for JobsTool<'_, '_> {
             Action::List => Ok(self.list()),
             Action::Stop { job } => self.stop(&job),
         }
+    }
+}
+
+/// Whether one more monitor may run: no more than [`MAX_MONITORS`] at once.
+fn room_for_a_monitor(state: &State) -> Result<(), ToolError> {
+    let running = (state.jobs.iter())
+        .filter(|job| matches!(job.what, What::Monitor { .. }))
+        .count();
+    match running < MAX_MONITORS {
+        true => Ok(()),
+        false => Err(ToolError::Failed(format!(
+            "{running} monitors run already: stop one first"
+        ))),
+    }
+}
+
+/// Whether one more schedule may be kept: no more than [`MAX_SCHEDULES`] jobs of either kind.
+fn room_for_a_schedule(state: &State) -> Result<(), ToolError> {
+    let kept = state.jobs.len();
+    match kept < MAX_SCHEDULES {
+        true => Ok(()),
+        false => Err(ToolError::Failed(format!(
+            "{kept} jobs are kept: stop one first"
+        ))),
     }
 }
 

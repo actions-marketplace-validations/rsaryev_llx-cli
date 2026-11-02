@@ -328,3 +328,86 @@ fn a_schedule_stopped_by_its_key_leaves_the_list_at_once() {
         assert_eq!(sent(events).1, Some(vec![]));
     });
 }
+
+/// A gate that keeps the summary of each effect it is asked about, and allows it.
+#[derive(Default)]
+struct Recording(Mutex<Vec<String>>);
+
+impl Gate for Recording {
+    fn check(&self, effect: contracts::gate::Effect) -> contracts::gate::Verdict {
+        self.0.lock().unwrap().push(effect.summary.to_string());
+        contracts::gate::Verdict::Allow
+    }
+}
+
+/// What the tool says to `call` once the session of `owner` lists `n` jobs as `what` makes them,
+/// and what its gate was asked.
+fn past_the_most(
+    owner: &str,
+    n: usize,
+    what: impl Fn() -> What,
+    call: &serde_json::Value,
+) -> (Result<String, String>, Vec<String>) {
+    use contracts::tool::Tool;
+    let scratch = Scratch::new();
+    let workspace = Workspace::new(scratch.path()).unwrap();
+    let (output, queue, gate) = (quiet(), queue::Queue::new(16), Recording::default());
+    let kit = Kit {
+        workspace: &workspace,
+        gate: &gate,
+        hidden: &Vec::new,
+        output: &output,
+        session: true,
+        queue: &queue,
+    };
+    let jobs = Jobs::new(owner, kit);
+    for at in 0..n {
+        let (id, stop) = (format!("job-{at}"), Arc::new(AtomicBool::new(false)));
+        let known = jobs.known(&id, &stop);
+        let job = Job {
+            id: id.clone(),
+            name: id,
+            what: what(),
+            stop,
+            _known: known,
+        };
+        jobs.lock().jobs.push(job);
+    }
+    let said = std::thread::scope(|scope| {
+        let tool = JobsTool { jobs: &jobs, scope };
+        let said = tool.call(call);
+        jobs.close();
+        said.map(|output| output.report)
+            .map_err(|error| format!("{error:?}"))
+    });
+    (said, gate.0.into_inner().unwrap())
+}
+
+#[test]
+fn a_ninth_monitor_is_refused_before_the_person_is_asked() {
+    let monitor = || What::Monitor {
+        command: "tail -f log".into(),
+        until: Instant::now() + Duration::from_secs(600),
+        events: 0,
+    };
+    let call = json!({"action": "monitor", "command": "true"});
+    let (said, asked) = past_the_most("jobs-ninth-lane", 8, monitor, &call);
+    let why = said.unwrap_err();
+    assert!(why.contains("8 monitors run already"), "{why}");
+    assert_eq!(asked, Vec::<String>::new());
+}
+
+#[test]
+fn a_schedule_past_the_jobs_kept_is_refused_before_the_person_is_asked() {
+    let schedule = || What::Schedule {
+        prompt: "say it".into(),
+        cron: None,
+        next: crate::clock::now() + 600,
+        expires: crate::clock::now() + 86_400,
+    };
+    let call = json!({"action": "schedule", "prompt": "check", "in": "5m"});
+    let (said, asked) = past_the_most("jobs-kept-lane", 50, schedule, &call);
+    let why = said.unwrap_err();
+    assert!(why.contains("50 jobs are kept"), "{why}");
+    assert_eq!(asked, Vec::<String>::new());
+}
