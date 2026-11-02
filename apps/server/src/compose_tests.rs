@@ -212,3 +212,72 @@ fn two_lanes_over_one_shared_share_the_workspace_but_keep_their_own() {
         })
     });
 }
+
+/// A lane's end is told once all of it ended: a monitor still running as the lane closes is
+/// stopped, and what its thread tells last (the jobs left: none) comes before the lane's end, so
+/// the ring keeps nothing of a lane gone.
+#[test]
+fn a_lanes_end_is_told_after_its_monitors_last_word() {
+    use crate::test_support::{call, gated, says, served};
+    use protocol::{Command, Event, ToClient, ToServer};
+    use std::time::{Duration, Instant};
+    let (to_chat, chat) = gated();
+    let monitor = json!({"action": "monitor", "command": "sleep 30", "name": "wait"});
+    to_chat.send(call("jobs", monitor)).unwrap();
+    to_chat.send(says("Watching.")).unwrap();
+    served(&[&chat], Some("watch"), &|| {}, |link, _| {
+        type Told = [(Option<String>, Event)];
+        let mut told: Vec<(Option<String>, Event)> = vec![];
+        let listen = |told: &mut Vec<_>, within: Duration, done: &dyn Fn(&Told) -> bool| {
+            let deadline = Instant::now() + within;
+            while !done(told) && Instant::now() < deadline {
+                let frame = link.frames.recv_timeout(Duration::from_millis(20));
+                if let Ok(ToClient::Event { session, event, .. }) = frame {
+                    told.push((session, event));
+                }
+            }
+        };
+        let watching = |told: &Told| {
+            told.iter()
+                .any(|(_, event)| matches!(event, Event::TaskEnded { .. }))
+                && told
+                    .iter()
+                    .any(|(_, event)| matches!(event, Event::Jobs(rows) if !rows.is_empty()))
+        };
+        listen(&mut told, Duration::from_secs(10), &watching);
+        let lane = told
+            .iter()
+            .find(|(_, event)| matches!(event, Event::TaskEnded { .. }))
+            .and_then(|(session, _)| session.clone())
+            .unwrap();
+        let session = lane.clone();
+        let command = Command::Close { session };
+        link.to_server
+            .send(ToServer::Call { id: 1, command })
+            .unwrap();
+        // Until the lane's end, then a moment more for anything told after it.
+        let ended = |told: &Told| {
+            told.iter()
+                .any(|(_, event)| matches!(event, Event::LaneEnded))
+        };
+        listen(&mut told, Duration::from_secs(10), &ended);
+        listen(&mut told, Duration::from_millis(500), &|_| false);
+        let of_lane = |is: &dyn Fn(&Event) -> bool| {
+            told.iter()
+                .rposition(|(session, event)| session.as_deref() == Some(&lane) && is(event))
+        };
+        let (jobs_at, ended_at) = (
+            of_lane(&|event| matches!(event, Event::Jobs(_))),
+            of_lane(&|event| matches!(event, Event::LaneEnded)),
+        );
+        assert!(
+            ended_at.is_some() && jobs_at < ended_at,
+            "the lane's jobs were told after its end: {told:#?}"
+        );
+        let last_jobs = jobs_at.map(|at| &told[at].1);
+        assert!(
+            matches!(last_jobs, Some(Event::Jobs(rows)) if rows.is_empty()),
+            "{last_jobs:?}"
+        );
+    });
+}
