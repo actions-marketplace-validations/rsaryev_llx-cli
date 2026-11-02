@@ -1,6 +1,8 @@
 // The search benchmark's scores: each answer against the files it must and may name, a run's
 // table by mode and group, and its line in HISTORY.md (README.md: what a run is judged by).
 
+import * as path from "node:path";
+
 /** A question about the repository and its known answer (queries.json). */
 export type Query = {
   id: string;
@@ -35,13 +37,29 @@ export type Scored = Answer & {
   none?: boolean;
 };
 
-/** The modes a run asks in when `--mode` names none. */
+/** Every mode a run can ask in (README.md): a name it does not know would ask the decision model. */
+const MODES = ["words", "judged", "hybrid", "hybrid-words", "rg"];
+
+/** The modes `--mode` names, else words, judged and rg. */
 export function modes(named?: string[]): string[] {
+  const unknown = named?.find((mode) => !MODES.includes(mode));
+  if (unknown) throw new Error(`--mode ${unknown}: one of ${MODES.join(", ")}`);
   return named?.length ? named : ["words", "judged", "rg"];
 }
 
-/** A test's file, which the decision model does not read (as `llx grep` tells one). */
-export const isTest = (file: string) => /(_tests\.|\/tests?\/)/.test(file);
+const TEST_DIRS = ["tests", "test", "__tests__", "spec", "fixtures", "testdata"];
+const TEST_ENDINGS = ["_tests.rs", "_test.rs", "_test.go", ".test.ts", ".test.js", ".spec.ts", ".spec.js", "_test.py"];
+
+/** A test's file, which the decision model is not given: as `llx grep` tells one (`is_test` in
+ * apps/server/src/commands/grep/rank.rs), by the names the usual layouts give one. */
+export function isTest(file: string): boolean {
+  const lower = file.toLowerCase();
+  return (
+    TEST_DIRS.some((dir) => lower.startsWith(`${dir}/`) || lower.includes(`/${dir}/`)) ||
+    TEST_ENDINGS.some((end) => lower.endsWith(end)) ||
+    path.basename(lower).startsWith("test_")
+  );
+}
 
 export function scored(mode: string, q: Query, a: Answer): Scored {
   const right = (file: string) =>
@@ -93,9 +111,8 @@ export function table(results: Scored[]): string {
 
 /** The run's line in HISTORY.md: R@5, P@5 and MRR over all the questions, for each mode of `llx grep`. */
 export function recorded(name: string, results: Scored[]): string {
-  const all = results.filter((r) => r.mode === "judged" || r.mode === "words");
   const line = (mode: string) => {
-    const of = all.filter((r) => r.mode === mode);
+    const of = results.filter((r) => r.mode === mode);
     const some = answered(of);
     return `${mode} R@5 ${pct(mean(some.map((r) => r.r5)))} P@5 ${pct(mean(of.map((r) => r.p5)))} MRR ${mean(some.map((r) => r.rr)).toFixed(2)}`;
   };

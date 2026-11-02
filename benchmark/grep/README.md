@@ -89,7 +89,7 @@ Give a pattern where a string the answer must have is known; else ask the questi
 
 `bun benchmark/grep/run.ts --ranks` asks no model: it prints where each file an answer must name
 stands in the ranking by words, the order the decision model reads files in, so the depth of
-`--judge` can be chosen without paying for a run. At this commit the deepest one is at 66
+`--judge` can be chosen without paying for a run. At this commit the deepest one is at 65
 (`concept-1`'s `extras.rs`; its `doctor.rs` has none of the question's words and is reached only
 through links), every other within 21: `--judge 80` reads past each, and 40 would leave
 `extras.rs` to the second round.
