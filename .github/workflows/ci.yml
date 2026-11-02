@@ -98,9 +98,10 @@ jobs:
   # actionlint reads the workflows and the examples as they are, then the examples again on this
   # checkout's action.yml (`uses: ./`), which checks each input and output they name against it.
   # The examples' schemas must parse, every job has a time limit, every llx step names its model,
-  # and each action is used at one version in all of them. Then scripts/check's own tests and the
-  # Markdown's relative links, and gitleaks on every commit (the whole history: a shallow clone would
-  # read the last one only).
+  # and each action is used at one version in all of them. The skill's frontmatter parses as YAML
+  # and names it, and each skill the plugin's manifest lists is there. Then scripts/check's own tests
+  # and the Markdown's relative links, and gitleaks on every commit (the whole history: a shallow
+  # clone would read the last one only).
   action:
     name: action
     runs-on: ubuntu-latest
@@ -115,5 +116,7 @@ jobs:
       - run: scripts/check --only actionlint
       - name: The examples' schemas, limits, models and versions
         run: scripts/check --only examples
+      - name: The skill's frontmatter and the plugin's manifest
+        run: scripts/check --only skill
       - run: scripts/check --only check-test,mdlinks
       - run: scripts/check --only secrets

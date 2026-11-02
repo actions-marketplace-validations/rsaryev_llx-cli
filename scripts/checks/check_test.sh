@@ -1,8 +1,9 @@
 #!/bin/sh
 # scripts/check's own tests: the plan chosen for sample changes (scripts/checks/plan.awk's rules,
-# one example each), its determinism, and the link checker on good and broken links. They read
-# this checkout's crates through cargo metadata, so a new crate or a new edge between crates
-# changes the expected scopes here, as it should. `scripts/check --only check-test` runs them.
+# one example each), its determinism, the link checker on good and broken links, and the skill
+# check on a good skill and each way one breaks. They read this checkout's crates through cargo
+# metadata, so a new crate or a new edge between crates changes the expected scopes here, as it
+# should. `scripts/check --only check-test` runs them.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 
@@ -145,6 +146,15 @@ expect "CI's jobs in Docker, a shell script with no extension" "" "repo
 shellcheck
 secrets" scripts/ci-docker
 
+expect "the skill: its frontmatter and the manifest that lists it, its links" "" "repo
+skill
+mdlinks
+secrets" skills/llx/SKILL.md
+
+expect "the plugin's manifest" --fast "repo
+skill
+secrets" .claude-plugin/marketplace.json
+
 expect "a file gone: its crate, and the links that may name it" "" "fmt
 clippy -p llx -p server -p tools
 test -p llx -p server -p tools
@@ -163,6 +173,7 @@ check-test
 shellcheck
 actionlint
 examples
+skill
 mdlinks
 secrets"
 
@@ -223,6 +234,84 @@ if sh scripts/checks/mdlinks.sh "$sample/sub/b.md" >/dev/null; then
 else
   fail "mdlinks: a file with no broken link fails"
 fi
+rm -rf "$sample"
+
+# The skill check, on a sample under target/: a skill and the marketplace that lists it pass, and
+# each break is found, first the one that shipped once (3c070615): a `: ` in an unquoted
+# description, which YAML reads as a mapping, so no agent could read the skill.
+sample=target/llx-check/skill-sample
+# `skill_sample FRONTMATTER [SKILLS]`: skills/demo/SKILL.md, and a marketplace whose plugin lists
+# SKILLS (`"./skills/demo"` by default).
+skill_sample() {
+  rm -rf "$sample"
+  mkdir -p "$sample/skills/demo" "$sample/.claude-plugin"
+  printf '%s\n%s\n%s\n\n# Demo\n' --- "$1" --- >"$sample/skills/demo/SKILL.md"
+  skill_listed=${2:-'"./skills/demo"'}
+  printf '{"name": "demo", "owner": {"name": "o"}, "plugins": [%s]}\n' \
+    "{\"name\": \"demo\", \"source\": \"./\", \"skills\": [$skill_listed]}" \
+    >"$sample/.claude-plugin/marketplace.json"
+}
+# `skill_expect NAME WANT`: the check on the sample passes (WANT empty), or fails with a line that
+# WANT (a grep pattern) matches.
+skill_expect() {
+  if skill_found=$(sh scripts/checks/skill.sh "$sample" 2>&1); then
+    skill_status=0
+  else
+    skill_status=1
+  fi
+  if { [ -z "$2" ] && [ "$skill_status" -eq 0 ]; } ||
+    { [ -n "$2" ] && [ "$skill_status" -ne 0 ] && printf '%s\n' "$skill_found" | grep -q -- "$2"; }; then
+    pass "skill: $1"
+  else
+    fail "skill: $1"
+    printf '%s\n' "$skill_found" | sed 's/^/    /'
+  fi
+}
+skill_tools='allowed-tools: Bash(demo:*)'
+skill_sample "name: demo
+description: 'Use it for a demo: what it does, and when.'
+$skill_tools"
+skill_expect "a skill the marketplace lists passes" ""
+skill_sample "name: demo
+description: Use it for a demo: what it does, and when.
+$skill_tools"
+skill_expect "a ': ' in an unquoted description is not YAML" \
+  '^skills/demo/SKILL.md: the frontmatter is not YAML: .*line 3'
+skill_sample "name: other
+description: A demo.
+$skill_tools"
+skill_expect "a name other than its directory's" '^skills/demo/SKILL.md: .*name.*other.*demo'
+skill_long=$(awk 'BEGIN { while (n++ < 1024) printf "a" }')
+skill_sample "name: demo
+description: $skill_long
+$skill_tools"
+skill_expect "a description of 1,024 characters passes" ""
+skill_sample "name: demo
+description: ${skill_long}a
+$skill_tools"
+skill_expect "a description past 1,024 characters" '^skills/demo/SKILL.md: .*1025 characters'
+skill_sample "name: demo
+$skill_tools"
+skill_expect "no description" '^skills/demo/SKILL.md: .*description'
+skill_sample "name: demo
+description: A demo."
+skill_expect "no allowed-tools" '^skills/demo/SKILL.md: .*allowed-tools'
+skill_sample "name: demo
+description: A demo.
+$skill_tools"
+sed 1d "$sample/skills/demo/SKILL.md" >"$sample/skills/demo/body" &&
+  mv "$sample/skills/demo/body" "$sample/skills/demo/SKILL.md"
+skill_expect "no frontmatter" '^skills/demo/SKILL.md: .*frontmatter'
+skill_sample "name: demo
+description: A demo.
+$skill_tools" '"./skills/demo", "./skills/gone"'
+skill_expect "a plugin's skill path that holds no SKILL.md" \
+  '^.claude-plugin/marketplace.json: .*skills/gone.*SKILL.md'
+skill_sample "name: demo
+description: A demo.
+$skill_tools"
+printf '{"plugins": [}\n' >"$sample/.claude-plugin/marketplace.json"
+skill_expect "a manifest that is not JSON" '^.claude-plugin/marketplace.json: .*JSON'
 rm -rf "$sample"
 
 # A pinned tool fetched into an empty cache, from an archive whose member has the tool's own name

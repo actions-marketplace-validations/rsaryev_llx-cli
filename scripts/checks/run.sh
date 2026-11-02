@@ -26,10 +26,11 @@ describe() {
     size) echo "the release build: llx fails above 5 MiB, warns above 4 MB" ;;
     site) echo "npm run build in site/: types, build, prerender (skipped without node_modules)" ;;
     action) echo "action/test.sh: the GitHub Action's script on a stub llx" ;;
-    check-test) echo "scripts/checks/check_test.sh: the plan's examples, the link checker's" ;;
+    check-test) echo "scripts/checks/check_test.sh: the plan's examples, the link and skill checkers'" ;;
     shellcheck) echo "shellcheck (pinned) on every shell script" ;;
     actionlint) echo "actionlint (pinned) on the workflows and examples, the examples against action.yml" ;;
     examples) echo "the example workflows' schemas, time limits, models, versions and two-job split" ;;
+    skill) echo "the skill's frontmatter (yq) and the skills the plugin's manifest lists (jq)" ;;
     mdlinks) echo "relative links and anchors in every Markdown file" ;;
     secrets) echo "gitleaks (pinned) on every commit and on the working tree's changes" ;;
   esac
@@ -94,6 +95,7 @@ check_site() {
 check_action() { bash action/test.sh; }
 check_check_test() { sh scripts/checks/check_test.sh; }
 check_mdlinks() { sh scripts/checks/mdlinks.sh; }
+check_skill() { sh scripts/checks/skill.sh; }
 
 # Keys and tokens, by gitleaks' own rules: every commit there is (a shallow clone has fewer), then
 # what the index and the working tree change of the tracked files. A new file is read once staged,

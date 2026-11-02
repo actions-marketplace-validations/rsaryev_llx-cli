@@ -11,6 +11,7 @@
 #   *.sh, scripts/check, scripts/setup, scripts/ci-docker, scripts/hooks/ -> shellcheck
 #   action.yml, examples/github/, .github/workflows/, .github/actions/ -> actionlint
 #   examples/github/        -> the examples' conventions
+#   skills/, .claude-plugin/ -> the skill's frontmatter and the plugin's manifest
 #   *.md, or any path gone  -> relative links and anchors
 #   anything                -> secrets in the commits and the working tree (gitleaks)
 
@@ -58,6 +59,7 @@ $1 == "" { next }
   if (path == "action.yml" || path ~ /^examples\/github\// || path ~ /^\.github\/(workflows|actions)\//)
     note("workflow", path)
   if (path ~ /^examples\/github\//) note("examples", path)
+  if (path ~ /^(skills|\.claude-plugin)\//) note("skill", path)
   if (path ~ /\.md$/ || gone) note("links", path)
 }
 
@@ -150,6 +152,7 @@ function changes(    c, i, j, m, d, grow, whole, rust, s, reason) {
   if (seen("shell")) emit("shellcheck", "", why("shell"))
   if (seen("workflow")) emit("actionlint", "", why("workflow"))
   if (seen("examples")) emit("examples", "", why("examples") ": schemas, time limits, models, versions")
+  if (seen("skill")) emit("skill", "", why("skill") ": the skill's frontmatter, the manifest's skills")
   if (seen("links")) emit("mdlinks", "", why("links") ": relative links and anchors")
   if (seen("any")) emit("secrets", "", "a change may hold a key or a token (gitleaks)")
 }
