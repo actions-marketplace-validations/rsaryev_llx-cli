@@ -22,12 +22,11 @@ commands yourself.
 - **The `default` mode** runs commands without asking in the system's sandbox (Seatbelt on macOS,
   Landlock and seccomp on Linux): it writes only inside the workspace (never its `.git`, nor on
   macOS a nested repository's) and a scratch directory of its own, and opens no network or local
-  socket. On Linux where the workspace has a `.git` of its own, and wherever the workspace is your
-  home directory or holds it, the sandbox lets a command write only its scratch directory. On
-  Linux, in a workspace with no `.git` of its own, a command can still write a nested repository's
-  `.git` or make a new `.git`, at the workspace's root too (in a workspace inside a repository,
-  git then finds that one first): Landlock cannot take a path out of the tree it lets write, and a
-  hook written there, or a command its config names, runs unconfined when git next runs there.
+  socket. On Linux, and wherever the workspace is your home directory or holds it, the sandbox
+  lets a command write only its scratch directory: Landlock cannot take a path out of a tree it
+  lets write, so a `.git` in the workspace (its own, a nested repository's, or one made anew,
+  where a hook, or a command its config names, runs unconfined when git next runs there) could
+  not be kept from it.
   Patches to the workspace's files are made without asking. A command the model escalates
   (`escalate`: it must leave the sandbox), or a patch inside `.git`, is asked first, and refused
   where no one can be asked (`llx exec` with no terminal, as in CI).

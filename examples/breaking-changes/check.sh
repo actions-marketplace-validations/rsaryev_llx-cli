@@ -19,7 +19,7 @@ prompt=$(sed -e "s|{SPEC}|$spec|g" -e "s|{BASE}|$base|g" "$here/prompt.md")
 # command line that would make one of them write a file or run another program
 # (`git diff --output=FILE`, `rg --pre`) matches no allow rule, so it runs as any other command
 # does: in the workspace's sandbox, with no network, never writing .git, free to write the
-# working tree (on Linux, in a workspace with a .git of its own, it only reads); where no sandbox
+# working tree (on Linux it only reads); where no sandbox
 # can be set up, it is refused. A patch changes the workspace's files. Run it on a checkout you
 # can throw away. stdin is closed: with the prompt on the command line, an open stdin (a CI
 # runner's, `ssh` without -n) would be read to its end first.

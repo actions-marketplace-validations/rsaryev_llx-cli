@@ -137,7 +137,7 @@ pub(crate) fn describe(mode: &Mode, terminal: bool, asks: bool) -> String {
             text.push_str(
                 " Commands run without asking, in a sandbox: they read every file and write \
                  inside the workspace (never its .git; they only read it where it holds the home \
-                 directory, or on Linux where it has a .git) and in $TMPDIR, a scratch directory of \
+                 directory, and on Linux) and in $TMPDIR, a scratch directory of \
                  their own; writing elsewhere, opening a socket or reaching another program \
                  fails. Files inside the workspace change without asking.",
             );

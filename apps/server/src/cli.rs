@@ -45,7 +45,7 @@ Rules decide what runs without asking: a deny refuses, an allow runs it as it is
 mode's sandbox does not cover is asked at the terminal (1 yes, 2 always for this tool, 3 no; \
 outside a session y, a or n), or refused with no one to ask. A mode (--mode) is a named set of \
 rules: default (commands run without asking in the system's sandbox, which writes only inside the \
-workspace, never its .git (on Linux, in a workspace with a .git of its own, it only reads), and \
+workspace, never its .git (on Linux it only reads), and \
 opens no network; file changes there are made; a command the model escalates, or a change inside \
 .git, is asked), plan (read-only: commands run without asking in the sandbox, where writing a \
 file, opening a socket or reaching another program fails), bypass (-y, everything allowed), or \

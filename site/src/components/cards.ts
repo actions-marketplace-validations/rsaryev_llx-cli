@@ -75,7 +75,7 @@ export const CARDS: Card[] = [
   },
   {
     title: 'Runs under your rules',
-    text: 'A mode is a set of rules and what its commands reach. By default, commands run in the system sandbox, which writes only inside the workspace (never its .git; on Linux, in a workspace with a .git of its own, they only read) and opens no network; what must reach further is asked. Rules come from your command line and settings, never from the repository, and a deny refuses in every mode.',
+    text: 'A mode is a set of rules and what its commands reach. By default, commands run in the system sandbox, which writes only inside the workspace (never its .git; on Linux they only read) and opens no network; what must reach further is asked. Rules come from your command line and settings, never from the repository, and a deny refuses in every mode.',
     link: { href: `${DOCS}/modes`, label: 'Modes and trust' },
     panel: [
       {

@@ -85,14 +85,15 @@ fn with_no_terminal_a_command_that_leaves_the_sandbox_runs_only_with_yes_or_in_b
 
 /// The default mode works in the workspace without asking: a command writes there, in its
 /// sandbox, and nowhere else; a workspace that is the home directory (every file the person has)
-/// only reads.
+/// only reads, as every workspace does on Linux, where Landlock could keep no `.git` in it.
 #[test]
 fn the_default_mode_writes_the_workspace_alone_and_never_the_home() {
     let home = Home::new();
     let work = home.path().join("work");
     std::fs::create_dir_all(&work).unwrap();
     let command = "echo in > made.txt; echo out > ../out.txt; echo end";
-    for (dir, made) in [(&work, true), (&home.path().to_path_buf(), false)] {
+    let writes = cfg!(target_os = "macos");
+    for (dir, made) in [(&work, writes), (&home.path().to_path_buf(), false)] {
         let model = Model::start(vec![
             Reply::call("bash", json!({ "command": command })),
             Reply::done("Done."),

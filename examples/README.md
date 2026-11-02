@@ -60,8 +60,8 @@ prompt is in the workflow, where you can read it, and so is what gets posted.
   the rest in its summary, and drops one on the line of an earlier comment of its own or within 3
   lines of a finding it already keeps (the more severe first).
 - **What the agent may run.** In the default mode, a command no rule names runs in a sandbox with
-  no network that writes nothing outside the checkout, and never its `.git` (on Linux, in a
-  workspace with a `.git` of its own, it only reads); `apply_patch` changes the checkout's files;
+  no network that writes nothing outside the checkout, and never its `.git` (on Linux it only
+  reads); `apply_patch` changes the checkout's files;
   what must reach further is refused, as no one is there to ask. `allow: bash` lets every command
   run as it is, outside the sandbox. The checkout is throwaway and the job has no token that can
   write, so nothing it changes is committed. `gate.yml` runs in `plan`, where nothing can change.

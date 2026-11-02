@@ -223,17 +223,25 @@ fn a_workspace_command_never_writes_a_nested_repositorys_git() {
     }
 }
 
-/// Landlock cannot take `.git` out of a tree it lets write: a workspace with one only reads.
+/// Landlock cannot take a path out of a tree it lets write, so no `.git` in the workspace (its
+/// own, a nested repository's, or one made anew) could be kept from a command: on Linux the
+/// workspace's scope only reads, a plain directory as a repository.
 #[cfg(target_os = "linux")]
 #[test]
-fn a_workspace_command_in_a_repository_only_reads_where_git_cannot_be_kept() {
-    let dir = Scratch::new();
-    dir.file(".git/config", "[core]\n");
-    let finished = in_workspace("echo made > new.txt", dir.path());
-    assert!(refused(&finished.output), "{}", finished.output);
-    assert!(!dir.path().join("new.txt").exists());
+fn a_workspace_command_on_linux_only_reads() {
+    let repository = Scratch::new();
+    repository.file(".git/config", "[core]\n");
+    let nested = Scratch::new();
+    nested.file("sub/.git/config", "[core]\n");
     let plain = Scratch::new();
-    let finished = in_workspace("echo made > new.txt", plain.path());
-    assert_eq!(finished.ending, Ending::Exit(0), "{}", finished.output);
-    assert!(plain.path().join("new.txt").exists());
+    for (dir, written) in [
+        (&repository, "new.txt"),
+        (&nested, "sub/.git/hooks-pre-commit"),
+        (&plain, "new.txt"),
+        (&plain, ".git"),
+    ] {
+        let finished = in_workspace(&format!("echo made > {written}"), dir.path());
+        assert!(refused(&finished.output), "{written}: {}", finished.output);
+        assert!(!dir.path().join(written).exists(), "{written}");
+    }
 }

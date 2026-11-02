@@ -9,8 +9,8 @@ recipe is a line or a few you can run as is; the outputs below are from real run
   read-only sandbox: they write no file and open no network (what they print still goes to the
   model's provider). Its patches are refused.
 - `llx exec`: the `default` mode. Its commands run in a sandbox that writes only inside the
-  workspace, never its `.git`, with no network (on Linux, in a workspace with a `.git` of its
-  own, they only read); its patches change the workspace's files. What must reach further is
+  workspace, never its `.git`, with no network (on Linux they only
+  read); its patches change the workspace's files. What must reach further is
   asked at the terminal, and refused where there is none (cron, CI).
 - `llx exec --allow bash`: every command runs as it is, outside the sandbox and with the
   network, without asking. The agent explores, runs the tests and confirms what it says.

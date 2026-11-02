@@ -17,8 +17,7 @@ where. Its reading commands (`git diff`, `cat`, `rg` and the like) are allowed: 
 are, outside the sandbox, so the check reads even where no sandbox can be set up. A command line
 that would make one of them write a file or run another program (`git diff --output`, `rg --pre`)
 matches no allow rule: it runs as any other command does, in the workspace's sandbox, with no
-network and never writing `.git` (on Linux, in a workspace with a `.git` of its own, it only
-reads), and is refused where no sandbox can be set up (some containers). A patch may change the
+network and never writing `.git` (on Linux it only reads), and is refused where no sandbox can be set up (some containers). A patch may change the
 working tree. Run it on a checkout you can throw away, as CI's is.
 
 ## Files

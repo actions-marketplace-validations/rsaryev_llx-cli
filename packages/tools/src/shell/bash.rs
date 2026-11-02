@@ -171,8 +171,8 @@ impl BashTool<'_> {
 
 /// What a command the sandbox seems to have refused is told.
 const REFUSED: &str = "\n(This looks like the sandbox's refusal: commands here write only inside \
-the workspace, never its .git (they only read it where it holds the home directory, or on Linux \
-where it has a .git), and open no network. If the command needs more, run it again with \
+the workspace, never its .git (they only read it where it holds the home directory, and on Linux), \
+and open no network. If the command needs more, run it again with \
 `escalate`: the person is asked.)";
 
 /// An empty command, as models send one now and then for a pause: answered, not failed, so the

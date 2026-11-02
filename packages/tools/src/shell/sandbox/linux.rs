@@ -1,6 +1,6 @@
 //! The sandbox on Linux: Landlock (its ABI 3: Linux 6.2 and later) keeps the command from writing
-//! anywhere but `/dev/null`, its scratch directory and, in the workspace's scope, the workspace
-//! where `sandbox::writable` lets it (no `.git` at its root, not the home nor above it), and from
+//! anywhere but `/dev/null` and its scratch directory, in every scope (Landlock cannot keep a
+//! `.git` out of a tree it lets write, so the workspace's scope only reads here, B3), and from
 //! tracing a process outside its domain; a seccomp filter refuses it every socket (`socket`, and
 //! `io_uring`, which can open one). Both are set between fork and exec, after `no_new_privs` (so
 //! no setuid program lifts them), and everything the command starts inherits them.
@@ -61,9 +61,9 @@ pub(super) fn available() -> bool {
     supported(abi()).is_ok()
 }
 
-/// The rules for a command whose writable places are `scratch` and `writes`, as a Landlock ruleset
-/// the child takes on before it starts. An error when the kernel has no Landlock.
-pub(super) fn rules(scratch: &Path, writes: Option<&Path>) -> io::Result<OwnedFd> {
+/// The rules for a command that writes only `scratch` (and `/dev/null`), as a Landlock ruleset the
+/// child takes on before it starts. An error when the kernel has no Landlock.
+pub(super) fn rules(scratch: &Path) -> io::Result<OwnedFd> {
     let abi = abi();
     supported(abi)?;
     let since = |version: i64, rights: u64| if abi >= version { rights } else { 0 };
@@ -97,9 +97,6 @@ pub(super) fn rules(scratch: &Path, writes: Option<&Path>) -> io::Result<OwnedFd
     let rules = unsafe { OwnedFd::from_raw_fd(fd) };
     grant(&rules, Path::new("/dev/null"), WRITE_FILE | TRUNCATE)?;
     grant(&rules, scratch, changes)?;
-    if let Some(root) = writes {
-        grant(&rules, root, changes)?;
-    }
     Ok(rules)
 }
 
