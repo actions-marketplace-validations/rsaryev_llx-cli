@@ -18,13 +18,13 @@ use spill::Spill;
 /// tokens in all, so the files a model reads in one command before it works (a project's tests)
 /// come whole, not in two turns. The end is the longer: a build's summary and its last error come
 /// last, and the start says what ran.
-pub(super) const HEAD: usize = 16_000;
-pub(super) const TAIL: usize = 64_000;
+const HEAD: usize = 16_000;
+const TAIL: usize = 64_000;
 /// The same of a command that failed: some 10,000 tokens.
-pub(super) const NARROW_HEAD: usize = 8_000;
-pub(super) const NARROW_TAIL: usize = 32_000;
+const NARROW_HEAD: usize = 8_000;
+const NARROW_TAIL: usize = 32_000;
 /// The most characters of one line shown: past it, a line is a dump, not something to read.
-pub(super) const LINE: usize = 2_000;
+const LINE: usize = 2_000;
 /// About what a repeat's note takes: a repeat that takes less is written out.
 const REPEAT_NOTE: usize = 40;
 
