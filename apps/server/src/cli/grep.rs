@@ -19,7 +19,8 @@ pub(crate) struct GrepArgs {
     /// picked and the cost.
     #[arg(long)]
     pub json: bool,
-    /// At most this many files shown with their lines; the rest are named.
+    /// At most this many files shown with their lines; the rest the decision model kept are
+    /// named.
     #[arg(short = 'n', long, value_name = "N", default_value_t = 10)]
     pub limit: usize,
     /// At most this many lines shown in all, the best file given the most.
@@ -28,8 +29,8 @@ pub(crate) struct GrepArgs {
     /// By the words alone, even where a decision model is there: no network, no cost.
     #[arg(long)]
     pub lexical: bool,
-    /// At most this many files read by the decision model, the best by their words first
-    /// (all of them when there are no more).
+    /// At most this many files read by the decision model, the best by their words first (all of
+    /// them, but the tests, when there are no more than half again as many).
     #[arg(long, value_name = "N", default_value_t = 80)]
     pub judge: usize,
     /// The decision model.
