@@ -57,6 +57,8 @@ const { values: opts } = parseArgs({
     mode: { type: "string", multiple: true },
     only: { type: "string", multiple: true },
     label: { type: "string" },
+    // Passed to `llx grep` as they are, to compare its settings: `--grep-arg=--judge --grep-arg=40`.
+    "grep-arg": { type: "string", multiple: true },
     record: { type: "boolean", default: false },
   },
 });
@@ -112,7 +114,8 @@ function ask(mode: string, q: Query, repo: string): Answer {
     return { files, millis: run.millis, cost: 0, bytes: read.out.length };
   }
   const lexical = mode === "words" ? ["--lexical"] : [];
-  const run = sh([opts.llx!, "grep", "--json", ...lexical, q.query, ...paths], repo);
+  const extra = opts["grep-arg"] ?? [];
+  const run = sh([opts.llx!, "grep", "--json", ...lexical, ...extra, q.query, ...paths], repo);
   if (run.code !== 0 && run.code !== 1)
     return { files: [], millis: run.millis, cost: 0, bytes: 0, failed: run.err.trim() };
   const answer = JSON.parse(run.out);

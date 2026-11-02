@@ -39,6 +39,8 @@ pub(super) struct Verdicts {
     pub(super) lead: Vec<Option<(usize, usize)>>,
     pub(super) model: String,
     pub(super) cost: f64,
+    /// Why the model gave no answer, the first time it failed: said when none came.
+    pub(super) failed: Option<String>,
 }
 
 /// Each of `docs` judged against `question`, with each one's best parts: whether it answers, and
@@ -55,9 +57,15 @@ pub(super) fn judged(
             asked.insert(PART.to_string(), part(question, &parts.spans));
         }
         let state = json!({ "path": doc.path, "text": read(&doc.text, &parts.text) });
-        let mut decision = decider.decide(&state, &asked).ok()?;
-        let yes = match decision.answers.remove(ANSWERS)? {
-            Answer::Choice { probabilities, .. } => probabilities.get("yes").copied()?,
+        let mut decision = match decider.decide(&state, &asked) {
+            Ok(decision) => decision,
+            Err(error) => return Err(error.to_string()),
+        };
+        let no_answer = || "it answered no question".to_string();
+        let yes = match decision.answers.remove(ANSWERS).ok_or_else(no_answer)? {
+            Answer::Choice { probabilities, .. } => {
+                probabilities.get("yes").copied().ok_or_else(no_answer)?
+            }
             Answer::Noul(likely) => likely,
         };
         let lead = match decision.answers.remove(PART) {
@@ -67,7 +75,7 @@ pub(super) fn judged(
             Some(Answer::Noul(_)) | None => None,
         };
         log::debug!("grep: {} answers with {yes:.2}, best at {lead:?}", doc.path);
-        Some((yes, lead, decision.model, decision.cost))
+        Ok((yes, lead, decision.model, decision.cost))
     };
     let answers = each_at_once(docs, AT_ONCE, "llx-grep", ask)
         .map_err(|error| Failure::Environment(format!("could not start a thread: {error}")))?;
@@ -76,9 +84,17 @@ pub(super) fn judged(
         lead: vec![],
         model: String::new(),
         cost: 0.0,
+        failed: None,
     };
     for answer in answers {
-        let answer = answer.flatten();
+        let answer = match answer {
+            Some(Ok(answer)) => Some(answer),
+            Some(Err(why)) => {
+                verdicts.failed.get_or_insert(why);
+                None
+            }
+            None => None,
+        };
         if let Some((_, _, model, cost)) = &answer {
             verdicts.model.clone_from(model);
             verdicts.cost += cost;

@@ -107,11 +107,13 @@ pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
                     );
                     picked(&candidates, &verdicts, &second, &ranked)
                 }
-                Ok(_) => by_words(
-                    &ranked,
-                    args,
-                    Some("the decision model gave no answer".into()),
-                ),
+                Ok(verdicts) => {
+                    let why = verdicts.failed.map_or_else(
+                        || "the decision model gave no answer".to_string(),
+                        |why| format!("the decision model: {why}"),
+                    );
+                    by_words(&ranked, args, Some(why))
+                }
                 Err(failure) => by_words(&ranked, args, failure.message()),
             }
         }

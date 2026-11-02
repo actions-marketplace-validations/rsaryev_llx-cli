@@ -178,7 +178,10 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
     if request.get("questions").is_some() {
         let mut held = shared.lock().unwrap();
         held.advised.push(request.clone());
-        if !matches!(held.script.front(), Some(Reply::Decided(..))) {
+        if !matches!(
+            held.script.front(),
+            Some(Reply::Decided(..) | Reply::Refused(_))
+        ) {
             drop(held);
             let none = json!({"model": request["model"], "answers": {}, "usage": {"cost": 0.0}});
             return respond(stream, 200, &none);

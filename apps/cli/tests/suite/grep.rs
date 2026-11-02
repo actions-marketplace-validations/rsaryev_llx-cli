@@ -254,3 +254,26 @@ fn a_file_with_none_of_the_words_is_reached_through_the_module_it_shares_with_on
             .contains("reached through `tools::shell`")
     );
 }
+
+#[test]
+fn a_decision_model_that_refuses_says_why_and_the_words_answer() {
+    let home = Home::new();
+    project(&home);
+    // Out of credit: OpenRouter's 402.
+    let model = Model::start(vec![Reply::Refused(402), Reply::Refused(402)]);
+    let args = [
+        "grep",
+        "where is a failed request sent again",
+        "project",
+        "--judge",
+        "1",
+    ];
+    let out = grep(&home, Some(&model), &args);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(text(&out.stdout).starts_with("project/src/retry.rs"));
+    let said = text(&out.stderr);
+    assert!(
+        said.contains("by their words alone") && said.contains("402"),
+        "{said}"
+    );
+}

@@ -100,6 +100,7 @@ fn a_file_the_model_was_unsure_of_is_read_again_where_it_names_a_kept_files_modu
         lead: vec![None; 4],
         model: "jev".into(),
         cost: 0.004,
+        failed: None,
     };
     let (candidates, verdicts, second) =
         second_round(&table, &args, &docs, &terms, vec![0, 1, 2, 3], verdicts);
@@ -116,6 +117,7 @@ fn a_file_the_second_round_kept_comes_after_those_the_first_did() {
         lead: vec![None, None, None],
         model: "jev".into(),
         cost: 0.0,
+        failed: None,
     };
     let outcome = picked(&[0, 1, 2], &verdicts, &[false, true, false], &[]);
     let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
@@ -129,6 +131,7 @@ fn a_file_the_second_round_kept_is_shown_past_the_first_rounds_margin() {
         lead: vec![None; 4],
         model: "jev".into(),
         cost: 0.0,
+        failed: None,
     };
     let outcome = picked(&[0, 1, 2, 3], &verdicts, &[false, false, true, true], &[]);
     let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
@@ -146,6 +149,7 @@ fn a_second_round_file_far_below_that_rounds_best_is_named_as_unsure() {
         lead: vec![None; 3],
         model: "jev".into(),
         cost: 0.0,
+        failed: None,
     };
     let outcome = picked(&[0, 1, 2], &verdicts, &[false, true, true], &[]);
     let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
