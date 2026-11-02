@@ -105,3 +105,24 @@ fn a_context_line_that_reads_like_a_header_stays_in_the_section_the_cut_fell_in(
         "no part of the cut section is applied"
     );
 }
+
+#[test]
+fn a_wrong_line_in_the_whole_part_is_numbered_as_the_text_has_it() {
+    // `stray` is the text's fifth line each time, the heredoc and a blank line before the patch
+    // counted as a whole patch counts them.
+    for patch in [
+        "*** Begin Patch\n*** Add File: a\n+x\n+y\nstray\n*** Add File: b\n+cut",
+        "<<'EOF'\n*** Begin Patch\n*** Add File: a\n+x\nstray\n*** Add File: b\n+cut",
+        "\n*** Begin Patch\n*** Add File: a\n+x\nstray\n*** Add File: b\n+cut",
+    ] {
+        let dir = Scratch::new();
+        let Err(ToolError::Failed(why)) = salvaged(&dir, patch) else {
+            panic!("{patch:?}: its whole part is not a patch");
+        };
+        assert!(
+            why.starts_with("invalid patch, line 5: "),
+            "{patch:?}: {why}"
+        );
+        assert!(!dir.path().join("a").exists());
+    }
+}

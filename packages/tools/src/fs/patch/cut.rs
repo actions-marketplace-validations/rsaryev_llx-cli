@@ -45,7 +45,9 @@ pub(super) fn salvage(
     let cut = format!(
         "Your reply was cut off at your output limit in the section '{fell_in}': {RESEND}."
     );
-    let closed = format!("{}\n{END}", whole.join("\n"));
+    // The lines before `*** Begin Patch` (a heredoc's opener, blank ones) kept as blank lines,
+    // which the parser counts: a wrong line is numbered as the model's text has it.
+    let closed = format!("{}{}\n{END}", "\n".repeat(begin), whole.join("\n"));
     match run(workspace, gate, &closed) {
         Ok(mut output) => {
             output.report = format!("{}\n\n{cut}", output.report);
