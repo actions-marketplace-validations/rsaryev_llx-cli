@@ -1,11 +1,12 @@
 # llx
 
-> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary under 4 MB. `llx exec` runs one
-> task and ends with the model's answer, and with `--schema` data matching your JSON Schema, with
-> an exit code and `--json` events as a contract. The same binary is a minimal agent at the terminal
-> (`llx`, five tools: `bash`, `apply_patch`, `ask`, `agents`, `jobs`) and a quick choice about stdin
-> for other agents (`llx decide`). It works with any model of the models.dev catalog and runs on
-> macOS and Linux.
+> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary under 4 MB.
+> `llx exec` runs one task and ends with the model's answer, and with `--schema` data matching
+> your JSON Schema, with an exit code and `--json` events as a contract. The same binary is a
+> minimal agent at the terminal (`llx`, six tools: `bash`, `apply_patch`, `grep`, `ask`,
+> `agents`, `jobs`), and for other agents a search of the code by what a question means
+> (`llx grep`) and a quick choice about stdin (`llx decide`). It works with any model of the
+> models.dev catalog and runs on macOS and Linux.
 
 ## Install
 
@@ -18,6 +19,7 @@
 - `llx exec "<task>"` (or `llx -p "<task>"`) runs one task and exits: the answer alone on stdout.
 - A task ends when the model replies with no tool call; with `--schema`, llx asks once more for `data` matching it (two fixes at most).
 - `llx exec --json` prints one JSON event per line, ending with `run.completed` and its `status`.
+- `llx grep "<question>" [paths]` searches the code by what a question means and prints the files that answer it, with their lines; where an OpenRouter key is set, the decision model reads the best files, else their words rank them. Exit 1 when no file answers.
 - `llx decide "<question>"` asks the decision model one question about stdin and prints the option it picked (`--choices`; `--expect` exits 1 when another is picked). It needs an OpenRouter key.
 - What a task may do is its mode. By default its commands run in the system's sandbox, which writes only inside the workspace (never its `.git`; on Linux, in a workspace with a `.git` of its own, they only read) and opens no network, and its file changes there are made; what must reach further is asked at the terminal, and refused where there is none (CI, cron). `--mode plan` is read-only, `-y` allows everything, and `--allow 'bash(cargo test *)'` and `--deny 'bash(git push *)'` add rules: https://llx.sh/docs/modes.
 - Exit codes: 0 done, 1 no data (`no_data`, `--schema` only) or, for `decide --expect`, another option picked, 2 out of turns, time or money (`exhausted`; `--max-turns`, `--timeout`, `--budget`), 3 environment or usage (`error`), 130 interrupted (Ctrl-C, SIGTERM or SIGHUP).
@@ -31,7 +33,8 @@
 
 ## From another agent
 
-- `llx exec` hands a task to a helper on any provider and model; `llx decide` answers a quick choice about stdin.
+- `llx exec` hands a task to a helper on any provider and model; `llx grep` finds the code that answers a question; `llx decide` answers a quick choice about stdin.
+- A skill for any agent that takes skills: `npx skills add rsaryev/llx` (in Claude Code also a plugin: `/plugin install llx --marketplace rsaryev/llx`). It points the agent at each command's `--help`.
 - Guide: https://llx.sh/docs/agents.
 
 ## Links

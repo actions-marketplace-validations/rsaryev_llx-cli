@@ -1,7 +1,5 @@
-/**
- * An asciinema v3 recording read
- * into a timeline: its size, what it printed and when, and its chapters.
- */
+/** An asciinema v3 recording read into a timeline: its size, what it printed and when, and its
+ *  chapters. */
 export type Frame = { at: number; data: string };
 export type Chapter = { label: string; frame: number };
 export type Cast = { cols: number; rows: number; frames: Frame[]; chapters: Chapter[] };

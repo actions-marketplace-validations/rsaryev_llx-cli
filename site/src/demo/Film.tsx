@@ -23,7 +23,7 @@ export function Film({ src, label }: { src: string; label: string }) {
   useEffect(() => {
     let alive = true;
     let cleanup = () => {};
-    const fonts = document.fonts.load(`14px Mono`).catch(() => []);
+    const fonts = document.fonts.load('14px Mono').catch(() => []);
     void Promise.all([import('@xterm/xterm'), fetch(src).then((r) => r.text()), fonts]).then(([{ Terminal }, text]) => {
       const node = host.current;
       if (!alive || !node) return;

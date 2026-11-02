@@ -11,17 +11,17 @@ export function Nav({ at = 'home' }: { at?: 'home' | 'docs' }) {
         Skip to the content
       </a>
       <header className="nav wrap">
-      <a className="wordmark" href={at === 'home' ? '#top' : '/'} aria-label="llx home">
-        llx
-      </a>
-      <nav className="nav-links" aria-label="Site">
-        <a className="nav-link" href={DOCS} aria-current={at === 'docs' ? 'true' : undefined}>
-          Docs
+        <a className="wordmark" href={at === 'home' ? '#top' : '/'} aria-label="llx home">
+          llx
         </a>
-        <a className="gh" href={GITHUB} aria-label="llx on GitHub" title="GitHub">
-          <GitHubIcon size={20} />
-        </a>
-      </nav>
+        <nav className="nav-links" aria-label="Site">
+          <a className="nav-link" href={DOCS} aria-current={at === 'docs' ? 'true' : undefined}>
+            Docs
+          </a>
+          <a className="gh" href={GITHUB} aria-label="llx on GitHub" title="GitHub">
+            <GitHubIcon size={20} />
+          </a>
+        </nav>
       </header>
     </>
   );

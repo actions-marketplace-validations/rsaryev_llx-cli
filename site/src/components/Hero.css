@@ -73,7 +73,7 @@ h1 {
   animation: rise 700ms var(--ease-out) both;
 }
 .hero .lede { animation-delay: 70ms; }
-.hero .install { animation-delay: 120ms; }
+.hero .install-box { animation-delay: 120ms; }
 .hero .hero-under { animation-delay: 160ms; }
 .hero .hero-demo { animation-delay: 220ms; }
 @keyframes rise {

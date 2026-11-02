@@ -22,7 +22,8 @@ const shell = (text: string): Block => ({ lang: 'shell', text });
 const out = (text: string, tone: Tone = 'hi'): Block => ({ out: text, tone });
 
 /** The exit codes are exit.rs; the cost in the pipeline card is an illustration; the rules card
- *  uses llx's own wording of a refusal (packages/tools/src/lib.rs). */
+ *  uses llx's own wording of a refusal (packages/tools/src/lib.rs, apps/server/src/rules.rs), and
+ *  the search card the line llx grep ends with (apps/server/src/grep/shown.rs). */
 export const CARDS: Card[] = [
   {
     title: 'Ends every task with an exit code',
@@ -153,7 +154,7 @@ export const CARDS: Card[] = [
         ],
         align: 'lr',
       },
-      out('4 of 1,199 files answer, 80 read: 2.1 s, $0.005', 'dim'),
+      out('llx grep: 4 of 1199 files answer, 80 read by ~typesafe/jev-latest (2.1 s, $0.0050)', 'dim'),
       {
         grid: [
           [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],
@@ -183,14 +184,15 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'Five tools, one binary under 4 MB',
-    text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. No plugins, no skills, no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
+    title: 'Six tools, one binary under 4 MB',
+    text: 'bash reads, searches and runs the checks; apply_patch changes files; grep finds the code that answers a question; ask puts a question to you; agents and jobs do the rest. It takes no plugins, no skills and no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
     link: { href: DOCS, label: 'The docs' },
     panel: [
       {
         grid: [
           [['hi', 'bash'], ['dim', 'read, search, run the checks']],
           [['hi', 'apply_patch'], ['dim', 'add, change, delete, move files']],
+          [['hi', 'grep'], ['dim', 'the code that answers a question']],
           [['hi', 'ask'], ['dim', 'a question to the person']],
           [['hi', 'agents'], ['dim', 'other agents, in parallel']],
           [['hi', 'jobs'], ['dim', 'monitors and schedules']],

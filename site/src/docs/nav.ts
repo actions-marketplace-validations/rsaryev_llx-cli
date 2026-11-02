@@ -22,7 +22,7 @@ export const NAV: NavGroup[] = [
   },
   {
     title: 'Reference',
-    blurb: 'The six tools and result, modes and approvals, llx in other agents, the exit codes and the JSON events.',
+    blurb: 'The six tools and result, modes and approvals, llx in other agents, the exit codes, the JSON events, llx decide and llx grep.',
     pages: [
       { slug: 'tools', source: 'docs/tools.md' },
       { slug: 'modes', source: 'docs/modes.md' },
