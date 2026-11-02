@@ -15,20 +15,20 @@ const MAX_WAIT_MS: u64 = 600_000;
 const NAME_CHARS: usize = 24;
 
 pub(super) const DESCRIPTION: &str = "Start other agents and work with them. Start one only \
-when the person, or the project's instructions, ask for agents, delegation or parallel work; a request for \
-depth, thoroughness or a careful look is not such an ask. Never hand an agent the work your next \
-step waits on (reading what the task needs, the change you are about to make), nor what you are \
-reading or doing yourself, nor one part to two agents: the work is paid for twice, and you wait \
-for it either way. An agent is a session of its own with the same tools (it cannot use this one, \
-`ask` or `jobs`), the same workspace and the same approvals; the person can watch it. By default \
-it is a fork: it starts with this whole conversation, everything you have read and done, so its \
-task can be short: the part that is its own, the constraints, and what its answer must contain. \
-With `context: \"fresh\"` it starts knowing nothing: give it a complete, self-contained task. \
-Agents work in the background, at the same time: start every independent one in the same turn, \
-then do your own part, which overlaps none of theirs. An agent's answer comes to you by itself, \
-as an `<agent_result>` message, once it is done; your task does not end before the agents you \
-started have answered. Its answer is its own account: check what matters before you rely on it, \
-and say in your answer what agents did.
+when the person, or the project's instructions, ask for agents, delegation or parallel work; a \
+request for depth, thoroughness or a careful look is not such an ask. Never hand an agent the \
+work your next step waits on (reading what the task needs, the change you are about to make), \
+nor what you are reading or doing yourself, nor one part to two agents: the work is paid for \
+twice, and you wait for it either way. An agent is a session of its own with the same tools (it \
+cannot use this one, `ask` or `jobs`), the same workspace and the same approvals; the person can \
+watch it. By default it is a fork: it starts with this whole conversation, everything you have \
+read and done, so its task can be short: the part that is its own, the constraints, and what its \
+answer must contain. With `context: \"fresh\"` it starts knowing nothing: give it a complete, \
+self-contained task. Agents work in the background, at the same time: start every independent \
+one in the same turn, then do your own part, which overlaps none of theirs. An agent's answer \
+comes to you by itself, as an `<agent_result>` message, once it is done; your task does not end \
+before the agents you started have answered. Its answer is its own account: check what matters \
+before you rely on it, and say in your answer what agents did.
 Actions:
 - `spawn` with `task` (a short `name`, and `context`): start an agent; returns at once.
 - `send` with `agent` and `message`: tell an agent more. One that is working reads it at its \
