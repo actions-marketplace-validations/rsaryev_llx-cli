@@ -138,6 +138,8 @@ fn in_session(owner: &str, work: impl FnOnce(&Jobs, &Seen)) {
     let scratch = Scratch::new();
     let workspace = Workspace::new(scratch.path()).unwrap();
     let (ui, peer, frames) = crate::testing::fake_peer();
+    // The interface's own lane, where what comes back from the background is queued.
+    peer.inputs.open("");
     let output = quiet().in_ui(Some(ui));
     let queue = crate::arrivals::queue(output.ui().cloned());
     let kit = Kit {

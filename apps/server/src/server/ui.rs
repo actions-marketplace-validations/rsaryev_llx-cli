@@ -129,8 +129,12 @@ impl Ui {
         self.lane.as_deref().unwrap_or_default()
     }
 
-    /// Report `event`, in the session's name; what runs in the lanes learns of it.
+    /// Report `event`, in the session's name; what runs in the lanes learns of it, after a lane
+    /// that starts is given its queue (what is typed for a lane known open is kept).
     pub(crate) fn send(&self, event: Event) {
+        if let Event::LaneStarted { id, .. } = &event {
+            self.peer.inputs.open(id);
+        }
         self.peer.work.saw(self.lane.as_deref(), &event);
         let session = self.lane.as_deref().map(str::to_string);
         self.peer.send(ToClient::Event {
@@ -308,7 +312,8 @@ fn rows(items: &[Item]) -> (Vec<(String, String)>, Option<usize>) {
     (options, items.iter().position(|item| item.marked))
 }
 
-/// The lane's end, however it ends: its queue is forgotten.
+/// The lane's end, however it ends: its queue is forgotten, then what runs lets it go. What is
+/// typed while the lane is still listed as working is refused by the queue that forgot it.
 pub(crate) struct Ends(Ui);
 
 impl Drop for Ends {

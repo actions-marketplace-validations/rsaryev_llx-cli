@@ -378,6 +378,7 @@ fn the_person_is_given_up_on_only_when_the_last_connection_is_gone() {
 #[test]
 fn moved_to_the_background_the_connections_end_leaves_the_prompts_waiting() {
     let served = served();
+    open(&served, "s1");
     served.call(1, Command::Background);
     assert_eq!(served.done(1), Done::Ok);
     let Served {
@@ -390,14 +391,12 @@ fn moved_to_the_background_the_connections_end_leaves_the_prompts_waiting() {
     drop(to_server);
     let asked: Vec<Request> = desk.iter().collect();
     assert_eq!(asked, [Request::Background]);
-    peer.inputs.input(
-        Input {
-            session: "s1".into(),
-            text: "from the next interface".into(),
-            ..Input::default()
-        },
-        false,
-    );
+    let next = Input {
+        session: "s1".into(),
+        text: "from the next interface".into(),
+        ..Input::default()
+    };
+    assert!(peer.inputs.input(next, false), "the lane is open");
     let entry = peer.inputs.next("s1").map(|entry| entry.text);
     assert_eq!(entry.as_deref(), Some("from the next interface"));
 }
@@ -466,6 +465,47 @@ fn what_is_typed_for_a_session_not_open_is_refused_and_kept_nowhere() {
         },
     );
     assert!(matches!(served.done(2), Done::Failed { .. }));
+}
+
+/// A lane's end forgets its queue first, then what runs lets the lane go (`Ends`): what the
+/// person types in between is refused, never kept in a queue made again for a lane gone.
+#[test]
+fn what_is_typed_for_a_lane_that_is_ending_is_refused_and_kept_nowhere() {
+    let served = served();
+    open(&served, "s1");
+    // The lane's end, half done: its queue forgotten, its work not let go yet.
+    served.peer.inputs.forget("s1");
+    let input = Input {
+        session: "s1".into(),
+        text: "fix it".into(),
+        ..Input::default()
+    };
+    served.call(1, Command::Input(input));
+    let (told, done) = until_done(&served.out, 1);
+    assert!(
+        matches!(&done, Done::Failed { why } if why.contains("s1")),
+        "{done:?}"
+    );
+    let ended = told.iter().position(|frame| {
+        matches!(
+            frame,
+            ToClient::Event {
+                event: protocol::Event::LaneEnded,
+                ..
+            }
+        )
+    });
+    let after = &told[ended.map_or(0, |at| at + 1)..];
+    let queued = after.iter().any(|frame| {
+        matches!(
+            frame,
+            ToClient::Event {
+                event: protocol::Event::Queue { .. },
+                ..
+            }
+        )
+    });
+    assert!(!queued, "a queue told for a lane gone: {told:?}");
 }
 
 #[test]

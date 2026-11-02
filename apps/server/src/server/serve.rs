@@ -133,14 +133,16 @@ fn done(command: Command, peer: &Peer, desk: &Sender<Request>, info: &Info) -> D
                 background: info.host.is_some(),
             }
         }
-        // A lane that ended keeps nothing: what comes for it is refused, never kept.
-        Command::Input(input) => match peer.work.busy(&input.session) {
-            Some(busy) => {
-                peer.inputs.input(input, busy);
-                Done::Ok
+        // A lane that ended keeps nothing: what comes for it is refused, never kept. One that
+        // is ending may still be listed as working; its queue, forgotten first, refuses it.
+        Command::Input(input) => {
+            let session = input.session.clone();
+            let busy = peer.work.busy(&session);
+            match busy.is_some_and(|busy| peer.inputs.input(input, busy)) {
+                true => Done::Ok,
+                false => not_open(&session),
             }
-            None => not_open(&input.session),
-        },
+        }
         Command::Interrupt { session } => Done::Interrupted {
             again: crate::interrupt::stop(&session),
         },

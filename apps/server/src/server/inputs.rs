@@ -119,8 +119,15 @@ impl Inputs {
         }
     }
 
+    /// Lane `lane` started: what comes for it is kept from now until its end forgets it. Told
+    /// before anything else learns of the lane, so a lane known open has its queue.
+    pub(crate) fn open(&self, lane: &str) {
+        self.lock().lanes.entry(lane.into()).or_default();
+    }
+
     /// What the person sent: for the lane waiting, the task running (`busy`: words), or after it.
-    pub(crate) fn input(&self, input: Input, busy: bool) {
+    /// Whether the lane took it: one not open, or ended, takes nothing.
+    pub(crate) fn input(&self, input: Input, busy: bool) -> bool {
         let entry = Typed {
             text: input.text,
             images: input.images,
@@ -130,24 +137,23 @@ impl Inputs {
                 true => state.steered.push(entry),
                 false => state.queued.push_back(entry),
             }
-        });
+        })
     }
 
     /// What came back from the background (a monitor's lines, a schedule due): a task of its
-    /// own, after what the person queued.
+    /// own, after what the person queued. A lane that ended takes nothing more.
     pub(crate) fn background(&self, lane: &str, text: &str) {
         self.change(lane, |state| state.background.push_back(text.into()));
     }
 
     /// What the person said to the task running, taken (and shown as theirs). Asked between
-    /// every turn, so when nothing was said it takes no snapshot of the queue; the lane's entry
-    /// is made all the same, for `close` to find during its first task.
+    /// every turn, so when nothing was said it takes no snapshot of the queue.
     pub(crate) fn steered(&self, lane: &str) -> Vec<String> {
         let mut lanes = self.lock();
-        let state = lanes.lanes.entry(lane.into()).or_default();
-        if state.steered.is_empty() {
+        let said = lanes.lanes.get_mut(lane);
+        let Some(state) = said.filter(|state| !state.steered.is_empty()) else {
             return vec![];
-        }
+        };
         let said = texts(&state.steered);
         state.steered.clear();
         self.show(lanes, lane);
@@ -181,17 +187,22 @@ impl Inputs {
         self.lock().left = false;
     }
 
-    /// The lane ended: what it had waiting goes with it, and the interface lets it go.
+    /// The lane ended: what it had waiting goes with it, and the interface lets it go. What
+    /// comes for it after is refused by this table, under its own lock (R7): what runs may list
+    /// the lane a moment longer, and a look there is not the act that keeps an entry.
     pub(crate) fn forget(&self, lane: &str) {
         self.lock().lanes.remove(lane);
         (self.tell)(lane, Event::LaneEnded);
     }
 
-    /// `change` the lane's entries, then wake its prompt and, when its queue changed, tell the
-    /// interface, outside the lock: a read that took nothing tells nothing.
-    fn change(&self, lane: &str, change: impl FnOnce(&mut Lane)) {
+    /// `change` the entries of `lane`, open ([`open`](Self::open)) and not forgotten, then wake
+    /// its prompt and, when its queue changed, tell the interface, outside the lock: a read that
+    /// took nothing tells nothing. Whether the lane was there to change.
+    fn change(&self, lane: &str, change: impl FnOnce(&mut Lane)) -> bool {
         let mut lanes = self.lock();
-        let state = lanes.lanes.entry(lane.into()).or_default();
+        let Some(state) = lanes.lanes.get_mut(lane) else {
+            return false;
+        };
         let before = queue(state);
         change(state);
         let changed = queue(state) != before;
@@ -200,6 +211,7 @@ impl Inputs {
             true => self.show(lanes, lane),
             false => drop(lanes),
         }
+        true
     }
 
     /// Tell the interface that `lane`'s queue changed, outside the lock (R6) and in the order it

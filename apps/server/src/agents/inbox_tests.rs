@@ -41,6 +41,7 @@ fn answer(registry: &Registry, text: &str) {
 fn the_person_comes_first_then_the_queue_in_arrival_order() {
     let (ui, peer, _frames) = crate::testing::fake_peer();
     let ui = ui.for_lane("lane");
+    peer.inputs.open("lane");
     // The person said it to the task running.
     let input = protocol::Input {
         session: "lane".into(),

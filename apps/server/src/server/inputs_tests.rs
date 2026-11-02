@@ -6,11 +6,12 @@ use super::*;
 /// What the interface was told, each event with its lane.
 type Told = Arc<Mutex<Vec<(String, Event)>>>;
 
-/// Inputs that keep what they told the interface.
+/// Inputs that keep what they told the interface, with lane `s1` open.
 fn inputs() -> (Arc<Inputs>, Told) {
     let told = Arc::new(Mutex::new(vec![]));
     let kept = Arc::clone(&told);
     let inputs = Inputs::new(move |lane, event| kept.lock().unwrap().push((lane.into(), event)));
+    inputs.open("s1");
     (Arc::new(inputs), told)
 }
 
@@ -233,6 +234,25 @@ fn a_lane_that_ended_is_said_ended_and_closing_it_keeps_nothing() {
         Some(&("s1".to_string(), Event::LaneEnded))
     );
     inputs.close("s1");
+    assert!(
+        inputs.lock().lanes.is_empty(),
+        "nothing kept for a lane gone"
+    );
+}
+
+/// What comes for a lane once its end forgot it (typed as it ended, a monitor's last lines) is
+/// refused: no queue is made again for a lane gone, nor told to the interface after its end.
+#[test]
+fn what_comes_for_a_lane_once_it_is_forgotten_is_kept_nowhere() {
+    let (inputs, told) = inputs();
+    inputs.input(sent("first"), false);
+    inputs.forget("s1");
+    assert!(!inputs.input(sent("typed as it ended"), true), "refused");
+    inputs.background("s1", "<monitor job=\"ticks\">\ntick 9\n</monitor>");
+    assert_eq!(
+        told.lock().unwrap().last(),
+        Some(&("s1".to_string(), Event::LaneEnded))
+    );
     assert!(
         inputs.lock().lanes.is_empty(),
         "nothing kept for a lane gone"
