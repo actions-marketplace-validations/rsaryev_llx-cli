@@ -21,6 +21,7 @@ pub enum Event {
         name: String,
         label: Label,
     },
+    /// The call `call` ended, and how.
     Result {
         call: String,
         name: String,

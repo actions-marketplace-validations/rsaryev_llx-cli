@@ -18,9 +18,11 @@ pub const VERSION: u32 = 2;
 
 /// The input that switches to the next mode, as Shift+Tab sends it.
 pub const SHIFT_TAB: &str = "\u{1b}[Z";
-/// The inputs that raise and lower the reasoning level (Shift+Up, Shift+Down).
+/// The input that raises the reasoning level, as Shift+Up sends it.
 pub const MORE_REASONING: &str = "\u{1b}[1;2A";
+/// The input that lowers the reasoning level, as Shift+Down sends it.
 pub const LESS_REASONING: &str = "\u{1b}[1;2B";
-/// The commands the interface does itself: quitting it, and opening a session beside the others.
+/// The commands that quit the interface: it does them itself.
 pub const EXIT: [&str; 2] = ["exit", "quit"];
+/// The commands that open a session beside the others: the interface does them itself.
 pub const NEW: [&str; 2] = ["new", "clear"];
