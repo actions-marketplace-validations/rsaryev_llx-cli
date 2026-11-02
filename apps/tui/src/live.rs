@@ -21,6 +21,7 @@ use ratatui::text::{Line, Span};
 use super::app::App;
 use super::cells::clock;
 use super::keys::Offer;
+use super::list::dimmed;
 use super::screen::Cursor;
 use super::style;
 use super::tool_cell::{self, State};
@@ -106,10 +107,7 @@ pub(crate) fn render(app: &App, now: Instant) -> (Vec<Line<'static>>, Option<Cur
     out.push(rule);
     let offers = app.offers();
     if let Some(context) = command_context(&app.composer.text(), &app.lane().mode) {
-        out.push(Line::from(Span::styled(
-            format!("  {}", cut(&context, width.saturating_sub(2))),
-            style::dim(),
-        )));
+        out.push(dimmed(&context, width));
     }
     out.extend(offer_rows(app, &offers, width));
     let footer = footer(app, now);
@@ -186,11 +184,7 @@ fn waiting_rows(app: &App, width: usize) -> Vec<Line<'static>> {
                 .map(|text| format!("⏎ {}", waiting(text))),
         )
         .chain(lane.background.iter().cloned());
-    let rows = waiting.map(|entry| {
-        let entry = cut(&printable(&entry.replace('\n', " ")), width - 2);
-        Line::from(Span::styled(format!("  {entry}"), style::dim()))
-    });
-    rows.collect()
+    (waiting.map(|entry| dimmed(&printable(&entry.replace('\n', " ")), width))).collect()
 }
 
 /// What `/` or `@` offers, the one marked in bold.

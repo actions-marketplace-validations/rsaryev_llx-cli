@@ -13,6 +13,7 @@ use ratatui::text::{Line, Span};
 use super::app::{Action, App};
 use super::event::Out;
 use super::style;
+use super::wrap::cut;
 
 impl App {
     /// The list's last row drawn: the jobs past the first few are only counted.
@@ -112,6 +113,14 @@ impl App {
 pub(super) fn more(count: usize, arrow: &str) -> Line<'static> {
     Line::from(Span::styled(
         format!("  {arrow} {count} more"),
+        style::dim(),
+    ))
+}
+
+/// `text` as a dim row under the composer, indented and cut to `width`.
+pub(super) fn dimmed(text: &str, width: usize) -> Line<'static> {
+    Line::from(Span::styled(
+        format!("  {}", cut(text, width.saturating_sub(2))),
         style::dim(),
     ))
 }

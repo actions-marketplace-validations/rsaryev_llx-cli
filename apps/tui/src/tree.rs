@@ -24,18 +24,18 @@ use ratatui::text::{Line, Span};
 
 use super::app::App;
 use super::cells;
-use super::list::more;
+use super::list::{dimmed, more};
 use super::printable::printable;
 use super::style;
 use super::time::now_ms;
-use super::wrap::{cut, width as text_width};
+use super::wrap::width as text_width;
 
 mod row;
 
 use row::{Branch, Row, Weight, row, session_row};
 pub(super) use row::{columns, spent};
 
-/// Agents' rows shown at most; the rest are counted.
+/// Agents' rows shown at most, and jobs'; the rest are counted.
 pub(super) const ROWS: usize = 5;
 /// Columns a lane's name takes at most, and an agent's or a job's.
 pub(super) const NAME: usize = 36;
@@ -55,7 +55,7 @@ pub(crate) fn render(
     let others = others(app);
     if order.is_empty() && app.views.jobs.is_empty() {
         return match others {
-            Some(others) => vec![hint(&others, app.width)],
+            Some(others) => vec![dimmed(&others, app.width)],
             None => vec![],
         };
     }
@@ -122,7 +122,7 @@ pub(crate) fn render(
         (None, true) => format!("↓ manage · esc back to {}", app.home_title()),
         (None, false) => format!("↓ manage · {others}"),
     };
-    out.push(self::hint(&hint, width));
+    out.push(dimmed(&hint, width));
     out
 }
 
@@ -149,19 +149,11 @@ fn others(app: &App) -> Option<String> {
     .filter(|(n, _)| *n > 0)
     .map(|(n, what)| format!("{n} {what}"))
     .collect();
-    let s = if lanes.len() == 1 { "" } else { "s" };
-    let mut said = format!("← {} other session{s}", lanes.len());
+    let mut said = format!("← {}", cells::count(lanes.len() as u64, "other session"));
     if !notes.is_empty() {
         let _ = write!(said, " ({})", notes.join(", "));
     }
     Some(said)
-}
-
-fn hint(text: &str, width: usize) -> Line<'static> {
-    Line::from(Span::styled(
-        format!("  {}", cut(text, width.saturating_sub(2))),
-        style::dim(),
-    ))
 }
 
 /// The jobs' rows: a monitor (`≋`, its command, how much is left) or a schedule (`◷`, when).
