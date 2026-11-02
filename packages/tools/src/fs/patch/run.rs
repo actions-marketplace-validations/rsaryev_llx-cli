@@ -148,7 +148,8 @@ fn plan(
     Ok(())
 }
 
-/// An update of `path` by `chunks`, and a move to `to` when there is one.
+/// An update of `path` by `chunks`, and a move to `to` when there is one: through a symlink, an
+/// update changes what it points at, and a move takes the link.
 fn update(
     workspace: &Workspace,
     files: &mut Vec<File>,
@@ -157,7 +158,10 @@ fn update(
     to: Option<&str>,
     chunks: &[Chunk],
 ) -> Result<(), ToolError> {
-    let file = load(workspace, files, path)?;
+    let (file, link) = match to {
+        Some(to) => disk::moved(workspace, files, path, to)?,
+        None => (load(workspace, files, path)?, None),
+    };
     let (shown, source) = (file.shown.clone(), file.path.clone());
     let Some(bytes) = file.now.take() else {
         return Err(ToolError::Failed(format!("{shown} does not exist")));
@@ -182,12 +186,19 @@ fn update(
     } else {
         format!(" (+{added} -{removed} lines)")
     };
-    let (done, summary) = match &moved {
-        Some(dest) => (
+    let (done, summary) = match (&moved, link) {
+        (Some(dest), Some(target)) => (
+            format!("D {shown}\nA {dest}"),
+            format!(
+                "move the symlink {shown} (to {}) to {dest}{size}",
+                target.display()
+            ),
+        ),
+        (Some(dest), None) => (
             format!("D {shown}\nA {dest}"),
             format!("move {shown} to {dest}{size}"),
         ),
-        None => (format!("M {shown}"), format!("update {shown}{size}")),
+        (None, _) => (format!("M {shown}"), format!("update {shown}{size}")),
     };
     steps.push(Step {
         summary,

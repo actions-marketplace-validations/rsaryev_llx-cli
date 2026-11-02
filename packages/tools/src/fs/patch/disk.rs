@@ -1,6 +1,7 @@
 //! The files of a patch as it found them on disk and as it leaves them: each read once, the first
 //! time the patch names it, read again before anything is written, then written whole, or every
-//! one put back as it was. A symlink the patch deletes is the link itself, never what it points at.
+//! one put back as it was. A symlink the patch deletes or moves is the link itself, never what it
+//! points at.
 
 use std::fs;
 use std::io;
@@ -11,16 +12,16 @@ use contracts::tool::ToolError;
 
 use super::NAME;
 use crate::fs::atomic;
-use crate::workspace::Workspace;
+use crate::workspace::{Workspace, real};
 
 /// A file as the patch sees it.
 pub(super) struct File {
     pub(super) path: PathBuf,
     pub(super) shown: String,
-    /// Where the symlink at `path` points, when the patch deletes the link itself: its `now`
-    /// holds no bytes of it, only that it is there.
+    /// Where the symlink at `path` points, when the patch deletes or moves the link itself: its
+    /// `now` holds no bytes of it, only that it is there, or what a move read through it.
     pub(super) link: Option<PathBuf>,
-    /// What is on disk, until the patch writes it.
+    /// What is on disk, until the patch writes it; of a link, what a move read through it.
     pub(super) disk: Option<Vec<u8>>,
     /// What the hunks so far leave: `None` when there is no such file.
     pub(super) now: Option<Vec<u8>>,
@@ -32,10 +33,24 @@ pub(super) fn load<'a>(
     files: &'a mut Vec<File>,
     name: &str,
 ) -> Result<&'a mut File, ToolError> {
-    let path = match unlinked(workspace, files, name) {
-        Some(place) => place,
-        None => workspace.writable(name)?,
-    };
+    let path = resolved(workspace, files, name)?;
+    entry(workspace, files, path)
+}
+
+/// Where `name` is for the patch: where a link it took was, else where a write lands.
+fn resolved(workspace: &Workspace, files: &[File], name: &str) -> Result<PathBuf, ToolError> {
+    match unlinked(workspace, files, name) {
+        Some(place) => Ok(place),
+        None => workspace.writable(name),
+    }
+}
+
+/// The file at `path`, read from disk the first time the patch reaches it.
+fn entry<'a>(
+    workspace: &Workspace,
+    files: &'a mut Vec<File>,
+    path: PathBuf,
+) -> Result<&'a mut File, ToolError> {
     if let Some(index) = files.iter().position(|file| file.path == path) {
         return Ok(&mut files[index]);
     }
@@ -87,8 +102,42 @@ pub(super) fn deleted<'a>(
     Ok(&mut files[index])
 }
 
-/// Where the link `name` was, when the patch deleted it: the name is that place now, as it is
-/// after `rm`, not what the link pointed at.
+/// The file `*** Update File: name` with `*** Move to: to` takes away: the symlink itself when
+/// `name` is one, as `mv` and Codex take it, holding what it points at as the hunks before leave
+/// it (read as any file may be, out of the workspace too, never the app's own), which stays as it
+/// is; with where the link points, for the gate. Else, and when `to` is the file the link points
+/// at (an update in place), the file, as [`load`] has it.
+pub(super) fn moved<'a>(
+    workspace: &Workspace,
+    files: &'a mut Vec<File>,
+    name: &str,
+    to: &str,
+) -> Result<(&'a mut File, Option<PathBuf>), ToolError> {
+    let place = workspace.removable(name)?;
+    let taken = (files.iter()).any(|file| file.link.is_some() && file.path == place);
+    let target = match fs::read_link(&place) {
+        Ok(target) if !taken => target,
+        _ => return Ok((load(workspace, files, name)?, None)),
+    };
+    let through = real(&workspace.readable(name)?);
+    if resolved(workspace, files, to)? == through {
+        return Ok((load(workspace, files, name)?, None));
+    }
+    let read = entry(workspace, files, through)?;
+    let (disk, now) = (read.disk.clone(), read.now.clone());
+    let index = files.len();
+    files.push(File {
+        shown: workspace.shown(&place),
+        path: place,
+        link: Some(target.clone()),
+        disk,
+        now,
+    });
+    Ok((&mut files[index], Some(target)))
+}
+
+/// Where the link `name` was, when the patch deleted or moved it: the name is that place now, as
+/// it is after `rm` or `mv`, not what the link pointed at.
 fn unlinked(workspace: &Workspace, files: &[File], name: &str) -> Option<PathBuf> {
     if !files.iter().any(|file| file.link.is_some()) {
         return None;
@@ -111,7 +160,12 @@ pub(super) fn changed(files: &[File]) -> Vec<&File> {
 /// is kept, and the model reads the file again.
 pub(super) fn unchanged(file: &File) -> Result<(), ToolError> {
     let same = match &file.link {
-        Some(target) => fs::read_link(&file.path).is_ok_and(|now| now == *target),
+        // A moved link's content, read through it, is what its new file is made of.
+        Some(target) => {
+            fs::read_link(&file.path).is_ok_and(|now| now == *target)
+                && (file.disk.is_none()
+                    || contents(&file.path, &file.shown)?.as_deref() == file.disk.as_deref())
+        }
         None => contents(&file.path, &file.shown)?.as_deref() == file.disk.as_deref(),
     };
     if same {

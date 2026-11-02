@@ -268,15 +268,18 @@ fn what_would_overwrite_or_is_not_there_is_refused() {
     assert_eq!(read(&dir, "b.txt"), "y\n");
 }
 
+/// A gate the person takes a while to answer, as someone else writes the file meanwhile.
+struct Slow(PathBuf);
+
+impl Gate for Slow {
+    fn check(&self, _effect: Effect) -> Verdict {
+        fs::write(&self.0, "someone else\n").unwrap();
+        Verdict::Allow
+    }
+}
+
 #[test]
 fn a_file_changed_while_the_gate_waited_is_not_overwritten() {
-    struct Slow(PathBuf);
-    impl Gate for Slow {
-        fn check(&self, _effect: Effect) -> Verdict {
-            fs::write(&self.0, "someone else\n").unwrap();
-            Verdict::Allow
-        }
-    }
     let dir = Scratch::new();
     let path = dir.file("a.txt", "x\n");
     let message = failed(patch(
@@ -515,4 +518,174 @@ fn a_link_where_the_app_keeps_its_own_files_is_not_deleted() {
     assert!(message.contains("off limits"), "{message}");
     assert!(fs::symlink_metadata(dir.path().join("config/link")).is_ok());
     assert_eq!(read(&dir, "notes.txt"), "mine\n");
+}
+
+fn patch_at(workspace: &Workspace, gate: &dyn Gate, body: &str) -> Result<String, ToolError> {
+    let tool = PatchTool { workspace, gate };
+    let text = format!("*** Begin Patch\n{body}*** End Patch");
+    tool.call(&Value::String(text)).map(|output| output.report)
+}
+
+/// A gate that records what each question is about and what it says, `subject: summary`, and
+/// allows it.
+#[derive(Default)]
+struct Questions(Mutex<Vec<String>>);
+
+impl Gate for Questions {
+    fn check(&self, effect: Effect) -> Verdict {
+        (self.0.lock().unwrap()).push(format!("{}: {}", effect.subject, effect.summary));
+        Verdict::Allow
+    }
+}
+
+/// As `mv` and Codex take it: the link goes, what it points at stays as it was, and the new name
+/// is a file of its own, with what the hunks make of the content read through the link.
+#[test]
+fn moving_a_symbolic_link_moves_the_link_and_keeps_what_it_points_at() {
+    let dir = Scratch::new();
+    let target = dir.file("real.txt", "one\ntwo\n");
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    let gate = Questions::default();
+    let report = patch(
+        &dir,
+        &gate,
+        "*** Update File: link.txt\n*** Move to: new.txt\n@@\n one\n-two\n+2\n",
+    );
+    assert!(target.exists(), "the link's target was moved: {report:?}");
+    assert_eq!(read(&dir, "real.txt"), "one\ntwo\n");
+    assert_eq!(
+        report.unwrap(),
+        "Success. Updated the following files:\nD link.txt\nA new.txt"
+    );
+    assert!(fs::symlink_metadata(dir.path().join("link.txt")).is_err());
+    assert!(
+        fs::symlink_metadata(dir.path().join("new.txt"))
+            .unwrap()
+            .is_file()
+    );
+    assert_eq!(read(&dir, "new.txt"), "one\n2\n");
+    assert_eq!(
+        *gate.0.lock().unwrap(),
+        [
+            "link.txt: move the symlink link.txt (to real.txt) to new.txt (+1 -1 lines)",
+            "new.txt: create new.txt (moved from link.txt)",
+        ]
+    );
+}
+
+/// As an editor takes it: with no move, or a move to its own name or to the file it points at,
+/// a link stays, and the change lands on its target.
+#[test]
+fn an_update_through_a_symbolic_link_that_stays_edits_what_it_points_at() {
+    let dir = Scratch::new();
+    dir.file("real.txt", "one\n");
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    let gate = Recorder::default();
+    for (body, now) in [
+        ("*** Update File: link.txt\n@@\n-one\n+1\n", "1\n"),
+        (
+            "*** Update File: link.txt\n*** Move to: link.txt\n@@\n-1\n+2\n",
+            "2\n",
+        ),
+        (
+            "*** Update File: link.txt\n*** Move to: real.txt\n@@\n-2\n+3\n",
+            "3\n",
+        ),
+    ] {
+        let report = patch(&dir, &gate, body).unwrap();
+        assert_eq!(report, "Success. Updated the following files:\nM real.txt");
+        assert_eq!(read(&dir, "real.txt"), now);
+        assert_eq!(
+            fs::read_link(dir.path().join("link.txt")).unwrap(),
+            PathBuf::from("real.txt")
+        );
+    }
+    assert_eq!(
+        *gate.asked.lock().unwrap(),
+        ["apply_patch: update real.txt (+1 -1 lines)"; 3]
+    );
+}
+
+/// The new file would hold what the link's target was: the move waits for the model to read it
+/// again.
+#[test]
+fn a_link_whose_target_changed_while_the_gate_waited_is_not_moved() {
+    let dir = Scratch::new();
+    let target = dir.file("real.txt", "x\n");
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    let message = failed(patch(
+        &dir,
+        &Slow(target),
+        "*** Update File: link.txt\n*** Move to: new.txt\n@@\n-x\n+X\n",
+    ));
+    assert!(
+        message.contains("link.txt changed while waiting"),
+        "{message}"
+    );
+    assert_eq!(read(&dir, "real.txt"), "someone else\n");
+    assert!(!dir.path().join("new.txt").exists());
+    assert_eq!(
+        fs::read_link(dir.path().join("link.txt")).unwrap(),
+        PathBuf::from("real.txt")
+    );
+}
+
+#[test]
+fn a_link_a_patch_moved_is_put_back_when_a_later_write_fails() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = Scratch::new();
+    dir.file("real.txt", "one\n");
+    std::os::unix::fs::symlink("real.txt", dir.path().join("link.txt")).unwrap();
+    let locked = dir.file("locked.txt", "y\n");
+    fs::set_permissions(&locked, fs::Permissions::from_mode(0o444)).unwrap();
+    // A file added where the link was is written in its place, before `locked.txt` fails.
+    let message = failed(patch(
+        &dir,
+        &Open,
+        "*** Update File: link.txt\n*** Move to: new.txt\n@@\n-one\n+1\n\
+         *** Add File: link.txt\n+fresh\n*** Update File: locked.txt\n@@\n-y\n+Y\n",
+    ));
+    assert!(message.contains("locked.txt"), "{message}");
+    assert_eq!(
+        fs::read_link(dir.path().join("link.txt")).unwrap(),
+        PathBuf::from("real.txt")
+    );
+    assert_eq!(read(&dir, "real.txt"), "one\n");
+    assert!(!dir.path().join("new.txt").exists());
+}
+
+/// Nothing outside the workspace changes when a link to a file there is moved: its content is
+/// read as any file may be, but none of the app's own.
+#[test]
+fn a_link_out_of_the_workspace_is_moved_and_one_to_the_apps_own_files_is_not() {
+    let dir = Scratch::new();
+    let outside = dir.file("outside.txt", "one\n");
+    let key = dir.file("config/key", "secret\n");
+    let inside = dir.path().join("inside");
+    fs::create_dir_all(&inside).unwrap();
+    std::os::unix::fs::symlink(&outside, inside.join("link.txt")).unwrap();
+    std::os::unix::fs::symlink(&key, inside.join("key-link")).unwrap();
+    let workspace = Workspace::new(&inside)
+        .unwrap()
+        .denying([dir.path().join("config")]);
+    let report = patch_at(
+        &workspace,
+        &Open,
+        "*** Update File: link.txt\n*** Move to: new.txt\n@@\n-one\n+1\n",
+    );
+    assert_eq!(
+        report.unwrap(),
+        "Success. Updated the following files:\nD link.txt\nA new.txt"
+    );
+    assert_eq!(fs::read_to_string(&outside).unwrap(), "one\n");
+    assert_eq!(fs::read_to_string(inside.join("new.txt")).unwrap(), "1\n");
+    assert!(fs::symlink_metadata(inside.join("link.txt")).is_err());
+    let message = failed(patch_at(
+        &workspace,
+        &Open,
+        "*** Update File: key-link\n*** Move to: copy\n",
+    ));
+    assert!(message.contains("off limits"), "{message}");
+    assert!(!inside.join("copy").exists());
+    assert!(fs::symlink_metadata(inside.join("key-link")).is_ok());
 }
