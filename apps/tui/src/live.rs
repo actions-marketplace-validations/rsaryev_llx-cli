@@ -20,7 +20,7 @@ use ratatui::text::{Line, Span};
 
 use super::app::App;
 use super::cells::clock;
-use super::keys::Offer;
+use super::keys::{MODE, Offer, mode_typed};
 use super::list::dimmed;
 use super::screen::Cursor;
 use super::style;
@@ -218,13 +218,15 @@ fn offer_rows(app: &App, offers: &[Offer], width: usize) -> Vec<Line<'static>> {
 
 /// The line under a mode command being typed: the mode now, and what its keys do.
 fn command_context(text: &str, current: &str) -> Option<String> {
-    match text {
-        "/mode" | "/permissions" => Some(format!("mode  ›  current: {current} · enter to list")),
-        _ if text.starts_with("/mode ") || text.starts_with("/permissions ") => Some(format!(
-            "mode  ›  current: {current} · ↑↓ choose · tab complete · enter apply"
-        )),
-        _ => None,
-    }
+    let alone = text
+        .strip_prefix('/')
+        .is_some_and(|name| MODE.contains(&name));
+    let keys = match mode_typed(text) {
+        Some(_) => "↑↓ choose · tab complete · enter apply",
+        None if alone => "enter to list",
+        None => return None,
+    };
+    Some(format!("mode  ›  current: {current} · {keys}"))
 }
 
 /// An entry that waits: a key's by what it does, not the sequence it sent.

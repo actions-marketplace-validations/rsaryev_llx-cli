@@ -1,21 +1,12 @@
 use super::*;
 use crate::style;
-use crate::test_support::done;
+use crate::test_support::{done, label as said};
 
 /// A call that ended with `report` for the model and `shown` for the person alone.
 fn done_shown(report: &str, shown: &str) -> Outcome {
     Outcome::Done {
         report: report.into(),
         shown: shown.into(),
-    }
-}
-
-/// How a call reads, as the server says it.
-fn said(doing: &str, done: &str, subject: &str) -> Label {
-    Label {
-        doing: doing.into(),
-        done: done.into(),
-        subject: subject.into(),
     }
 }
 
@@ -191,11 +182,8 @@ fn a_diff_colours_its_signs_and_code_only_never_a_band_and_dims_its_numbers() {
         24,
     );
     let spans: Vec<_> = rendered.iter().flat_map(|row| row.spans.iter()).collect();
-    assert!(
-        spans
-            .iter()
-            .all(|span| span.style.bg.is_none() && row_bg(&rendered))
-    );
+    assert!(rendered.iter().all(|row| row.style.bg.is_none()));
+    assert!(spans.iter().all(|span| span.style.bg.is_none()));
     let span = |text: &str| {
         spans
             .iter()
@@ -205,10 +193,6 @@ fn a_diff_colours_its_signs_and_code_only_never_a_band_and_dims_its_numbers() {
     assert_eq!(span("old").style.fg, Some(Color::Red));
     assert_eq!(span("abcdef").style.fg, Some(Color::Green));
     assert!(span("  1 ").style.add_modifier.contains(Modifier::DIM));
-}
-
-fn row_bg(rows: &[Line]) -> bool {
-    rows.iter().all(|row| row.style.bg.is_none())
 }
 
 #[test]

@@ -5,9 +5,7 @@
 
 use std::time::Instant;
 
-use protocol::{Label, Outcome};
-
-use protocol::{Asked, Command, Event, Input as Sent};
+use protocol::{Asked, Command, Event, Input as Sent, Label, Outcome};
 
 use super::app::App;
 use super::event::Out;

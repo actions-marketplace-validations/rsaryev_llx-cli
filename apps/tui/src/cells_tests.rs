@@ -1,17 +1,6 @@
 use super::*;
 use crate::style;
-
-#[expect(
-    clippy::needless_pass_by_value,
-    reason = "a test helper takes its arguments as the tests write them, by value"
-)]
-fn shown(lines: Vec<Line>) -> String {
-    lines
-        .iter()
-        .map(style::plain)
-        .collect::<Vec<_>>()
-        .join("\n")
-}
+use crate::testing::plain as shown;
 
 #[test]
 fn a_task_from_question_to_end() {
@@ -46,7 +35,7 @@ fn a_task_from_question_to_end() {
     // The person's lines stay lines; a note keeps its rows and columns.
     out.extend(user("one\ntwo", width));
     out.extend(note("model      haiku\nworkspace  ~/shop\n", width));
-    insta::assert_snapshot!(shown(out), @r"
+    insta::assert_snapshot!(shown(&out), @r"
     llx 0.1.0 · haiku-5.5 · ~/shop
 
     ❯ make a landing page for a phone shop, with prices and a
@@ -113,7 +102,7 @@ fn the_header_stays_one_row_and_cuts_the_folder_from_the_start() {
         ],
         40,
     );
-    assert_eq!(shown(rows), "llx 0.1.0 · haiku-5.5 · …o/the/workspace");
+    assert_eq!(shown(&rows), "llx 0.1.0 · haiku-5.5 · …o/the/workspace");
 }
 
 #[test]
@@ -143,7 +132,7 @@ fn a_wide_row_of_a_table_wraps_under_its_second_column() {
     );
     let under = " ".repeat(16);
     assert_eq!(
-        shown(rows),
+        shown(&rows),
         format!(
             "  * default     Each command and file\n{under}change is asked about\n{under}first.\n    plan        Investigate and plan: no\n{under}file changes at all."
         )

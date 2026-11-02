@@ -1,14 +1,7 @@
-use protocol::{Event, Label, Outcome};
+use protocol::{Event, Outcome};
 
 use super::*;
-
-fn ran(command: &str) -> Label {
-    Label {
-        doing: "Running".into(),
-        done: "Ran".into(),
-        subject: command.into(),
-    }
-}
+use crate::test_support::ran;
 
 /// A call of `bash` running `command`, and its result: it printed nothing.
 fn call(command: &str) -> [Event; 2] {
