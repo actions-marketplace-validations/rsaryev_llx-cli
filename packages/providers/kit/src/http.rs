@@ -57,7 +57,7 @@ impl std::fmt::Display for HttpError {
 impl std::error::Error for HttpError {}
 
 /// Why a request is not sent once its deadline has passed.
-pub(crate) const OUT_OF_TIME: &str = "the time limit ran out before the request";
+const OUT_OF_TIME: &str = "the time limit ran out before the request";
 
 /// The longest body read: a long streamed reply is a few megabytes at most.
 const BODY_LIMIT: u64 = 64 << 20;

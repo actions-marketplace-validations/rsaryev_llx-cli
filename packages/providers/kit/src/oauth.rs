@@ -32,6 +32,7 @@ pub struct Pasted {
     pub error: Option<String>,
 }
 
+/// `input` read as an address when it has a query, else as the code alone.
 pub fn pasted(input: &str) -> Pasted {
     let input = input.trim();
     // Not an address: the code alone (or nothing).

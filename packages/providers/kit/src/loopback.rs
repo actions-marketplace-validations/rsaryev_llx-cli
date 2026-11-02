@@ -27,8 +27,9 @@ pub struct Listen<'a> {
     pub path: &'a str,
     /// The `state` the redirect must carry, when the provider sends one back.
     pub state: Option<&'a str>,
-    /// Who the person signs in with, and to what, for the pages.
+    /// The provider signed in to, named on the pages.
     pub provider: &'a str,
+    /// The app signing in, named on the success page.
     pub app: &'a str,
 }
 
@@ -60,6 +61,8 @@ impl Drop for Callback {
     }
 }
 
+/// Wait for one redirect, on a thread of its own, at the first of `spec.ports` it can take (one
+/// another sign-in holds is asked to give way).
 pub fn listen(spec: Listen) -> Result<Callback, String> {
     listening_with(spec, QUIET)
 }
