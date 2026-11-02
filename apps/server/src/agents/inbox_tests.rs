@@ -6,16 +6,7 @@ use tools::workspace::Workspace;
 
 use super::*;
 use crate::jobs::{Jobs, Kit};
-use crate::testing::{Captured, Scratch};
-
-fn quiet() -> Output {
-    Output::with(
-        false,
-        false,
-        Box::new(Captured::default()),
-        Box::new(Captured::default()),
-    )
-}
+use crate::testing::{Captured, Scratch, quiet};
 
 /// The main agent's inbox on `output`, with exec's jobs, in a task.
 fn with_inbox(output: &Output, work: impl FnOnce(&MainInbox, &Registry, &Jobs)) {

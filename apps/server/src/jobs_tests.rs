@@ -4,7 +4,7 @@ use contracts::chat::Completion;
 use serde_json::json;
 
 use super::*;
-use crate::testing::{Captured, Scratch, answers, composed, results, says, users};
+use crate::testing::{Scratch, answers, composed, quiet, results, says, users};
 use protocol::Event;
 
 fn call(arguments: serde_json::Value) -> Completion {
@@ -50,12 +50,7 @@ fn monitor_remains_expected_until_completion_is_posted() {
     use contracts::tool::Tool;
     let scratch = Scratch::new();
     let workspace = Workspace::new(scratch.path()).unwrap();
-    let output = Output::with(
-        false,
-        false,
-        Box::new(Captured::default()),
-        Box::new(Captured::default()),
-    );
+    let output = quiet();
     let (entered, waiting) = std::sync::mpsc::sync_channel(1);
     let (resume, released) = std::sync::mpsc::sync_channel::<()>(0);
     let released = Mutex::new(released);
@@ -128,8 +123,7 @@ fn schedules_need_a_session_and_are_listed_and_stopped_there() {
 #[test]
 fn a_monitor_asks_like_a_command() {
     let monitor = json!({"action": "monitor", "command": "ls", "escalate": true});
-    let replies = vec![call(monitor)];
-    let mut replies = replies;
+    let mut replies = vec![call(monitor)];
     replies.extend(answers(1));
     composed(crate::modes::built("default"), false, replies, |rig| {
         rig.task("watch");
@@ -144,13 +138,7 @@ fn in_session(owner: &str, work: impl FnOnce(&Jobs, &Seen)) {
     let scratch = Scratch::new();
     let workspace = Workspace::new(scratch.path()).unwrap();
     let (ui, peer, frames) = crate::testing::fake_peer();
-    let output = Output::with(
-        false,
-        false,
-        Box::new(Captured::default()),
-        Box::new(Captured::default()),
-    )
-    .in_ui(Some(ui));
+    let output = quiet().in_ui(Some(ui));
     let queue = crate::arrivals::queue(output.ui().cloned());
     let kit = Kit {
         workspace: &workspace,

@@ -235,12 +235,7 @@ fn a_turn_tells_the_interface_its_tokens() {
 
 #[test]
 fn a_task_keeps_what_it_did_each_call_and_turn_with_its_time() {
-    let output = Output::with(
-        false,
-        false,
-        Box::new(Captured::default()),
-        Box::new(Captured::default()),
-    );
+    let output = crate::testing::quiet();
     run(&output);
     // A task that just began: what came before was the last one's.
     output.take_steps();

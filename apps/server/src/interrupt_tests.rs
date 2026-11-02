@@ -1,9 +1,15 @@
 use super::*;
 
+/// A process of the test's own: the real one is the signal handler's, and a task begun on it
+/// would count as running for every other test.
+fn process() -> &'static Process {
+    Box::leak(Box::new(Process::new()))
+}
+
 #[test]
 fn in_a_task_the_first_stop_stops_it_and_the_second_quits() {
     assert!(Interrupt::new().stop(), "outside a task, a stop quits");
-    let interrupt = Interrupt::new();
+    let interrupt = Interrupt::of(process());
     interrupt.begin();
     assert!(!interrupt.stopped());
     assert!(!interrupt.stop(), "the first stop lets the task end itself");
@@ -13,18 +19,13 @@ fn in_a_task_the_first_stop_stops_it_and_the_second_quits() {
 
 #[test]
 fn the_next_task_starts_unstopped() {
-    let interrupt = Interrupt::new();
+    let interrupt = Interrupt::of(process());
     interrupt.begin();
     interrupt.stop();
     interrupt.end();
     assert!(interrupt.stopped(), "until the next task, it says so");
     interrupt.begin();
     assert!(!interrupt.stopped());
-}
-
-/// A process of the test's own: the real one is the signal handler's.
-fn process() -> &'static Process {
-    Box::leak(Box::new(Process::new()))
 }
 
 #[test]

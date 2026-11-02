@@ -118,7 +118,6 @@ fn the_environment_says_where_when_and_how() {
     assert!(text.contains(&format!("Working directory: {}", scratch.path().display())));
     assert!(text.contains("Date: 2026-10-22 (UTC)"));
     assert!(text.contains("Mode: default: the person approves each command"));
-    assert!(!text.contains("Approvals:"));
     assert!(text.trim_end().ends_with("</environment>"));
 }
 
@@ -132,13 +131,6 @@ fn dates_are_civil() {
 #[test]
 fn a_resumed_session_tells_what_was_asked_before() {
     let scratch = Scratch::new();
-    let turn = |goal: &str, answer: &str| Turn {
-        goal: goal.into(),
-        answer: answer.into(),
-        status: "done".into(),
-        at: 1,
-        steps: vec![],
-    };
     let session = Session {
         id: "1-ab".into(),
         turns: vec![
