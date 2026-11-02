@@ -1,9 +1,9 @@
 # Benchmark
 
-A check of llx as an agent, with Codex beside it to compare, that no model scores: the agent
-implements a small TypeScript project for Bun against acceptance tests written in advance, which
-it may not change. The tests score the work, so a run is judged by what passes, not by what the
-agent says.
+A check of llx as an agent, with Codex beside it to compare: the agent implements a small
+TypeScript project for Bun against acceptance tests written in advance, which it may not change.
+The tests score the work, so a run is judged by what passes, not by a model or by what the agent
+says.
 Run it often, after a change to the loop, the prompt, the tools or a provider and in between, and
 read the rows of [HISTORY.md](HISTORY.md).
 

@@ -61,6 +61,7 @@ export function isTest(file: string): boolean {
   );
 }
 
+/** `a` scored against the files `q` must and may name. */
 export function scored(mode: string, q: Query, a: Answer): Scored {
   const right = (file: string) =>
     q.must.includes(file) || q.ok.some((glob) => new Bun.Glob(glob).match(file));
@@ -79,7 +80,7 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 /** The answers to questions that have one: those R@5, R@10 and MRR are measured on. */
 const answered = (of: Scored[]) => of.filter((r) => r.none === undefined);
 
-/** A run's table: a row per mode and group, then each mode over all the questions. */
+/** A run's table: for each mode, a row per group, then one over all the questions. */
 export function table(results: Scored[]): string {
   const groups = [...new Set(results.map((r) => r.group)), "all"];
   const rows = [

@@ -105,10 +105,10 @@ async function main(): Promise<number> {
   });
   if (v.help) {
     console.log(`usage: bun benchmark/run.ts [options]  (see benchmark/README.md)
-${`  --task ${tasks.join("|")}`.padEnd(31)}the task (default evalkit)
+${`  --task ${tasks.join("|")}`.padEnd(29)}  the task (default evalkit)
   --agent [label=]kind[:path]  an agent (${KINDS.join(", ")}); repeat to compare (default: llx, this
                                repository's target/release/llx)
-  --repeat N                   runs an agent (default 1)
+  --repeat N                   the runs of each agent (default 1)
   --note TEXT                  a line for the summary: what this run is for
   --no-advice                  llx without its advisor (Jev), which needs an OpenRouter key
   --provider P, --model M      what the agents think with (default openai, gpt-6-luna; Codex

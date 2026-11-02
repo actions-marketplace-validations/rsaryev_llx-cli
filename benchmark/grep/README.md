@@ -6,7 +6,7 @@ parts or judging, and keep a change only when the table says so.
 
 ```bash
 cargo build --release
-bun benchmark/grep/run.ts                        # every mode: words, judged, rg
+bun benchmark/grep/run.ts                        # the default modes: words, judged, rg
 bun benchmark/grep/run.ts --mode words           # no network, no cost
 bun benchmark/grep/run.ts --only concept --label "after the stems"
 bun benchmark/grep/run.ts --record               # and a line in HISTORY.md
