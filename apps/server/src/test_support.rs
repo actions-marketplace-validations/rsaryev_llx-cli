@@ -24,6 +24,7 @@ use crate::agents::watch::Watch;
 use crate::cli::Cli;
 use crate::compose::{Models, Seat, Setup, Shared, lane_with};
 use crate::desk::{Work, run};
+use crate::meta::title::Namer;
 use crate::mode::Mode;
 use crate::output::Output;
 use crate::server::host::Host;
@@ -202,18 +203,29 @@ impl Server {
 }
 
 /// A session at the desk, its first task `task`, its lanes thinking with `chats` in the order
-/// they open (a lane past them panics as it starts), `quit` for what ends the process when lanes
-/// do not stop in time; `person` given the connection to end it as they choose, and the server's
-/// side of it; the desk must end within 10 s after (a lane's panic reaches the caller). The
-/// session store, for what was recorded.
+/// they open (a lane past them panics as it starts) and asking no title, `quit` for what ends the
+/// process when lanes do not stop in time; `person` given the connection to end it as they
+/// choose, and the server's side of it; the desk must end within 10 s after (a lane's panic
+/// reaches the caller). The session store, for what was recorded.
+pub fn served(
+    chats: &[&Gated],
+    task: Option<&str>,
+    quit: &(dyn Fn() + Sync),
+    person: impl FnOnce(Link, &Server),
+) -> Scratch {
+    served_titled(chats, None, task, quit, person)
+}
+
+/// [`served`], each lane's titles asked of `namer`.
 #[expect(
     clippy::disallowed_methods,
     reason = "the desk's end is looked at again for a bounded time: with the person gone, no \
               frame says it"
 )]
 #[expect(clippy::unwrap_used, reason = "test support: a failure fails the test")]
-pub fn served(
+pub(crate) fn served_titled(
     chats: &[&Gated],
+    namer: Option<&Namer>,
     task: Option<&str>,
     quit: &(dyn Fn() + Sync),
     person: impl FnOnce(Link, &Server),
@@ -242,6 +254,7 @@ pub fn served(
             live: None,
             adviser: None,
             searcher: None,
+            namer,
         };
         lane_with(shared, seat, models, work)
     };

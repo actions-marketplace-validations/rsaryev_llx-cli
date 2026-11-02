@@ -32,6 +32,7 @@ fn a_session_works_in_the_clients_directory_with_the_clients_environment() {
         live: None,
         adviser: None,
         searcher: None,
+        namer: None,
     };
     let (shared, seat) = setup.split();
     let root = std::fs::canonicalize(there.path()).unwrap();

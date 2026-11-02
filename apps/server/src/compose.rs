@@ -100,6 +100,7 @@ pub(crate) fn assemble(
         live: models.live,
         adviser: models.adviser,
         searcher: models.searcher,
+        namer: models.namer,
     };
     equip(&base, seat, work)
 }
@@ -196,6 +197,7 @@ struct Base<'a> {
     live: Option<&'a LiveChat>,
     adviser: Option<&'a dyn contracts::model::Decider>,
     searcher: Option<&'a dyn contracts::model::Decider>,
+    namer: Option<&'a crate::meta::title::Namer>,
 }
 
 /// What [`equip`] made around the base: the tools, the agents, the jobs and the inbox.

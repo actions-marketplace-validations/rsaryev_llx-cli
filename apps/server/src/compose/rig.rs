@@ -91,7 +91,7 @@ pub(super) fn drive(
     let shared = base.shared;
     std::thread::scope(|scope| {
         // Dropped after the guard (made before it): the jobs and the agents are stopped first.
-        let mut titling = Titling::default();
+        let mut titling = Titling::new(base.namer.cloned());
         // Inside the scope: it is dropped while unwinding, before the scope waits for threads.
         let _ending = Ending {
             jobs: lane.jobs,

@@ -8,10 +8,11 @@ use contracts::model::Decider;
 use super::{Rig, Seat, Setup, Shared, assemble};
 use crate::interrupt::{self, Interrupt};
 use crate::live::LiveChat;
+use crate::meta::title::Namer;
 use crate::output::Output;
 
-/// The models a lane works with: the one it thinks with and, where one is reachable, a decision
-/// model.
+/// The models a lane works with: the one it thinks with, where one is reachable a decision model,
+/// and what its titles are asked of.
 #[derive(Clone, Copy)]
 pub(crate) struct Models<'a> {
     pub chat: &'a dyn Chat,
@@ -21,6 +22,9 @@ pub(crate) struct Models<'a> {
     pub adviser: Option<&'a dyn Decider>,
     /// The decision model `grep` reads the files with (B8); `None`: the files' words alone.
     pub searcher: Option<&'a dyn Decider>,
+    /// What the session's titles are asked of; `None` (every test lane but one that gives a
+    /// fake): none is asked.
+    pub namer: Option<&'a Namer>,
 }
 
 /// Build the agent from `setup` on the chosen provider's chat model, and run `work` with it; its
@@ -42,11 +46,14 @@ pub(crate) fn lane(shared: &Shared, seat: Seat, work: impl FnOnce(&mut Rig) -> i
         .flatten();
     // `--no-advice` turns off the advice alone: a search the model asks for is its own.
     let searcher = crate::providers::searcher(vars);
+    // The same model, made for each title from the choice then.
+    let namer = crate::meta::title::namer(vars);
     let models = Models {
         chat: &live,
         live: Some(&live),
         adviser: adviser.as_deref(),
         searcher: searcher.as_deref(),
+        namer: Some(&namer),
     };
     lane_with(shared, seat, models, work)
 }

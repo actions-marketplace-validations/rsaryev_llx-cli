@@ -7,13 +7,13 @@ use contracts::chat::{Chat, ChatError, Completion, Message, Request};
 use super::*;
 
 /// A chat model that answers `text` and keeps what it was asked, and by when.
-struct Namer {
+struct TitleChat {
     text: Result<String, ()>,
     asked: Mutex<Vec<(Vec<Message>, usize, bool)>>,
     deadlines: Mutex<Vec<Option<Instant>>>,
 }
 
-impl Namer {
+impl TitleChat {
     fn new(text: Result<&str, ()>) -> Self {
         Self {
             text: text.map(str::to_string),
@@ -23,7 +23,7 @@ impl Namer {
     }
 }
 
-impl Chat for Namer {
+impl Chat for TitleChat {
     #[expect(
         clippy::unwrap_in_result,
         reason = "a test's fake: a poisoned lock fails the test"
@@ -48,7 +48,7 @@ impl Chat for Namer {
 
 #[test]
 fn the_model_is_asked_once_with_no_tools_for_the_task_it_names() {
-    let namer = Namer::new(Ok("Fix the flaky jobs test"));
+    let namer = TitleChat::new(Ok("Fix the flaky jobs test"));
     let title = ask(&namer, "the jobs test fails one run in ten, find out why");
     assert_eq!(title.as_deref(), Some("Fix the flaky jobs test"));
     let asked = namer.asked.lock().unwrap();
@@ -65,10 +65,10 @@ fn the_model_is_asked_once_with_no_tools_for_the_task_it_names() {
 
 #[test]
 fn a_failed_or_empty_answer_names_nothing() {
-    assert_eq!(ask(&Namer::new(Err(())), "go"), None);
-    assert_eq!(ask(&Namer::new(Ok("  \n")), "go"), None);
+    assert_eq!(ask(&TitleChat::new(Err(())), "go"), None);
+    assert_eq!(ask(&TitleChat::new(Ok("  \n")), "go"), None);
     assert_eq!(
-        ask(&Namer::new(Ok("x")), "   "),
+        ask(&TitleChat::new(Ok("x")), "   "),
         None,
         "no task, no request"
     );
@@ -106,7 +106,7 @@ fn a_long_task_is_cut_to_the_prompt_budget_on_a_character() {
 /// The lane's end waits for a title still asked for: its request is held to a deadline.
 #[test]
 fn the_titles_request_is_given_up_within_a_minute() {
-    let namer = Namer::new(Ok("Fix the parser"));
+    let namer = TitleChat::new(Ok("Fix the parser"));
     assert!(ask(&namer, "fix the parser").is_some());
     let deadline = namer.deadlines.lock().unwrap()[0];
     let minute = Instant::now() + Duration::from_secs(60);
@@ -154,4 +154,128 @@ fn a_task_never_waits_for_the_title_still_asked_for() {
         "the next task waited"
     );
     drop(release);
+}
+
+/// A test lane at an interface, given no title model, asks none: not of the provider its choice
+/// names (OpenRouter, here a stand-in named in the session's environment with a key), as no test
+/// may reach a network for a title (S3).
+#[test]
+fn a_lane_with_no_title_model_asks_nothing() {
+    use crate::compose::{Models, Seat, lane_with};
+    use crate::server::{Peer, Ui};
+    use crate::testing::{Scratch, ScriptedChat, says, setup};
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let stand_in = std::thread::Builder::new()
+        .name("stand-in".into())
+        .spawn(move || {
+            use std::io::Read;
+            let mut peer = listener.accept().unwrap().0;
+            // What the first peer sent: a request; the wake-up below sends nothing.
+            peer.read(&mut [0; 16]).unwrap_or(0) > 0
+        })
+        .unwrap();
+    let scratch = Scratch::new();
+    let mut setup = setup(&scratch, crate::modes::built("bypass"), true);
+    let env = vec![
+        ("OPENROUTER_API_KEY".to_string(), "sk-or-test".to_string()),
+        ("OPENROUTER_BASE_URL".into(), format!("http://{address}")),
+    ];
+    setup.workspace = setup.workspace.with_env(env);
+    let (shared, seat) = setup.split();
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "the in-process transport's channel, as the binary makes it"
+    )]
+    let (out, _frames) = std::sync::mpsc::channel();
+    let seat = Seat {
+        ui: Some(Ui::new(Peer::new(out))),
+        ..seat
+    };
+    let chat = ScriptedChat::new(vec![says("Done.")]);
+    let models = Models {
+        chat: &chat,
+        live: None,
+        adviser: None,
+        searcher: None,
+        namer: None,
+    };
+    // The lane's end waits for a title still asked for: whatever was asked, was asked by then.
+    lane_with(&shared, seat, models, |rig| rig.task("fix the parser"));
+    // Wakes the stand-in when nothing reached it.
+    drop(std::net::TcpStream::connect(address));
+    assert!(
+        !stand_in.join().unwrap(),
+        "a title was asked of the provider"
+    );
+}
+
+/// What a served lane asks its titles of: `chat`, whatever the lane thinks with.
+fn asked_of(chat: &Arc<crate::test_support::Gated>) -> Namer {
+    let chat = Arc::clone(chat);
+    Arc::new(move |_: &Choice| Some(Arc::clone(&chat) as Arc<dyn Chat>))
+}
+
+/// Each event `frames` brings, with its session, until `done` holds of all told so far.
+fn told_until(
+    frames: &std::sync::mpsc::Receiver<protocol::ToClient>,
+    done: impl Fn(&[(Option<String>, Event)]) -> bool,
+) -> Vec<(Option<String>, Event)> {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut told = vec![];
+    while !done(&told) {
+        let left = deadline.saturating_duration_since(Instant::now());
+        let Ok(frame) = frames.recv_timeout(left) else {
+            panic!("waited too long: {told:#?}")
+        };
+        if let protocol::ToClient::Event { session, event, .. } = frame {
+            told.push((session, event));
+        }
+    }
+    told
+}
+
+/// Whether `told` holds an event `is` names.
+fn has(told: &[(Option<String>, Event)], is: impl Fn(&Event) -> bool) -> bool {
+    told.iter().any(|(_, event)| is(event))
+}
+
+/// A served session's first task names it, as its title model answers: the interface is told
+/// the title, in the lane's name, and the saved session keeps it.
+#[test]
+fn a_served_sessions_first_task_is_named_by_its_title_model() {
+    use crate::test_support::{gated, says, served_titled};
+    use contracts::history::History;
+    let ((to_chat, chat), (to_namer, namer)) = (gated(), gated());
+    let namer = Arc::new(namer);
+    to_namer.send(says("Fix the flaky jobs test")).unwrap();
+    to_chat.send(says("Done.")).unwrap();
+    let goal = "the jobs test fails one run in ten, find out why";
+    let lane = Mutex::new(None);
+    let named = asked_of(&namer);
+    let scratch = served_titled(&[&chat], Some(&named), Some(goal), &|| {}, |link, _| {
+        let told = told_until(&link.frames, |told| {
+            has(told, |e| matches!(e, Event::Updated(_)))
+                && has(told, |e| matches!(e, Event::TaskEnded { .. }))
+        });
+        let updated = told.iter().find(|(_, e)| matches!(e, Event::Updated(_)));
+        let (session, update) = updated.unwrap();
+        let title = Some("Fix the flaky jobs test".to_string());
+        assert_eq!(*update, Event::Updated(protocol::Update { title }));
+        *lane.lock().unwrap() = session.clone();
+    });
+    let lane = lane
+        .into_inner()
+        .unwrap()
+        .expect("the update names its lane");
+    let history = session::Sessions {
+        dir: scratch.path().join("sessions"),
+    };
+    assert_eq!(
+        history.load(&lane).unwrap().title,
+        "Fix the flaky jobs test"
+    );
+    let asked = namer.asked();
+    assert_eq!(asked.len(), 1, "one title asked");
+    assert!(format!("{:?}", asked[0]).contains(goal), "{asked:?}");
 }

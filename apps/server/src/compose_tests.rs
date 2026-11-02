@@ -101,6 +101,7 @@ fn commands_never_see_the_key_of_the_provider_in_use() {
         live: None,
         adviser: None,
         searcher: None,
+        namer: None,
     };
     let output = Output::with(
         false,
@@ -185,6 +186,7 @@ fn two_lanes_over_one_shared_share_the_workspace_but_keep_their_own() {
         live: None,
         adviser: None,
         searcher: None,
+        namer: None,
     };
     let output = quiet();
     let names =

@@ -87,6 +87,7 @@ fn compose_ending(
         live: None,
         adviser: None,
         searcher: None,
+        namer: None,
     };
     let out = Captured::default();
     let output = Output::with(
