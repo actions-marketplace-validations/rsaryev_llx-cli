@@ -26,7 +26,8 @@ pub enum Message {
         content: String,
         failed: bool,
     },
-    /// A picture the person attached to their message. `caption` says what it shows.
+    /// A picture the person attached to their message. `caption`, sent beside it, says what it
+    /// is (its name, its size).
     Image {
         caption: String,
         image: Image,

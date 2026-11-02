@@ -10,8 +10,8 @@ use crate::calls::{self, Outcome};
 const NOT_RUN: &str = "not run: a call before it in this turn failed, and this one was written \
     expecting that call to succeed";
 
-/// Replies cut off in a row with nothing done before the task ends with an error, as Claude Code
-/// allows them.
+/// Replies cut off in a row, with nothing done, that a task goes on from; the next one ends it
+/// with an error. Claude Code allows as many.
 const MAX_CUTS: usize = 3;
 /// What the model is told when its output limit cut a reply off before it ended.
 const GO_ON: &str = "Your last reply was cut off at your output limit before it ended. Go on \
