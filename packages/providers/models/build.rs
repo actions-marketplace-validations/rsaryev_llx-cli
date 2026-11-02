@@ -74,7 +74,8 @@ fn main() {
             json!({"id": id, "name": field("name"), "env": field("env"), "models": models}),
         );
     }
-    // Deflated: 200 KB of JSON is 14 KB in the binary, inflated only by a run that reads it.
+    // Deflated, the JSON takes a fifteenth of its size in the binary, inflated only by a run that
+    // reads it.
     let document = Value::Object(providers).to_string();
     let packed = miniz_oxide::deflate::compress_to_vec(document.as_bytes(), 10);
     let out = Path::new(&std::env::var("OUT_DIR").unwrap()).join("catalog.json.deflate");

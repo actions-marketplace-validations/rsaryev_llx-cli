@@ -87,20 +87,22 @@ long-context price band; the reason llx's default request ceiling is 272k);
 - **Build:** `build.rs` resolves the files as models.dev does (the rules above, in Rust) into one
   document in the shape of the v2 API, cut by the catalog's types (`types.rs`) as a fetched
   catalog is (a model that does not read as one left out), built into the crate.
-- **Run:** `lib.rs` types that shape (unknown fields ignored; a model that does not parse is left
-  out, never the catalog). `source.rs` fetches the v2 API at most once an hour with its ETag, keeps
-  it cut down in `<config>/models.json` (the ETag in `models.etag`), and lays it over the built-in
-  data: a running process, the daemon too, reads it again within a minute of a refresh writing a
-  newer one. Nothing waits on the network; `LLX_MODELS_REFRESH=0` turns the refresh off.
+- **Run:** `types.rs` types that shape (unknown fields ignored), and `provider.rs` reads a
+  provider as an index of raw JSON, each model decoded the first time it is asked for (one that
+  does not parse is left out, never the catalog). `source.rs` fetches the v2 API at most once an
+  hour with its ETag, keeps it cut down in `<config>/models.json` (the ETag in `models.etag`), and
+  lays it over the built-in data: a running process, the daemon too, reads it again within a
+  minute of a refresh writing a newer one. Nothing waits on the network; `LLX_MODELS_REFRESH=0`
+  turns the refresh off.
 - **What llx reads:** a model is usable when its `type` is `chat`, `tools.supported`, `text` is
   among its outputs and it is not `deprecated`. It is called over a protocol only at a fixed
   address (an `http(s)://` `base_url` with no `${…}`). A provider's models are listed newest first
   by `release_date`. Its window is `limit.input`, else `limit.context`; its output limit is
   `limit.output`. Its levels come from `capabilities.reasoning` (effort list, toggle → off and
   on, budget → low, medium, high, and off when its `min` allows) and its default from `default`,
-  else medium or the nearest below. A provider is called through the first API llx speaks:
-  `chat-completions` (any host), `responses` (OpenAI with a ChatGPT sign-in, which offers the
-  models served over it alone too). A `decision` model that is not `deprecated` is kept for
+  else medium or the nearest below, else the lowest it takes. A provider is called over
+  `chat-completions` (any host), but OpenAI with a ChatGPT sign-in over `responses`, which also
+  offers the models served over it alone. A `decision` model that is not `deprecated` is kept for
   `llx decide`: the app's default one (`DECISION_DEFAULT`) must be among them.
 - **Free-text tools:** whether a model takes a tool of free text held to a Lark grammar (how
   `apply_patch` is offered over the Responses API) is the API's `capabilities.tools.freeform`,

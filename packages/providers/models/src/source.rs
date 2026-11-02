@@ -2,8 +2,8 @@
 //! as last fetched (`<config>/models.json`, cut down to what llx reads). A refresh asks
 //! models.dev at most once an hour, with the ETag it last had, so an unchanged catalog costs no
 //! body (a changed one is about 800 KB gzipped); a failed one changes nothing. A day was too
-//! long: a model released in the morning was missing until the next. Nothing waits on the network: a session refreshes in the
-//! background, and what it fetches is read by the next one.
+//! long: a model released in the morning was missing until the next. Nothing waits on the
+//! network: the app refreshes in the background, and what it fetches is read at the next [`load`].
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};

@@ -7,10 +7,10 @@
 It needs Python 3.11 or later (tomllib), or `pip install tomli` before that. The files are
 models.dev's own, copied verbatim with their source comments: for each provider llx lists first
 (POPULAR, read from packages/providers/models/src/lib.rs), its `provider.toml`, its newest
-`PER_PROVIDER` models llx can work with (type chat, tools supported, text out, not deprecated:
-read as build.rs resolves it from its base model), every decision model it serves that is not
-deprecated (`llx decide` takes one), and the lab files those name. Nothing in data/ is edited by
-hand: run this again, review the diff, commit.
+`PER_PROVIDER` models llx can work with (type chat, tools supported, text out, not deprecated,
+not `v2_only`: read as build.rs resolves it from its base model), every decision model it serves
+that is not deprecated (`llx decide` takes one), and the lab files those name. Nothing in data/
+is edited by hand: run this again, review the diff, commit.
 """
 import pathlib
 import re
