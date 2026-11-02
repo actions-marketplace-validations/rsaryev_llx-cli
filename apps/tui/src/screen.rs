@@ -7,6 +7,7 @@
 
 use std::fmt::Write as _;
 use std::io::{self, Write};
+use std::sync::Arc;
 
 use ratatui::text::Line;
 
@@ -32,6 +33,9 @@ pub(crate) struct History {
     pub asking: bool,
 }
 
+/// How a block is drawn at a width: kept, so that a new width draws it again.
+pub(crate) type Draw = Arc<dyn Fn(usize) -> Vec<Line<'static>> + Send + Sync>;
+
 /// A finished block: its rows, and the chain it is part of, said where it is made.
 #[derive(Clone)]
 pub(crate) struct Block {
@@ -39,11 +43,60 @@ pub(crate) struct Block {
     /// The verb of a call that succeeded: a block of the same verb printed right after it joins
     /// it, under one bullet.
     pub chain: Option<String>,
+    /// How its rows are drawn at another width; `None` for rows that read the same at any.
+    pub draw: Option<Draw>,
+}
+
+impl Block {
+    /// The block `draw` makes, drawn at `width`.
+    pub(crate) fn drawn(
+        width: usize,
+        draw: impl Fn(usize) -> Vec<Line<'static>> + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            lines: draw(width),
+            chain: None,
+            draw: Some(Arc::new(draw)),
+        }
+    }
+
+    /// The block `draw` makes of `text`, drawn at `width`.
+    pub(crate) fn text(
+        width: usize,
+        text: String,
+        draw: fn(&str, usize) -> Vec<Line<'static>>,
+    ) -> Self {
+        Self::drawn(width, move |width| draw(&text, width))
+    }
+
+    /// The block as `width` draws it, where it knows how; else as it is.
+    #[must_use]
+    pub(crate) fn at(&self, width: usize) -> Self {
+        let lines = self
+            .draw
+            .as_ref()
+            .map_or_else(|| self.lines.clone(), |draw| draw(width));
+        Self {
+            lines,
+            chain: self.chain.clone(),
+            draw: self.draw.clone(),
+        }
+    }
+
+    /// The block, part of the chain of the verb `chain`.
+    #[must_use]
+    pub(crate) fn chained(self, chain: Option<String>) -> Self {
+        Self { chain, ..self }
+    }
 }
 
 impl From<Vec<Line<'static>>> for Block {
     fn from(lines: Vec<Line<'static>>) -> Self {
-        Self { lines, chain: None }
+        Self {
+            lines,
+            chain: None,
+            draw: None,
+        }
     }
 }
 
@@ -145,7 +198,10 @@ impl<W: Write> Screen<W> {
     /// the next block arrives, so a chain spans frames without rewriting history.
     fn grouped(&mut self, blocks: Vec<Block>) -> Vec<Line<'static>> {
         let mut out = vec![];
-        for Block { mut lines, chain } in blocks {
+        for Block {
+            mut lines, chain, ..
+        } in blocks
+        {
             let joins = self.gap && chain.is_some() && chain == self.group;
             if self.gap && !joins {
                 out.push(Line::default());
@@ -201,6 +257,11 @@ impl<W: Write> Screen<W> {
     #[cfg(any(test, feature = "testing"))]
     pub(crate) fn output(&self) -> &W {
         &self.out
+    }
+
+    #[cfg(test)]
+    pub(crate) fn output_mut(&mut self) -> &mut W {
+        &mut self.out
     }
 }
 

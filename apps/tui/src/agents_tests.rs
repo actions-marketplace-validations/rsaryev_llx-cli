@@ -738,3 +738,12 @@ fn ctrl_c_in_an_agents_view_stops_that_agent_alone_then_goes_back() {
     assert_eq!(app.input(ctrl_c(), now), None);
     assert!(app.shown().parent.is_none());
 }
+
+#[test]
+fn a_job_chosen_offers_only_what_its_row_does() {
+    // Enter opens a session's transcript; a job has none, so its row offers to stop it.
+    let now = Instant::now();
+    let mut app = a_job_chosen_in_the_last_of(&["tui-job-hint"], now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(hint(&screen), "x stop · esc back", "{screen}");
+}

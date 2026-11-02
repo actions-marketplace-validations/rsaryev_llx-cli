@@ -7,6 +7,7 @@ use std::time::Instant;
 
 use super::app::{Action, App};
 use super::cells;
+use super::screen::Block;
 use protocol::Event;
 
 /// Rows of the latest steps shown under their call.
@@ -61,8 +62,7 @@ impl App {
             // The task read what the person said to it: theirs now, in the transcript.
             (Event::Steered(texts), Some(_)) => {
                 for text in texts {
-                    let block = cells::user(&text, self.width);
-                    self.push(at, block);
+                    self.push(at, Block::text(self.width, text, cells::user));
                 }
             }
             (
@@ -89,7 +89,7 @@ impl App {
             (Event::LaneStarted { id, name }, _) => {
                 self.views.lane_started(id.clone(), &name);
                 if let (Some(said), Some(at)) = (self.closed.take(), self.views.find(&id)) {
-                    self.push(at, cells::note(&said, self.width));
+                    self.push(at, Block::text(self.width, said, cells::note));
                 }
             }
             (Event::Show(id), _) => self.show(&id),

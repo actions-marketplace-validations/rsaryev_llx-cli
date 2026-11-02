@@ -183,7 +183,13 @@ impl App {
             Input::Key(key) => self.key(key, now),
             Input::Paste(text) => self.paste(&text),
             Input::Resize(width, height) => {
+                let was = self.width;
                 (self.width, self.height) = (usize::from(width), usize::from(height));
+                // The terminal reflows what it shows at a new width, so the rows above the
+                // cursor are no longer the rows drawn: the transcript is drawn again at it.
+                if self.width != was {
+                    self.redraw();
+                }
                 None
             }
             Input::Files(list) => {

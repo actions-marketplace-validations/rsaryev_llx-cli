@@ -81,6 +81,47 @@ fn a_failing_command_ends_with_how_it_exited_in_red() {
 }
 
 #[test]
+fn a_command_in_the_background_has_not_failed_and_says_so_in_a_few_words() {
+    // `run_in_background`, and a command moved there at its wait: no exit code yet, no failure,
+    // and the long lines meant for the model are not the person's.
+    let started = done(
+        "Running in the background: job `ticks` (job-2); its end comes back to you on its own as \
+         a <background> message. Nothing more is needed to learn its end.\nWhole output: /t/1.log",
+    );
+    let moved = done(
+        "Still running after: 120.0 seconds (moved to the background as job `cargo test` \
+         (job-1); its end comes back to you on its own.)\nWhole output: /t/2.log\n\
+         Output so far:\nrunning 12 tests",
+    );
+    let label = said("Running", "Ran", "cargo test");
+    let started_lines = lines("bash", &label, &State::Done(&started), 80);
+    let moved_lines = lines("bash", &label, &State::Done(&moved), 80);
+    let plain = |lines: &[Line<'static>]| {
+        lines
+            .iter()
+            .map(style::plain)
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    insta::assert_snapshot!([plain(&started_lines), plain(&moved_lines)].join("\n"), @r"
+    • Ran cargo test
+      └ Running in the background
+    • Ran cargo test
+      └ running 12 tests
+        Moved to the background after 120.0 s
+    ");
+    for lines in [&started_lines, &moved_lines] {
+        assert_ne!(lines[0].spans[0].style, style::failed());
+        assert!(
+            lines
+                .iter()
+                .flat_map(|line| &line.spans)
+                .all(|span| span.style != style::failed())
+        );
+    }
+}
+
+#[test]
 fn a_running_call_has_a_dim_bullet_and_a_present_verb() {
     let lines = lines(
         "bash",

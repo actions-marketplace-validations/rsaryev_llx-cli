@@ -3,8 +3,6 @@
 
 use std::time::Instant;
 
-use ratatui::text::Line;
-
 use super::screen::Block;
 
 /// Every session the interface knows, and which one it shows.
@@ -97,14 +95,9 @@ impl SessionView {
         }
     }
 
-    /// Its task began: it works, and the transcript shows what it was asked (not the mode
-    /// switch, which is no task of the person's).
-    pub(crate) fn started(
-        &mut self,
-        goal: &str,
-        now: Instant,
-        width: usize,
-    ) -> Option<Vec<Line<'static>>> {
+    /// Its task began: it works. `None` for the mode switch, which is no task of the person's
+    /// and is not shown.
+    pub(crate) fn started(&mut self, goal: &str, now: Instant) -> Option<()> {
         self.busy = Some(now);
         self.state = AgentState::Working;
         if let Some(lane) = &mut self.lane {
@@ -114,7 +107,7 @@ impl SessionView {
             return None;
         }
         self.named_by(goal);
-        Some(super::cells::user(goal, width))
+        Some(())
     }
 
     /// A lane with no name is named by the first line of its first task.

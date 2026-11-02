@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A resized window draws the session again at its new width: the terminal reflows what it shows, so the live area was erased short and its copies (the composer's rules) stayed on the screen. Each block of the transcript is drawn again at the width, not cut.
+- A command in the background reads as running, not failed: `Running in the background`, or `Moved to the background after 120.0 s` under what it printed so far, never the red lines meant for the model.
+- A job's row in the list says what it does, `x stop · esc back`: Enter opens a session's or an agent's transcript, and a job has none.
+
 - A task that something from the background opened (a command's end, a monitor's lines, a schedule) starts in the session's history as where it came from (`$ tests · Exit code: 1`, `≋ ticks · tick 1`, `◷ nightly · …`), as a saved session shows it, not as the tagged message the model reads.
 
 - The advice that reviews an answer reads what came in during the task (a background command's end, a monitor's lines, an agent's answer, the person's words) in its place among the calls: an answer that reported a command's exit code from its `<background>` message was sent back twice as unfinished, the review seeing only that the command was started.

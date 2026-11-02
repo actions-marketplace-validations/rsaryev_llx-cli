@@ -406,3 +406,30 @@ fn a_chain_is_still_one_when_its_session_is_shown_again() {
     let shown = term.draw(&mut app, now);
     assert!(shown.contains("• Read a.rs\n  ↳ Read b.rs"), "{shown}");
 }
+
+#[test]
+fn a_new_width_prints_the_transcript_again_at_it() {
+    use crate::app::App;
+    use crate::event::Input;
+    use crate::test_support::Term;
+    use protocol::Event;
+
+    // The terminal reflows what it shows at a new width, so the rows above the cursor are no
+    // longer the rows drawn: the live area is erased short and a copy of it stays. The
+    // transcript is printed again from the top instead, each row fit to the new width.
+    let now = std::time::Instant::now();
+    let mut app = App::new(60, 24, vec![]);
+    let mut term = Term::new(&app);
+    app.event(Event::TaskStarted("check".into()), now);
+    let answer = "The first forty characters fit, and the rest of it is here.";
+    app.event(Event::Answer(answer.into()), now);
+    term.draw(&mut app, now);
+    term.resize(&mut app, 30, 24, now);
+    let shown = term.draw(&mut app, now);
+    let joined = shown.lines().map(str::trim).collect::<Vec<_>>().join(" ");
+    assert!(joined.contains(answer.trim_end_matches('.')), "{shown}");
+    assert_eq!(shown.matches("❯ check").count(), 1, "{shown}");
+    // A frame at the same size again leaves the screen as it is.
+    app.input(Input::Resize(30, 24), now);
+    assert!(!app.take_replay());
+}

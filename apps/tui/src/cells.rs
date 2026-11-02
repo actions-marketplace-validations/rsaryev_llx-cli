@@ -16,6 +16,7 @@ use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 
 use super::markdown;
+use super::screen::Block;
 use super::style;
 use super::wrap::{cut, line_width, width as text_width, wrap};
 use crate::printable::printable;
@@ -85,24 +86,27 @@ const EARLIER: usize = 20;
 
 /// A resumed session's tasks as blocks: how many there were, then each task, its answer, and how
 /// it ended when it did not end well. Only the tasks and answers are kept, not their calls.
-pub(crate) fn earlier(turns: &[protocol::Turn], width: usize) -> Vec<Vec<Line<'static>>> {
+pub(crate) fn earlier(turns: &[protocol::Turn], width: usize) -> Vec<Block> {
     let skipped = turns.len().saturating_sub(EARLIER);
     let mut said = count(turns.len() as u64, "earlier task");
     if skipped > 0 {
         let _ = write!(said, " · the last {EARLIER} shown");
     }
-    let mut out = vec![note(&said, width)];
+    let mut out = vec![Block::drawn(width, move |width| note(&said, width))];
     for turn in &turns[skipped..] {
-        out.push(user(&turn.goal, width));
+        let goal = turn.goal.clone();
+        out.push(Block::drawn(width, move |width| user(&goal, width)));
         if !turn.answer.trim().is_empty() {
-            out.push(agent(&turn.answer, width));
+            let answer = turn.answer.clone();
+            out.push(Block::drawn(width, move |width| agent(&answer, width)));
         }
         if turn.status != "done" {
             let (style, mark, word, _) = ending(&turn.status);
-            out.push(vec![Line::from(vec![
+            let line = Line::from(vec![
                 Span::styled(format!("{mark} "), style),
                 Span::styled(word, style::dim()),
-            ])]);
+            ]);
+            out.push(vec![line].into());
         }
     }
     out
@@ -152,6 +156,12 @@ pub(crate) fn note(text: &str, width: usize) -> Vec<Line<'static>> {
         }
     }
     out
+}
+
+/// The header of the server's `Event::Header`: its version first, then its facts.
+pub(crate) fn header_of(said: &[String], width: usize) -> Vec<Line<'static>> {
+    let (version, facts) = (said.split_first()).map_or(("", &[][..]), |(v, f)| (v.as_str(), f));
+    header(version, facts, width)
 }
 
 /// The session's first row: the version, then what it runs with.

@@ -28,6 +28,7 @@ use super::list::{dimmed, more};
 use super::printable::printable;
 use super::style;
 use super::time::now_ms;
+use super::views::Chosen;
 use super::wrap::width as text_width;
 
 mod row;
@@ -119,6 +120,10 @@ pub(crate) fn render(
     let on_agent = app.shown().parent.is_some();
     let others = others.unwrap_or_else(|| "← sessions".into());
     let hint = match (focus, on_agent) {
+        // Enter opens a session's transcript; a job has none.
+        (Some(_), _) if matches!(app.views.focus, Some(Chosen::Job { .. })) => {
+            "x stop · esc back".to_string()
+        }
         (Some(_), _) => "enter open · x stop · esc back".to_string(),
         (None, true) => format!("↓ manage · esc back to {}", app.home_title()),
         (None, false) => format!("↓ manage · {others}"),

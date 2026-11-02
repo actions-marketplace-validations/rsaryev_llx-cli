@@ -35,7 +35,8 @@ impl App {
         let shown = self.views.find(&self.views.shown).unwrap_or(home);
         let Some(at) = idle else {
             let full = format!("{} sessions are working: stop one first", self.max_lanes);
-            self.push(shown, super::cells::note(&full, self.width));
+            let note = super::screen::Block::text(self.width, full, super::cells::note);
+            self.push(shown, note);
             return;
         };
         let view = &self.views.sessions[at];

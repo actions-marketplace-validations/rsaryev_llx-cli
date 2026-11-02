@@ -26,16 +26,16 @@ impl App {
         let view = &mut self.views.sessions[at];
         let block: Block = match event {
             Event::Header(facts) => {
-                let (version, facts) = facts
-                    .split_first()
-                    .map_or(("", &[][..]), |(v, f)| (v.as_str(), f));
-                cells::header(version, facts, width).into()
+                Block::drawn(width, move |width| cells::header_of(&facts, width))
             }
             // In an agent, a message its parent sent it while it worked, read at its next step.
-            Event::Note(text) if view.parent.is_some() => cells::user(&text, width).into(),
-            Event::Note(text) => cells::note(&text, width).into(),
-            Event::Error(text) => cells::error(&text, width).into(),
-            Event::TaskStarted(goal) => view.started(&goal, now, width)?.into(),
+            Event::Note(text) if view.parent.is_some() => Block::text(width, text, cells::user),
+            Event::Note(text) => Block::text(width, text, cells::note),
+            Event::Error(text) => Block::text(width, text, cells::error),
+            Event::TaskStarted(goal) => {
+                view.started(&goal, now)?;
+                Block::text(width, goal, cells::user)
+            }
             Event::Call { call, name, label } => {
                 view.running.push(Running {
                     call,
@@ -54,14 +54,16 @@ impl App {
                 label,
                 outcome,
             } => self.call_ended(at, &call, &name, &label, &outcome, now),
-            Event::Answer(text) if !text.trim().is_empty() => cells::agent(&text, width).into(),
+            Event::Answer(text) if !text.trim().is_empty() => {
+                Block::text(width, text, cells::agent)
+            }
             Event::Answer(_) => return None,
             Event::TaskEnded {
                 status,
                 millis,
                 turns,
                 cost,
-            } => self.task_ended(at, status, millis, turns, cost).into(),
+            } => self.task_ended(at, status, millis, turns, cost),
             Event::Spent(tokens) => {
                 view.tokens += tokens;
                 return None;
@@ -159,20 +161,28 @@ impl App {
             self.views.focus = None;
         }
         self.views.shown = id.to_string();
-        self.views.replay = true;
         self.views.sessions[at].unseen = false;
         self.release_held();
-        let view = &self.views.sessions[at];
-        self.pending = match &view.parent {
-            None => view.blocks.clone(),
-            Some(parent) => {
-                let parent = self.views.find(parent).map(|at| &self.views.sessions[at]);
-                let parent = parent.map_or("", SessionView::title);
-                let mut blocks = vec![heading(&view.name, parent).into()];
-                blocks.extend(view.blocks.iter().cloned());
-                blocks
-            }
+        self.redraw();
+    }
+
+    /// The screen cleared and the session shown printed again from the top, its blocks fit to
+    /// the width of the next frame.
+    pub(crate) fn redraw(&mut self) {
+        let Some(at) = self.views.find(&self.views.shown) else {
+            return;
         };
+        self.views.replay = true;
+        let view = &self.views.sessions[at];
+        let width = self.width;
+        let mut blocks = vec![];
+        if let Some(parent) = &view.parent {
+            let parent = self.views.find(parent).map(|at| &self.views.sessions[at]);
+            let parent = parent.map_or("", SessionView::title);
+            blocks.push(heading(&view.name, parent).into());
+        }
+        blocks.extend(view.blocks.iter().map(|block| block.at(width)));
+        self.pending = blocks;
     }
 
     /// Whether the screen must be cleared before the next frame: the view changed.

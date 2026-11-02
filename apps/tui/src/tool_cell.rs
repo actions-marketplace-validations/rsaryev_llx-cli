@@ -143,8 +143,25 @@ pub(super) fn chain(name: &str, label: &Label, outcome: &Outcome) -> Option<Stri
 fn failed(name: &str, outcome: &Outcome) -> bool {
     match outcome {
         Outcome::Failed { .. } | Outcome::Fatal { .. } => true,
-        Outcome::Done { report, .. } => name == "bash" && !exit_zero(report),
+        Outcome::Done { report, .. } => {
+            name == "bash" && !exit_zero(report) && backgrounded(report).is_none()
+        }
     }
+}
+
+/// What a command the background took says of itself: it was started there
+/// (`run_in_background`) or moved there at its wait. It has not ended, so it neither failed nor
+/// succeeded; its end comes later, as a task of its own.
+fn backgrounded(report: &str) -> Option<String> {
+    let head = report.lines().next()?;
+    if head.starts_with("Running in the background:") {
+        return Some("Running in the background".into());
+    }
+    let seconds = head
+        .strip_prefix("Still running after: ")?
+        .split_once(" seconds")?
+        .0;
+    Some(format!("Moved to the background after {seconds} s"))
 }
 
 /// What a call running does: `Running cargo test`.
@@ -158,6 +175,15 @@ pub(crate) fn doing(label: &Label) -> String {
 /// when that was not 0; an edit the files it changed; the rest show their report's first row.
 fn output_rows(name: &str, report: &str) -> Vec<(String, Style)> {
     match name {
+        "bash" if let Some(said) = backgrounded(report) => {
+            let printed = report
+                .lines()
+                .skip_while(|line| *line != "Output so far:")
+                .skip(1);
+            let mut out: Vec<_> = rows(printed).collect();
+            out.push((said, style::dim()));
+            out
+        }
         "bash" => {
             // The header's lines (`Exit code: 1`, `Wall time: …`) end at `Output:`.
             let head = report.lines().next().unwrap_or_default();

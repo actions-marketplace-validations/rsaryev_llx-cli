@@ -384,6 +384,17 @@ impl Term {
         self.contents()
     }
 
+    /// The window is resized to `width` by `height`, and the app told so, as the key reader
+    /// tells it. vt100 cuts what it shows to the new width rather than reflowing it.
+    #[cfg(test)]
+    pub(crate) fn resize(&mut self, app: &mut App, width: u16, height: u16, now: Instant) {
+        self.screen
+            .output_mut()
+            .screen_mut()
+            .set_size(height, width);
+        app.input(Input::Resize(width, height), now);
+    }
+
     /// The rows the terminal shows, without trailing blanks or blank rows, normalized.
     pub(crate) fn contents(&self) -> String {
         let shown = self.screen.output().screen().contents();
