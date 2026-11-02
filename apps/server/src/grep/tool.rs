@@ -117,8 +117,8 @@ impl Tool for GrepTool<'_> {
     }
 }
 
-/// The strings of `key`: an array of them, or one alone.
-fn strings(arguments: &Value, key: &str) -> Vec<String> {
+/// The strings of `key`: an array of them, or one alone (a call's label reads its paths so too).
+pub(crate) fn strings(arguments: &Value, key: &str) -> Vec<String> {
     let each = |value: &Value| value.as_str().map(str::trim).map(str::to_string);
     match arguments.get(key) {
         Some(Value::Array(values)) => values

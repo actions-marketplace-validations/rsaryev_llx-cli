@@ -47,6 +47,26 @@ fn agents_and_jobs_read_as_their_action() {
 }
 
 #[test]
+fn a_search_reads_as_its_question_and_where_it_looks() {
+    assert_eq!(
+        doing("grep", &json!({"query": "where the session is saved"})),
+        "Searching where the session is saved"
+    );
+    assert_eq!(
+        did(
+            "grep",
+            &json!({"query": "the  retry\n policy", "paths": ["src", "docs"]})
+        ),
+        "Searched the retry policy (in src, docs)"
+    );
+    // One path alone, as the tool reads it.
+    assert_eq!(
+        did("grep", &json!({"query": "the cache key", "paths": "src"})),
+        "Searched the cache key (in src)"
+    );
+}
+
+#[test]
 fn a_patch_reads_as_the_files_it_changes() {
     let patch = json!(
         "*** Begin Patch\n*** Update File: a.ts\n*** Move to: b.ts\n*** Add File: c/d.ts\n+x\n*** End Patch"
