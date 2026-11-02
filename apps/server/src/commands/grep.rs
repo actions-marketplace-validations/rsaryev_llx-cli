@@ -38,13 +38,16 @@ const JUDGED_LINES: usize = 60;
 /// How many files are read from disk at once.
 const READERS: usize = 8;
 
+/// The lines of the part the decision model said answers best, `start..end`.
+type Lead = Option<(usize, usize)>;
+
 /// A file the search shows: its index among those read, how well it answers, its parts, and the
 /// part the decision model said answers best.
 pub(super) struct Found {
     doc: usize,
     score: f64,
     blocks: Vec<Block>,
-    lead: Option<(usize, usize)>,
+    lead: Lead,
 }
 
 /// How the files were picked.
@@ -146,7 +149,7 @@ fn picked(candidates: &[usize], verdicts: &judge::Verdicts, ranked: &[rank::Scor
             .position(|scored| scored.doc == doc)
             .unwrap_or(usize::MAX)
     };
-    let mut judged: Vec<(usize, f64, Option<(usize, usize)>)> =
+    let mut judged: Vec<(usize, f64, Lead)> =
         (candidates.iter().zip(&verdicts.yes).zip(&verdicts.lead))
             .filter_map(|((&doc, yes), lead)| Some((doc, (*yes)?, *lead)))
             .collect();
