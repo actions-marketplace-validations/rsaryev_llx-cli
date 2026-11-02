@@ -34,6 +34,20 @@ fn checks_types_required_enums_and_nesting() {
 }
 
 #[test]
+fn a_required_field_is_required_where_the_schema_lists_no_properties() {
+    // JSON Schema's `required` stands on its own: an object without the field breaks it.
+    let schema = json!({"type": "object", "required": ["price"]});
+    assert_eq!(
+        take(&json!({"data": {}}), &schema),
+        Err("data is missing \"price\"".into())
+    );
+    assert_eq!(
+        take(&json!({"data": {"price": 93}}), &schema),
+        Ok(json!({"price": 93}))
+    );
+}
+
+#[test]
 fn a_result_call_is_checked_against_its_schema() {
     let schema = json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}});
     let call = json!({"data": {"price": 93}});

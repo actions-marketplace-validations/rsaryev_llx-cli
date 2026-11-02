@@ -76,22 +76,16 @@ fn violations(schema: &Value, value: &Value, at: &str, out: &mut Vec<String>) {
         out.push(format!("{at} must be {}", types.join(" or ")));
         return;
     }
-    if let (Some(object), Some(properties)) = (
-        value.as_object(),
-        schema.get("properties").and_then(Value::as_object),
-    ) {
-        for name in schema
-            .get("required")
-            .and_then(Value::as_array)
-            .into_iter()
-            .flatten()
-            .filter_map(Value::as_str)
-        {
+    if let Some(object) = value.as_object() {
+        // `required` stands on its own: a schema may list no `properties` beside it.
+        let required = schema.get("required").and_then(Value::as_array);
+        for name in required.into_iter().flatten().filter_map(Value::as_str) {
             if !object.contains_key(name) {
                 out.push(format!("{at} is missing \"{name}\""));
             }
         }
-        for (name, sub) in properties {
+        let properties = schema.get("properties").and_then(Value::as_object);
+        for (name, sub) in properties.into_iter().flatten() {
             if let Some(child) = object.get(name) {
                 violations(sub, child, &format!("{at}.{name}"), out);
             }
