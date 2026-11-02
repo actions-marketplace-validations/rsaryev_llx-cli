@@ -1,7 +1,8 @@
 # Search benchmark history
 
-A line per recorded run (`bun benchmark/grep/run.ts --record`): the label, then R@5, P@5 and MRR
-over all the questions, for each mode of `llx grep`.
+A line per recorded run (`bun benchmark/grep/run.ts --record`): its time and label, then R@5,
+P@5 and MRR over all the questions, for each mode of `llx grep`; what changed, and any other
+measure, added by hand.
 
 - 2026-11-02 v1 (the words and the decision model, first): judged R@5 90% P@5 79% MRR 0.90; words R@5 68% P@5 39% MRR 0.64
 - 2026-11-02 v2 (numbers in any spelling, tests out of the judged files, `data/` at half): judged R@5 90% P@5 79% MRR 0.85; words R@5 80% P@5 43% MRR 0.68

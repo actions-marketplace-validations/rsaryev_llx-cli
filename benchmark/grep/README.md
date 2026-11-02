@@ -49,9 +49,9 @@ reciprocal of the place of the first `must` file. For a question with none: **no
 nothing was named. And the time, the cost, and **KB read**: what an agent reads of the answer
 (`llx grep`'s paths and lines; `rg -n`'s output).
 
-`results/<date>_<time>[-label].json` keeps every answer, with each file's score: enough to try a
-threshold again without asking the model again. [HISTORY.md](HISTORY.md) has a line per recorded
-run.
+`results/<date>-<hh>-<mm>[-label].json` (the time in UTC) keeps every answer, with each file's
+score: enough to try a threshold again without asking the model again.
+[HISTORY.md](HISTORY.md) has a line per recorded run.
 
 ## Where it stands
 
@@ -88,8 +88,8 @@ Give a pattern where a string the answer must have is known; else ask the questi
 ## How deep the decision model reads
 
 `bun benchmark/grep/run.ts --ranks` asks no model: it prints where each file an answer must name
-stands in the ranking by words, the order the decision model reads files in, so the depth of
-`--judge` can be chosen without paying for a run. At this commit the deepest one is at 65
-(`concept-1`'s `extras.rs`; its `doctor.rs` has none of the question's words and is reached only
-through links), every other within 21: `--judge 80` reads past each, and 40 would leave
-`extras.rs` to the second round.
+stands in the ranking by words, the order the decision model reads files in (tests left out, as
+`llx grep` gives it none), so the depth of `--judge` can be chosen without paying for a run. At
+this commit the deepest one is at 65 (`concept-1`'s `extras.rs`; its `doctor.rs` has none of the
+question's words and is reached only through links), every other within 21: `--judge 80` reads
+past each, and 40 would leave `extras.rs` to the second round.

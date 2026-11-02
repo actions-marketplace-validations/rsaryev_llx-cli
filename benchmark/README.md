@@ -1,8 +1,9 @@
 # Benchmark
 
-A deterministic check of llx as an agent, with Codex beside it to compare: the agent implements
-a small TypeScript project for Bun against acceptance tests written in advance, which it may not
-change. The tests score the work, so a run is judged by what passes, not by what the agent says.
+A check of llx as an agent, with Codex beside it to compare, that no model scores: the agent
+implements a small TypeScript project for Bun against acceptance tests written in advance, which
+it may not change. The tests score the work, so a run is judged by what passes, not by what the
+agent says.
 Run it often, after a change to the loop, the prompt, the tools or a provider and in between, and
 read the rows of [HISTORY.md](HISTORY.md).
 
@@ -16,8 +17,9 @@ read the rows of [HISTORY.md](HISTORY.md).
 
 Each task has `project/`, what the agent is given (the README, the tests, stubs that throw), and
 `ref/`, a reference implementation that passes every test. `ref/` is never given to the agent.
-`bun benchmark/run.ts --task <task> --check` checks a task after an edit: the reference passes
-everything, and the stubs next to nothing.
+`bun benchmark/run.ts --task <task> --check` checks a task after an edit: the two have the same
+tests, `package.json` and `tsconfig.json`, the reference passes everything, and the stubs next to
+nothing (fewer than a tenth of the tests).
 
 ## A run
 
@@ -69,8 +71,9 @@ The task as a whole, from the prompt to the agent's last word:
 - **cost $**: what the run would cost at the model's price in the catalog (a ChatGPT sign-in pays
   nothing per run, but the price is how runs compare);
 - **cache %**: the share of input tokens read from the prompt cache;
-- the tokens in and out, the calls, the commands that failed, the patches and those refused, and
-  whether the agent changed the fixed files (`tampered`).
+- the tokens in and out, the calls, the commands that failed (any that did not exit 0: a timeout,
+  a signal, a call refused), the patches and those that failed, and whether the agent changed the
+  fixed files (`tampered`).
 
 ## The results
 
@@ -98,3 +101,9 @@ is one by default (`--repeat N` for more); the history over time is what to read
 
 Record on the Mac with nothing heavy running beside it (a build, Docker); the load is in each
 summary.
+
+## The harness's own tests
+
+`bun test ./benchmark/lib ./benchmark/grep` tests what reads an agent's logs and what scores the
+search's answers, with no agent and no network. Not `bun test ./benchmark`: the tasks' acceptance
+tests fail on their stubs.
