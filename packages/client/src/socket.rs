@@ -36,10 +36,12 @@ impl Client {
         std::thread::Builder::new()
             .name("llx-client-writer".into())
             .spawn(move || write(stream, &outgoing))?;
+        // Bytes, not `lines()`: a line that is not text is one more line that is not a frame,
+        // never the connection's end.
         let frames = BufReader::new(reading)
-            .lines()
+            .split(b'\n')
             .map_while(Result::ok)
-            .filter_map(|line| serde_json::from_str(&line).ok());
+            .filter_map(|line| serde_json::from_slice(&line).ok());
         Self::reading(to_server, frames, deliver)
     }
 }

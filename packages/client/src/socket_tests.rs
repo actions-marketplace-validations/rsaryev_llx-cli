@@ -68,7 +68,7 @@ fn a_command_goes_as_one_line_and_waits_for_its_line_back() {
 }
 
 #[test]
-fn what_else_the_server_says_reaches_the_interface_in_order_past_a_bad_line() {
+fn what_else_the_server_says_reaches_the_interface_in_order_past_lines_that_are_not_frames() {
     let (_client, mut server, seen) = connected("order");
     let note = |text: &str| ToClient::Event {
         session: None,
@@ -77,6 +77,7 @@ fn what_else_the_server_says_reaches_the_interface_in_order_past_a_bad_line() {
     };
     server.write_all(&line(&note("one"))).unwrap();
     server.write_all(b"not a frame\n").unwrap();
+    server.write_all(b"not text \xff\xfe\n").unwrap();
     server.write_all(&line(&note("two"))).unwrap();
     assert_eq!(seen.recv_timeout(WAIT).unwrap(), note("one"));
     assert_eq!(seen.recv_timeout(WAIT).unwrap(), note("two"));
