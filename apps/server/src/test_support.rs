@@ -200,6 +200,18 @@ impl Server {
     pub fn leave(&self) {
         self.0.inputs.leave();
     }
+
+    /// A client attached now: what it is told, what the server keeps for one first.
+    #[cfg(test)]
+    pub(crate) fn attach(&self) -> Receiver<ToClient> {
+        #[expect(
+            clippy::disallowed_methods,
+            reason = "the in-process transport's channel, as the binary makes it"
+        )]
+        let (out, frames) = channel();
+        self.0.hub.attach(out);
+        frames
+    }
 }
 
 /// A session at the desk, its first task `task`, its lanes thinking with `chats` in the order

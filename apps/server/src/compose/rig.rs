@@ -75,7 +75,8 @@ pub(crate) struct Rig<'a> {
 /// The agent built from `base` and `lane` with `seat`'s session, and `work` run with it. The
 /// agents' threads end with the session at the latest: each task waits for its own. The guard
 /// ends the jobs and stops the agents even when the session unwinds from a panic, or the scope
-/// would wait for their threads for ever; a title still asked for is waited for after it.
+/// would wait for their threads for ever; a title still asked for is waited for after it, and
+/// the lane's end is told its interface last, so nothing of the lane comes after it.
 pub(super) fn drive(
     base: &Base,
     lane: &Lane,
@@ -90,6 +91,10 @@ pub(super) fn drive(
     } = seat;
     let shared = base.shared;
     std::thread::scope(|scope| {
+        // Dropped last, however the lane ends: what it had waiting goes with it, and the
+        // interface is told it ended once its title is in (the ring keeps nothing of an ended
+        // lane told after its end).
+        let _ended = ui.as_ref().map(Ui::ends);
         // Dropped after the guard (made before it): the jobs and the agents are stopped first.
         let mut titling = Titling::new(base.namer.cloned());
         // Inside the scope: it is dropped while unwinding, before the scope waits for threads.

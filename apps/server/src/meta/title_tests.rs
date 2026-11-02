@@ -216,28 +216,40 @@ fn asked_of(chat: &Arc<crate::test_support::Gated>) -> Namer {
     Arc::new(move |_: &Choice| Some(Arc::clone(&chat) as Arc<dyn Chat>))
 }
 
-/// Each event `frames` brings, with its session, until `done` holds of all told so far.
-fn told_until(
+/// What the interface was told: each event with its session.
+type Told = Vec<(Option<String>, Event)>;
+
+/// What `frames` brings into `told`, until `done` holds of all of it or `within` passes.
+fn listen(
     frames: &std::sync::mpsc::Receiver<protocol::ToClient>,
-    done: impl Fn(&[(Option<String>, Event)]) -> bool,
-) -> Vec<(Option<String>, Event)> {
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let mut told = vec![];
-    while !done(&told) {
-        let left = deadline.saturating_duration_since(Instant::now());
-        let Ok(frame) = frames.recv_timeout(left) else {
-            panic!("waited too long: {told:#?}")
-        };
-        if let protocol::ToClient::Event { session, event, .. } = frame {
+    told: &mut Told,
+    within: Duration,
+    done: impl Fn(&Told) -> bool,
+) {
+    let deadline = Instant::now() + within;
+    while !done(told) && Instant::now() < deadline {
+        let frame = frames.recv_timeout(Duration::from_millis(20));
+        if let Ok(protocol::ToClient::Event { session, event, .. }) = frame {
             told.push((session, event));
         }
     }
-    told
 }
 
 /// Whether `told` holds an event `is` names.
-fn has(told: &[(Option<String>, Event)], is: impl Fn(&Event) -> bool) -> bool {
+fn has(told: &Told, is: impl Fn(&Event) -> bool) -> bool {
     told.iter().any(|(_, event)| is(event))
+}
+
+fn named(event: &Event) -> bool {
+    matches!(event, Event::Updated(_))
+}
+
+fn task_ended(event: &Event) -> bool {
+    matches!(event, Event::TaskEnded { .. })
+}
+
+fn lane_ended(event: &Event) -> bool {
+    matches!(event, Event::LaneEnded)
 }
 
 /// A served session's first task names it, as its title model answers: the interface is told
@@ -252,14 +264,14 @@ fn a_served_sessions_first_task_is_named_by_its_title_model() {
     to_chat.send(says("Done.")).unwrap();
     let goal = "the jobs test fails one run in ten, find out why";
     let lane = Mutex::new(None);
-    let named = asked_of(&namer);
-    let scratch = served_titled(&[&chat], Some(&named), Some(goal), &|| {}, |link, _| {
-        let told = told_until(&link.frames, |told| {
-            has(told, |e| matches!(e, Event::Updated(_)))
-                && has(told, |e| matches!(e, Event::TaskEnded { .. }))
+    let titles = asked_of(&namer);
+    let scratch = served_titled(&[&chat], Some(&titles), Some(goal), &|| {}, |link, _| {
+        let mut told = vec![];
+        listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
+            has(told, named) && has(told, task_ended)
         });
-        let updated = told.iter().find(|(_, e)| matches!(e, Event::Updated(_)));
-        let (session, update) = updated.unwrap();
+        let updated = told.iter().find(|(_, event)| named(event));
+        let (session, update) = updated.unwrap_or_else(|| panic!("never named: {told:#?}"));
         let title = Some("Fix the flaky jobs test".to_string());
         assert_eq!(*update, Event::Updated(protocol::Update { title }));
         *lane.lock().unwrap() = session.clone();
@@ -278,4 +290,73 @@ fn a_served_sessions_first_task_is_named_by_its_title_model() {
     let asked = namer.asked();
     assert_eq!(asked.len(), 1, "one title asked");
     assert!(format!("{:?}", asked[0]).contains(goal), "{asked:?}");
+}
+
+/// A title still asked for as its lane ends is told while the lane is open, never after its end:
+/// a client attaching later is told nothing of the lane (its state went with it), and the saved
+/// session keeps the title.
+#[test]
+fn a_title_answered_as_its_lane_ends_is_told_before_the_end() {
+    use crate::test_support::{gated, says, served_titled};
+    use contracts::history::History;
+    use protocol::{Command, ToClient, ToServer};
+    let ((to_chat, chat), (to_namer, namer)) = (gated(), gated());
+    let namer = Arc::new(namer);
+    to_chat.send(says("Done.")).unwrap();
+    let lane = Mutex::new(String::new());
+    let titles = asked_of(&namer);
+    let scratch = served_titled(
+        &[&chat],
+        Some(&titles),
+        Some("fix"),
+        &|| {},
+        |link, peer| {
+            let mut told = vec![];
+            listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
+                has(told, task_ended) && namer.turns() == 1
+            });
+            let ended = told.iter().find(|(_, event)| task_ended(event));
+            let id = ended.and_then(|(session, _)| session.clone()).unwrap();
+            // The lane closed while its title is still asked for; the title comes a moment later.
+            let session = id.clone();
+            let command = Command::Close { session };
+            link.to_server
+                .send(ToServer::Call { id: 1, command })
+                .unwrap();
+            let moment = Duration::from_millis(500);
+            listen(&link.frames, &mut told, moment, |told| {
+                has(told, lane_ended)
+            });
+            to_namer.send(says("Fix the parser")).unwrap();
+            listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
+                has(told, lane_ended) && has(told, named)
+            });
+            let at = |is: fn(&Event) -> bool| {
+                (told.iter())
+                    .position(|(session, event)| session.as_ref() == Some(&id) && is(event))
+            };
+            let (named_at, ended_at) = (at(named), at(lane_ended));
+            assert!(
+                named_at.is_some() && named_at < ended_at,
+                "the title was told after its lane's end: {told:#?}"
+            );
+            let later: Vec<ToClient> = peer.attach().try_iter().collect();
+            let told_title = later.iter().any(|frame| {
+                let ToClient::Event { session, event, .. } = frame else {
+                    return false;
+                };
+                session.as_ref() == Some(&id) && named(event)
+            });
+            assert!(
+                !told_title,
+                "a later client is told the ended lane's title: {later:#?}"
+            );
+            *lane.lock().unwrap() = id;
+        },
+    );
+    let history = session::Sessions {
+        dir: scratch.path().join("sessions"),
+    };
+    let saved = history.load(&lane.into_inner().unwrap()).unwrap();
+    assert_eq!(saved.title, "Fix the parser");
 }

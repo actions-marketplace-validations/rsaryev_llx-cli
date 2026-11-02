@@ -231,12 +231,11 @@ impl<'e> Desk<'e> {
                     rig.attached = rig.shared.options.images.clone();
                 }
                 // The desk's interface, tagged with the lane's id by `lane`: every seat here has
-                // one.
+                // one, and the lane ends it (what it had waiting goes with it) once its title is
+                // in.
                 let Some(ui) = rig.ui.clone() else {
                     return crate::exit::OK;
                 };
-                // However the lane ends, what it had waiting goes with it.
-                let _forgotten = ui.ends();
                 repl::run(rig, &ui, task.as_deref())
             });
             start(shared, seat, work)
