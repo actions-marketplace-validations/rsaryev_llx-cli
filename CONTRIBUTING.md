@@ -18,7 +18,7 @@ For a larger change, open an issue first to agree on the shape.
 ## Setup
 
 The toolchain is the latest stable Rust (`rust-toolchain.toml` installs it with rustfmt and
-clippy); the code also builds on the workspace's `rust-version` (1.88). Run `scripts/setup` once
+clippy); the code also builds on the workspace's `rust-version` (1.89). Run `scripts/setup` once
 per clone for the git hooks. Two checks need more than the toolchain: the site's build needs
 `npm ci` in `site/` (it is skipped without it), and the coverage needs `cargo install
 cargo-llvm-cov cargo-nextest`.
@@ -50,7 +50,7 @@ linters: shellcheck, actionlint, the example workflows' conventions, the Markdow
 links and gitleaks on every commit and on the working tree's changes, at pinned versions it
 downloads once. Two checks CI does not run; run them yourself before a release
 ([RELEASING.md](RELEASING.md)):
-the minimum Rust version (`cargo +1.88 check --workspace --all-targets --locked`) and the line
+the minimum Rust version (`cargo +1.89 check --workspace --all-targets --locked`) and the line
 coverage, at least 85% (`scripts/check --all --coverage`, or `scripts/coverage.sh` alone).
 The code stays under 50,000 lines of working code and 300 per file (ARCHITECTURE.md S1, S2).
 

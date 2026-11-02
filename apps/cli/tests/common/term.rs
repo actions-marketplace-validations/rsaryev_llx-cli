@@ -64,7 +64,7 @@ impl Term {
         let home = place();
         let ran_in = ran_in.map_or_else(|| workspace(&home).display().to_string(), str::to_string);
         let turns = serde_json::from_str(turns).unwrap();
-        home.save_turns(id, &ran_in, 1700000000, &turns);
+        home.save_turns(id, &ran_in, &turns);
         let term = Self::spawn_at(home, model, &["resume", id], &[]);
         term.wait_for("❯", Duration::from_secs(10));
         term
@@ -237,8 +237,8 @@ impl Term {
             .into_iter()
             .flatten();
         (files.flatten())
-            .filter_map(|file| std::fs::read(file.path()).ok())
-            .filter_map(|bytes| serde_json::from_slice(&bytes).ok())
+            .filter_map(|file| std::fs::read_to_string(file.path()).ok())
+            .map(|text| super::home::read_session(&text))
             .collect()
     }
 

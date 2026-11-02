@@ -58,10 +58,7 @@ pub(crate) fn start(rig: &mut Rig, goal: &str) {
         return;
     };
     let choice = rig.choice.clone();
-    let (pending, id, goal) = (rig.meta.clone(), rig.session.id.clone(), goal.to_string());
-    let history = session::Sessions {
-        dir: rig.shared.history.dir.clone(),
-    };
+    let (kept, goal) = (rig.meta.clone(), goal.to_string());
     let started = rig.titling.start(move || {
         let _naming = naming;
         let Some(chat) = namer(&choice) else {
@@ -72,7 +69,7 @@ pub(crate) fn start(rig: &mut Rig, goal: &str) {
         };
         let update = Update { title: Some(title) };
         let event = Event::Updated(crate::server::wire::update(&update));
-        pending.post(&history, &id, update);
+        kept.post(&update);
         ui.send(event);
     });
     // No thread: the session stays untitled, and the naming ends with the closure, as on a

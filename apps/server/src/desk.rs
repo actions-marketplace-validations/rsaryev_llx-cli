@@ -145,19 +145,21 @@ impl<'e> Desk<'e> {
             return ui.send(Event::Error(said));
         }
         match target {
-            Target::New => {
-                let seat = shared.seat(shared.history.start(), Some(ui.clone()));
-                self.open(scope, seat, None, false);
-            }
-            Target::Saved(id) => match shared.history.load(&id) {
-                Ok(session) => {
-                    let mut seat = shared.seat(session, Some(ui.clone()));
-                    let root = shared.workspace.root();
-                    seat.context = crate::context::resumed(&shared.fresh, &seat.session, root);
-                    self.open(scope, seat, None, false);
-                }
+            Target::New => match shared.seat(shared.history.start(), Some(ui.clone())) {
+                Ok(seat) => self.open(scope, seat, None, false),
                 Err(why) => ui.send(Event::Error(format!("llx: {why}"))),
             },
+            Target::Saved(id) => {
+                let seat = shared.history.load(&id);
+                match seat.and_then(|session| shared.seat(session, Some(ui.clone()))) {
+                    Ok(mut seat) => {
+                        let root = shared.workspace.root();
+                        seat.context = crate::context::resumed(&shared.fresh, &seat.session, root);
+                        self.open(scope, seat, None, false);
+                    }
+                    Err(why) => ui.send(Event::Error(format!("llx: {why}"))),
+                }
+            }
         }
     }
 

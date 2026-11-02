@@ -96,7 +96,7 @@ fn a_denied_path_is_refused_however_it_is_reached() {
     let workspace = Workspace::new(dir.path())
         .unwrap()
         .denying([key.clone(), sessions.clone()]);
-    for path in [&key, &sessions.join("1-ab.json")] {
+    for path in [&key, &sessions.join("1-ab.jsonl")] {
         let message = failed(workspace.readable(path.to_str().unwrap()));
         assert!(message.ends_with("is off limits to the tools"), "{message}");
         assert!(failed(workspace.writable(path.to_str().unwrap())).contains("off limits"));

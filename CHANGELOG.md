@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **A session is open in one `llx` at a time**: another `llx` that resumes it while it is open (`llx resume <id>`, `-c`, the list's row) is refused, `session <id> is open in another llx: quit it there first`, and its file is left as it was. Before, two terminals on one session each rewrote its file whole, so the tasks of the one that saved first were lost, and two saves at once could leave the file cut short. The lock is the operating system's: a process that crashes or is killed lets it go.
+- **Sessions are JSON Lines** (`~/.llx/sessions/<id>.jsonl`): the session's header, then each task as it ends and its title, appended, never rewritten whole; a line a crash cut short is left out when read. Sessions saved as `.json` by an earlier llx are no longer read.
+- Building llx from source needs Rust 1.89 or later (the standard library's file locks).
 - **The daemon is gone** (`llx serve`, `--no-daemon`, `LLX_NO_DAEMON`): a session at the terminal runs in the `llx` that shows it, with its agents and jobs, and ends with it; `llx resume` and `llx -c` go on with it from its file. "Move to background and exit" is no longer offered, `llx serve status` and `stop` are gone, and no socket is left in `$TMPDIR/llx-<uid>/`. A session ran no faster in the daemon (0.2 ms more to start, nothing per event), and it cost code and bugs. `exec`, `decide` and the GitHub Action never used it.
 - SIGTERM or SIGHUP at the prompt gives the terminal back as it ends the process: a session run in process (`--no-daemon`, and now every session) left the terminal raw.
 - The binary no longer carries Mozilla's root certificates, which it never read: TLS verifies with the system's trust store, as before (`RootCerts::PlatformVerifier`). 132 KB less (2.76 MB on macOS).

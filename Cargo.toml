@@ -16,7 +16,7 @@
 #   packages/protocol       what the interface and the server say to each other: wire types only
 #   packages/queue          one queue for what reaches a run from outside its calls, each entry
 #                           with its own policy (agents' answers, monitors, schedules, ...)
-#   packages/session        a history store: sessions as JSON files
+#   packages/session        a history store: sessions as JSON Lines files
 #   apps/server             the composition root (its library is `llx`): sessions, lanes,
 #                           agents, jobs, modes, the command line, served through the
 #                           protocol
@@ -40,7 +40,7 @@ members = [
 [workspace.package]
 version = "0.2.0"
 edition = "2024"
-rust-version = "1.88"
+rust-version = "1.89"
 license = "MIT"
 
 # The workspace's lints, taken by every crate (ARCHITECTURE.md S4). Hard: a lint is set aside only

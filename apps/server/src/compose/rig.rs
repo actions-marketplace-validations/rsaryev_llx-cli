@@ -64,8 +64,8 @@ pub(crate) struct Rig<'a> {
     pub live: Option<&'a LiveChat>,
     /// What commands never see, read at each command.
     pub hidden: &'a Mutex<Vec<String>>,
-    /// What is known of the session beside its tasks, made in the background, not saved yet.
-    pub meta: crate::meta::Pending,
+    /// The session as it is written: each task, and what is made of it in the background.
+    pub meta: crate::meta::Kept,
     /// The threads asking for the session's title: the lane's, joined when it ends.
     pub titling: &'a mut Titling,
     /// The decision model's advice, told the levels it may pick at each task.
@@ -87,6 +87,7 @@ pub(super) fn drive(
     let Seat {
         context,
         session,
+        record,
         ui,
         schema,
     } = seat;
@@ -173,7 +174,7 @@ pub(super) fn drive(
                 choice: shared.choice.clone(),
                 live: base.live,
                 hidden: lane.hidden,
-                meta: crate::meta::Pending::default(),
+                meta: crate::meta::Kept::new(record),
                 titling: &mut titling,
                 advice: lane.kit.advice,
             };

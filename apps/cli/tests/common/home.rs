@@ -90,26 +90,41 @@ impl Home {
     }
 
     /// A saved session, as the store writes it, last updated at `updated`: one turn, "fix the
-    /// parser".
+    /// parser", that ended then.
     pub(crate) fn save_session(&self, id: &str, workspace: &str, updated: u64) {
         let turns = json!([{"goal": "fix the parser", "answer": "Fixed.", "status": "done",
-            "at": 1700000000}]);
-        self.save_turns(id, workspace, updated, &turns);
+            "at": updated}]);
+        self.save_turns(id, workspace, &turns);
     }
 
     /// A saved session, as the store writes it, with the tasks `turns` (their JSON array).
-    pub(crate) fn save_turns(&self, id: &str, workspace: &str, updated: u64, turns: &Value) {
-        let dir = self.0.join("sessions");
-        std::fs::create_dir_all(&dir).unwrap();
-        let session = json!({"id": id, "created": 1700000000, "updated": updated,
-            "workspace": workspace, "turns": turns});
-        std::fs::write(dir.join(format!("{id}.json")), session.to_string()).unwrap();
+    pub(crate) fn save_turns(&self, id: &str, workspace: &str, turns: &Value) {
+        let header = json!({"id": id, "created": 1700000000, "workspace": workspace});
+        self.write_session(&header, turns);
     }
 
-    /// The saved session `id`, as JSON.
+    /// A session's file as the store writes it (JSON Lines): `header`'s fields on its first line,
+    /// then each of `turns`.
+    pub(crate) fn write_session(&self, header: &Value, turns: &Value) {
+        let dir = self.0.join("sessions");
+        std::fs::create_dir_all(&dir).unwrap();
+        let typed = |kind: &str, fields: &Value| {
+            let mut line = fields.as_object().unwrap().clone();
+            line.insert("type".into(), kind.into());
+            Value::Object(line).to_string() + "\n"
+        };
+        let mut text = typed("session", header);
+        for turn in turns.as_array().unwrap() {
+            text += &typed("turn", turn);
+        }
+        let id = header["id"].as_str().unwrap();
+        std::fs::write(dir.join(format!("{id}.jsonl")), text).unwrap();
+    }
+
+    /// The saved session `id`, as one JSON value: its header's fields, its `title` and `turns`.
     pub(crate) fn session(&self, id: &str) -> Value {
-        let file = self.0.join("sessions").join(format!("{id}.json"));
-        serde_json::from_str(&std::fs::read_to_string(file).unwrap()).unwrap()
+        let file = self.0.join("sessions").join(format!("{id}.jsonl"));
+        read_session(&std::fs::read_to_string(file).unwrap())
     }
 }
 
@@ -117,6 +132,25 @@ impl Drop for Home {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
     }
+}
+
+/// A session's file (JSON Lines) as one JSON value: its header's fields, then its `title` (the
+/// last made) and its `turns`, in order.
+pub(crate) fn read_session(text: &str) -> Value {
+    let mut lines = text
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap());
+    let mut session = lines.next().unwrap();
+    let mut turns = vec![];
+    for line in lines {
+        match line["type"].as_str() {
+            Some("turn") => turns.push(line),
+            Some("title") => session["title"] = line["title"].clone(),
+            other => panic!("a line of an unknown type: {other:?}"),
+        }
+    }
+    session["turns"] = Value::Array(turns);
+    session
 }
 
 /// `command` run to its end: what it wrote, and how it ended.

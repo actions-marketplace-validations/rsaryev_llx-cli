@@ -72,7 +72,7 @@ On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, 
 curl -fsSL https://llx.sh/install | LLX_VERSION=0.2.0 sh
 ```
 
-Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx llx`), or build it with Rust 1.88 or later: `cargo install --locked --git https://github.com/rsaryev/llx llx`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx:<version>` has llx with `git`, `jq` and `curl`.
+Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx llx`), or build it with Rust 1.89 or later: `cargo install --locked --git https://github.com/rsaryev/llx llx`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx:<version>` has llx with `git`, `jq` and `curl`.
 
 Then run `llx` in a project and type `/login`: a ChatGPT sign-in in the browser, an OpenRouter key, or a key for any other provider of the catalog. A provider's key in its variable (`OPENROUTER_API_KEY`) works too, and is what CI uses. `llx doctor` checks the sign-ins, the models and the shell.
 

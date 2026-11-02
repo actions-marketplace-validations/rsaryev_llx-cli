@@ -71,6 +71,7 @@ fn commands_never_see_the_key_of_the_provider_in_use() {
         dir: scratch.path().join("sessions"),
     };
     let session = history.start();
+    let record = history.hold(&session).unwrap();
     let provider = crate::providers::Provider::named("deepseek").unwrap();
     let setup = Setup {
         options: <crate::cli::Cli as clap::Parser>::try_parse_from(["llx"])
@@ -87,6 +88,7 @@ fn commands_never_see_the_key_of_the_provider_in_use() {
         asks: false,
         history,
         session,
+        record,
         drawing: None,
     };
     let chat = ScriptedChat::new(vec![]);
@@ -172,7 +174,7 @@ fn two_lanes_over_one_shared_share_the_workspace_but_keep_their_own() {
     use crate::testing::{Scratch, ScriptedChat, quiet, setup};
     let scratch = Scratch::new();
     let (shared, seat) = setup(&scratch, crate::modes::built("bypass"), true).split();
-    let other = shared.seat(shared.history.start(), None);
+    let other = shared.seat(shared.history.start(), None).unwrap();
     let chat = ScriptedChat::new(vec![]);
     let models = || Models {
         chat: &chat,

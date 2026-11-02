@@ -123,11 +123,6 @@ pub(crate) fn run(
     let modes = Modes::load()?.with(&rules);
     let mode = modes.choose(options.mode.as_deref(), options.yes)?;
     let (terminal, asks) = (Tty::available(), kind == Kind::Session);
-    // A session's interface starts first: what it holds of the terminal is given back at the end.
-    let ready = match work {
-        Work::One(task) => Ready::One(task),
-        Work::Session(first) => Ready::Session(first, interface::in_process(&workspace, front)?),
-    };
     let path = std::env::var_os("PATH").unwrap_or_default();
     let environment = Environment {
         root: workspace.root(),
@@ -145,6 +140,15 @@ pub(crate) fn run(
     if session.workspace.is_empty() {
         session.workspace = workspace.root().display().to_string();
     }
+    // Before the terminal is taken: a session another llx has open is not opened here (K8).
+    let record = history
+        .hold(&session)
+        .map_err(|why| Failure::Environment(why.to_string()))?;
+    // Then the session's interface: what it holds of the terminal is given back at the end.
+    let ready = match work {
+        Work::One(task) => Ready::One(task),
+        Work::Session(first) => Ready::Session(first, interface::in_process(&workspace, front)?),
+    };
     let setup = Setup {
         options,
         choice,
@@ -158,6 +162,7 @@ pub(crate) fn run(
         asks,
         history,
         session,
+        record,
         drawing: Some(front.drawing()),
     };
     interrupt::install();

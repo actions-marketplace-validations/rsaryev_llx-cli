@@ -161,6 +161,13 @@ fn keep(
     (status, halt): (&str, Option<Halt>),
     told: mode::Mode,
 ) {
+    let turn = Turn {
+        goal: message.to_string(),
+        answer: run.answer.clone(),
+        status: status.to_string(),
+        at: crate::clock::now(),
+        steps: vec![],
+    };
     let recorded = {
         let mut state = registry.lock();
         state.spent.absorb(&run.spend);
@@ -174,13 +181,7 @@ fn keep(
                 if child.open {
                     child.conversation = Some(run.conversation);
                 }
-                child.session.record(Turn {
-                    goal: message.to_string(),
-                    answer: run.answer.clone(),
-                    status: status.to_string(),
-                    at: crate::clock::now(),
-                    steps: vec![],
-                });
+                child.session.record(turn.clone());
                 // Kept for the work done after the lock, with what the main agent sent after the
                 // agent's last look at its letters.
                 (child.session.clone(), child.letters.take(), child.open)
@@ -190,7 +191,9 @@ fn keep(
         registry.changed.notify_all();
         return;
     };
-    let saved = kit.history.save(&session);
+    // Its writer held for this write alone (K8): only its parent drives an agent, and its session
+    // is listed nowhere a person would open it.
+    let saved = (kit.history.hold(&session)).and_then(|record| record.turn(&turn));
     let mut answer = match (&run.status, halt) {
         (Status::Exhausted, _) => "It ran out of turns before an answer: `send` it a message to \
                                    have it answer with what it has."

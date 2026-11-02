@@ -1,5 +1,6 @@
 use clap::Parser;
 use contracts::chat::Completion;
+use contracts::history::History;
 use serde_json::{Value, json};
 use session::Sessions;
 
@@ -61,6 +62,7 @@ fn compose_ending(
         dir: scratch.path().join("sessions"),
     };
     let session = history.start();
+    let record = history.hold(&session).unwrap();
     let setup = Setup {
         options,
         choice: choice::Choice::new(crate::providers::Provider::openrouter(), "test/model"),
@@ -75,6 +77,7 @@ fn compose_ending(
         asks: false,
         history,
         session,
+        record,
         drawing: None,
     };
     // A command that must leave the sandbox: asked of the person in the default mode.

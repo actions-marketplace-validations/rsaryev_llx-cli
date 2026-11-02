@@ -156,6 +156,7 @@ pub(crate) fn setup(scratch: &Scratch, mode: Mode, asks: bool) -> Setup {
         dir: scratch.path().join("sessions"),
     };
     let session = history.start();
+    let record = history.hold(&session).unwrap();
     Setup {
         options: Cli::try_parse_from(["llx"]).unwrap().run,
         choice: crate::choice::Choice::new(crate::providers::Provider::openrouter(), "test/model"),
@@ -169,6 +170,7 @@ pub(crate) fn setup(scratch: &Scratch, mode: Mode, asks: bool) -> Setup {
         asks,
         history,
         session,
+        record,
         drawing: None,
     }
 }

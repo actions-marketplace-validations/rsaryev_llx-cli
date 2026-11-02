@@ -6,7 +6,7 @@ A release is a pushed tag `vX.Y.Z`; CI builds and publishes the rest.
 
 1. On an up-to-date `main` with green CI, run what CI does not: the line coverage, at least 85%
    (`scripts/check --all --coverage`), and the minimum Rust version
-   (`cargo +1.88 check --workspace --all-targets --locked`, the workspace's `rust-version`).
+   (`cargo +1.89 check --workspace --all-targets --locked`, the workspace's `rust-version`).
    Then bump the workspace version in `Cargo.toml` (`[workspace.package] version = "X.Y.Z"`) and
    run `cargo check --workspace` so `Cargo.lock` follows.
 2. In `CHANGELOG.md`, rename `## Unreleased` to `## X.Y.Z` and start a new, empty

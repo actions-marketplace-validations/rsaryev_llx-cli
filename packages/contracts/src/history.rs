@@ -1,12 +1,13 @@
 //! The history port: sessions of goals, kept by whatever store the app composes. A session is the
 //! goals asked one after another with the same tools, and how each ended, so it can be listed and
-//! continued.
+//! continued. It has one writer at a time (ARCHITECTURE.md K8): the [`Record`] its store hands
+//! out, which writes each change as it comes.
 
 use serde::{Deserialize, Serialize};
 
 use crate::chat::Usage;
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct Session {
     pub id: String,
     /// Unix seconds.
@@ -14,19 +15,14 @@ pub struct Session {
     /// Unix seconds: when its last goal ended, or it was created.
     pub updated: u64,
     /// Where its goals ran, as the app names it (a directory): a session continued elsewhere is
-    /// told apart from one continued in place. Empty in sessions saved before it was kept.
-    #[serde(default)]
+    /// told apart from one continued in place.
     pub workspace: String,
     /// The session that started this one, when it is an agent another session's agent started.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent: Option<String>,
     /// An agent's short name, as its parent calls it; empty for a session the person started.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub name: String,
     /// What the session is about, as a title made from its first task; empty until one is.
-    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub title: String,
-    #[serde(default)]
     pub turns: Vec<Turn>,
 }
 
@@ -116,6 +112,8 @@ pub enum HistoryError {
     Corrupt { id: String, why: String },
     /// The session could not be written.
     Write(String),
+    /// The session `id` has its writer already, in this process or another.
+    Held(String),
 }
 
 impl std::fmt::Display for HistoryError {
@@ -126,6 +124,10 @@ impl std::fmt::Display for HistoryError {
             Self::Unreadable { id, why } => write!(f, "session {id} cannot be read: {why}"),
             Self::Corrupt { id, why } => write!(f, "session {id} is not a session: {why}"),
             Self::Write(why) => f.write_str(why),
+            Self::Held(id) => write!(
+                f,
+                "session {id} is open in another llx: quit it there first"
+            ),
         }
     }
 }
@@ -134,11 +136,22 @@ impl std::error::Error for HistoryError {}
 
 /// Where sessions are kept.
 pub trait History: Send + Sync {
-    /// A new, empty session with a fresh id.
+    /// A new, empty session with a fresh id: nothing is written until it is held.
     fn start(&self) -> Session;
-    fn save(&self, session: &Session) -> Result<(), HistoryError>;
     /// The session with `id`.
     fn load(&self, id: &str) -> Result<Session, HistoryError>;
-    /// Every session, newest first.
+    /// Every session with a task, newest first.
     fn list(&self) -> Vec<Session>;
+    /// `session`'s one writer, for as long as it lives (K8): a second, in this process or
+    /// another, is refused with [`HistoryError::Held`]. A session it leaves with no task is not
+    /// kept.
+    fn hold(&self, session: &Session) -> Result<Box<dyn Record>, HistoryError>;
+}
+
+/// A held session's writer: each change written as it comes, never the session rewritten whole.
+pub trait Record: Send + Sync {
+    /// A task that ended.
+    fn turn(&self, turn: &Turn) -> Result<(), HistoryError>;
+    /// The session's title, made after its first task began.
+    fn title(&self, title: &str) -> Result<(), HistoryError>;
 }

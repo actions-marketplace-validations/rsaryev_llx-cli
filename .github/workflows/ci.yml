@@ -39,7 +39,7 @@ env:
 jobs:
   # One job, so the dependencies compile once: format, lint, then the tests. Linux only: a macOS runner
   # costs ten times as much, and the release workflow tests both. Coverage and the MSRV are
-  # checked by hand (`scripts/check --all --coverage`, `cargo +1.88 check`, RELEASING.md); the
+  # checked by hand (`scripts/check --all --coverage`, `cargo +1.89 check`, RELEASING.md); the
   # binary's size by the size job.
   check:
     name: check

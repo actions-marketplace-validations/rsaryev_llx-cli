@@ -163,9 +163,9 @@ The choice is put in at once, in the same conversation, and saved as the default
 
 ## Sessions
 
-Every run is saved as a session in `~/.llx/sessions/<id>.json`; set `LLX_SESSIONS` to keep them elsewhere. A session records each task and how it ended, but not the conversation itself. `resume` therefore starts a new conversation that is told the earlier tasks, and the directory they ran in; at the terminal, the earlier tasks and their answers are drawn first (the last 20). In a session, each task continues the same conversation.
+Every run is saved as a session in `~/.llx/sessions/<id>.jsonl` (JSON Lines: the session's header, then each task as it ends, and its title); set `LLX_SESSIONS` to keep them elsewhere. A session records each task and how it ended, but not the conversation itself. `resume` therefore starts a new conversation that is told the earlier tasks, and the directory they ran in; at the terminal, the earlier tasks and their answers are drawn first (the last 20). In a session, each task continues the same conversation.
 
-A session at the terminal runs in the `llx` process that shows it, with its agents and jobs: in its directory, with its environment and the options its command line gave. Quitting ends its work (asked first while something runs); `llx resume` or `llx -c` goes on with it later from its file.
+A session at the terminal runs in the `llx` process that shows it, with its agents and jobs: in its directory, with its environment and the options its command line gave. Quitting ends its work (asked first while something runs); `llx resume` or `llx -c` goes on with it later from its file. A session is open in one `llx` at a time: another that resumes it while it is open is refused (`session <id> is open in another llx: quit it there first`), and the file is left as it was.
 
 ## Project instructions
 

@@ -79,11 +79,10 @@ fn last_never_goes_on_with_an_agents_session() {
         let dir = ran_in.map_or_else(|| here.display().to_string(), str::to_string);
         home.save_session("1700000000-main", &dir, 1700000000);
         let agent = serde_json::json!({"id": "1800000000-agent", "created": 1800000000,
-            "updated": 1800000000, "workspace": dir, "parent": "1700000000-main",
-            "name": "scout", "turns": [{"goal": "look around", "answer": "Seen.",
-                "status": "done", "at": 1800000000}]});
-        let file = home.path().join("sessions/1800000000-agent.json");
-        std::fs::write(file, agent.to_string()).unwrap();
+            "workspace": dir, "parent": "1700000000-main", "name": "scout"});
+        let turns = serde_json::json!([{"goal": "look around", "answer": "Seen.",
+            "status": "done", "at": 1800000000}]);
+        home.write_session(&agent, &turns);
         let model = Model::start(vec![]);
         let mut command = home.with_model(&model, &["exec", "resume", "--last", "go", "on"]);
         let resume = output(command.current_dir(&here));
@@ -108,5 +107,44 @@ fn resuming_a_session_from_elsewhere_says_where_it_ran() {
     assert!(
         said.contains("session 1700000000-cd34 ran in /elsewhere/repo"),
         "{said}"
+    );
+}
+
+#[test]
+fn a_session_another_llx_has_open_is_not_opened_and_is_left_as_it_was() {
+    let home = Home::new();
+    let here = home.path().canonicalize().unwrap().display().to_string();
+    home.save_session("1700000000-ab12", &here, 1700000000);
+    let file = home.path().join("sessions/1700000000-ab12.jsonl");
+    let before = std::fs::read_to_string(&file).unwrap();
+    // Another process's writer: the lock it holds, as the store takes it.
+    let other = std::fs::OpenOptions::new()
+        .append(true)
+        .open(&file)
+        .unwrap();
+    other.lock().unwrap();
+    let model = Model::start(vec![]);
+    let mut command = home.with_model(&model, &["exec", "resume", "1700000000-ab12", "go on"]);
+    let resume = output(command.current_dir(home.path()));
+    assert_eq!(resume.status.code(), Some(3), "{}", text(&resume.stderr));
+    let said = text(&resume.stderr);
+    assert!(
+        said.contains("session 1700000000-ab12 is open in another llx: quit it there first"),
+        "{said}"
+    );
+    assert!(model.requests().is_empty(), "no model asked");
+    assert_eq!(std::fs::read_to_string(&file).unwrap(), before);
+    // Once the other lets go, it goes on here.
+    drop(other);
+    let model = Model::start(vec![]);
+    let mut command = home.with_model(&model, &["exec", "resume", "1700000000-ab12", "go on"]);
+    let resume = output(command.current_dir(home.path()));
+    assert_eq!(resume.status.code(), Some(0), "{}", text(&resume.stderr));
+    assert_eq!(
+        home.session("1700000000-ab12")["turns"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
     );
 }

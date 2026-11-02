@@ -1,7 +1,7 @@
 //! What a session is built from ([`Setup`]), what its lanes share ([`Shared`]), and what one
 //! lane is built from beside it ([`Seat`]).
 
-use contracts::history::Session;
+use contracts::history::{History, HistoryError, Record, Session};
 use serde_json::Value;
 use session::Sessions;
 use tools::workspace::Workspace;
@@ -36,6 +36,8 @@ pub(crate) struct Setup {
     pub history: Sessions,
     /// The session the tasks are recorded in: new, or resumed.
     pub session: Session,
+    /// Its writer, held before anything starts (K8).
+    pub record: Box<dyn Record>,
     /// How each lane's trace on stderr is drawn: the binary's (none in a test).
     pub drawing: Option<Drawing>,
 }
@@ -64,6 +66,8 @@ pub(crate) struct Shared {
 pub(crate) struct Seat {
     pub context: String,
     pub session: Session,
+    /// The session's writer, the lane's while it lasts (K8).
+    pub record: Box<dyn Record>,
     /// The interface the lane is shown in: none in `exec`.
     pub ui: Option<Ui>,
     pub schema: Option<Value>,
@@ -88,6 +92,7 @@ impl Setup {
         let seat = Seat {
             context: self.context,
             session: self.session,
+            record: self.record,
             ui: None,
             schema: self.schema,
         };
@@ -96,16 +101,19 @@ impl Setup {
 }
 
 impl Shared {
-    /// The seat of a new lane, recorded in `session`: the fresh context, as the session began.
-    pub(crate) fn seat(&self, mut session: Session, ui: Option<Ui>) -> Seat {
+    /// The seat of a new lane, recorded in `session`, which it holds (K8): the fresh context, as
+    /// the session began. A session held elsewhere is not opened.
+    pub(crate) fn seat(&self, mut session: Session, ui: Option<Ui>) -> Result<Seat, HistoryError> {
         if session.workspace.is_empty() {
             session.workspace = self.workspace.root().display().to_string();
         }
-        Seat {
+        let record = self.history.hold(&session)?;
+        Ok(Seat {
             context: self.fresh.clone(),
             session,
+            record,
             ui,
             schema: None,
-        }
+        })
     }
 }
