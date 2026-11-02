@@ -65,10 +65,10 @@ for job in $jobs_wanted; do
   if docker run --rm --platform "$platform" \
     -e JOB="$job" -e CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}" \
     --mount "type=bind,src=$root,dst=/src,readonly" ${git_mount:+--mount "$git_mount"} \
-    -v "llx-ci-target-$arch:/llx/target" \
-    -v "llx-ci-cargo-$arch:/root/.cargo/registry" \
-    -v "llx-ci-tools-$arch:/root/.cache/llx/tools" \
-    -v "llx-ci-npm-$arch:/root/.npm" \
+    -v "llx-ci-runner-target-$arch:/llx/target" \
+    -v "llx-ci-runner-cargo-$arch:/home/runner/.cargo/registry" \
+    -v "llx-ci-runner-tools-$arch:/home/runner/.cache/llx/tools" \
+    -v "llx-ci-runner-npm-$arch:/home/runner/.npm" \
     "llx-ci-$arch" bash -c "$inner"; then
     echo "ci-docker: job $job passed"
   else

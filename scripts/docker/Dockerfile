@@ -1,6 +1,7 @@
 # CI's Linux runner, as near as a container gets (scripts/ci-docker): Ubuntu 24.04, which is
-# ubuntu-latest; stable Rust with the jobs' components; Node 22 for the site job; CI's cargo
-# settings.
+# ubuntu-latest; the jobs run as `runner`, a user with passwordless sudo, as GitHub's do (root
+# could never drop its privileges, which the action's tests check for real); stable Rust with the
+# jobs' components; Node 22 for the site job; CI's cargo settings.
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -20,9 +21,15 @@ RUN case "$(uname -m)" in \
   && tar -xJf /tmp/node.tar.xz -C /usr/local --strip-components=1 \
   && rm /tmp/node.tar.xz
 
+# Ubuntu's image has a user at uid 1000 (`ubuntu`): it goes, so `runner` is 1000, as on GitHub.
+RUN userdel -r ubuntu 2>/dev/null; useradd -m -u 1000 -s /bin/bash runner \
+  && echo 'runner ALL=(ALL) NOPASSWD:ALL' >/etc/sudoers.d/runner && chmod 0440 /etc/sudoers.d/runner \
+  && mkdir -p /llx/target /home/runner/.cargo/registry /home/runner/.cache/llx/tools /home/runner/.npm \
+  && chown -R runner:runner /llx /home/runner
+USER runner
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
   | sh -s -- -y --profile minimal --default-toolchain stable --component clippy,rustfmt
-ENV PATH=/root/.cargo/bin:$PATH \
+ENV PATH=/home/runner/.cargo/bin:$PATH \
   CARGO_TERM_COLOR=always \
   CARGO_PROFILE_DEV_DEBUG=0 \
   CARGO_INCREMENTAL=0

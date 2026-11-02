@@ -204,6 +204,10 @@ fn the_context_states_the_rules_and_what_becomes_of_the_rest() {
         !describe(&default, false, true).contains("`ask`"),
         "with no terminal"
     );
+    // A read-only mode is where a plan is made: its questions are the person's to settle too.
+    let plan = built("plan");
+    assert!(describe(&plan, true, true).contains("`ask`"), "in plan");
+    assert!(!describe(&plan, false, true).contains("`ask`"), "plan, no terminal");
 }
 
 #[test]

@@ -131,7 +131,6 @@ pub(crate) fn describe(mode: &Mode, terminal: bool, asks: bool) -> String {
                  file, opening a socket or reaching another program fails; $TMPDIR is a scratch \
                  directory of their own.",
             );
-            return text;
         }
         Reach::Workspace => {
             text.push_str(

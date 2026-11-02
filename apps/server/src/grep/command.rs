@@ -1,5 +1,5 @@
 //! `llx grep`, the command: the decision model its options name, the search, and what it found
-//! printed; exit 1 when no file answers.
+//! printed; exit 1 when no file answers, 3 when the question has no words to search by.
 
 use std::path::Path;
 use std::time::Instant;
@@ -12,6 +12,11 @@ use crate::providers;
 
 /// Search, print what was found, and exit 1 when nothing was.
 pub(crate) fn grep(args: &GrepArgs) -> Result<i32, Failure> {
+    if args.query.trim().is_empty() {
+        return Err(Failure::Usage(
+            "the question is empty: say in words what to find".into(),
+        ));
+    }
     let started = Instant::now();
     let decider = (!args.lexical)
         .then(|| providers::decider(&args.model))
