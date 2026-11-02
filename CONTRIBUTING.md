@@ -1,7 +1,7 @@
 # Contributing
 
-Thanks for helping. llx is meant to stay small and fast: six tools (`bash`, `apply_patch`,
-`grep`, `ask`, `agents`, `jobs`), synchronous code, no async runtime, and a release binary under
+Thanks for helping. llx is meant to stay small and fast: five tools (`bash`, `apply_patch`,
+`ask`, `agents`, `jobs`), synchronous code, no async runtime, and a release binary under
 4 MB. A change that adds a dependency has to earn its size.
 
 ## Before you start

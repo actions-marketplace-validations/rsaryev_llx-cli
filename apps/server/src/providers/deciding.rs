@@ -1,7 +1,6 @@
 //! The decision model: OpenRouter's (`/systemone`), the one provider that serves decision models,
 //! so it needs an OpenRouter key whichever provider the agent thinks with. `llx decide` asks it
-//! one question, `llx grep` and the agent's `grep` whether each file they read answers; a
-//! session's tasks ask it for advice (C9), each decision held to a few seconds.
+//! one question, about stdin or each file it is given; a session's tasks ask it for advice (C9), each decision held to a few seconds.
 
 use std::time::Duration;
 
@@ -21,12 +20,6 @@ pub(crate) fn decider(model: &str) -> Option<Box<dyn Decider>> {
 /// for `ADVICE_PATIENCE` at most, as the task waits on it.
 pub(crate) fn adviser(vars: Vars) -> Option<Box<dyn Decider>> {
     waiting(DECISION_DEFAULT, vars, Some(ADVICE_PATIENCE))
-}
-
-/// The decision model the agent's `grep` reads the files with (ARCHITECTURE.md B8): the default
-/// one, waited for as `llx grep` waits for it, its key read in the session's `vars`.
-pub(crate) fn searcher(vars: Vars) -> Option<Box<dyn Decider>> {
-    waiting(DECISION_DEFAULT, vars, None)
 }
 
 /// The decision model `model`, each decision waited for `patience` at most, OpenRouter's key read

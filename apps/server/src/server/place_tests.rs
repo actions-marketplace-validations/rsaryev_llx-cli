@@ -31,7 +31,6 @@ fn a_session_works_in_the_clients_directory_with_the_clients_environment() {
         chat: &chat,
         live: None,
         adviser: None,
-        searcher: None,
         namer: None,
     };
     let (shared, seat) = setup.split();

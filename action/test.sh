@@ -237,16 +237,13 @@ cat >"$tmp/calls.jsonl" <<'EVENTS'
 {"type":"tool.call","id":"2","name":"apply_patch","arguments":"*** Begin Patch\n*** Update File: src/a.rs\n@@\n*** Add File: b.md\n+x\n*** End Patch"}
 {"type":"tool.result","id":"2","name":"apply_patch","failed":true}
 {"type":"tool.call","id":"3","name":"agents","arguments":{"action":"spawn","task":"look"}}
-{"type":"tool.call","id":"4","name":"grep","arguments":{"query":"where is a request sent again","paths":["src"]}}
-{"type":"tool.result","id":"4","name":"grep","failed":false}
 {"type":"run.completed","status":"done","exit_code":0,"usage":{"agent":{"model":"acme/model","calls":3},"cost_usd":0.01},"duration_ms":1000}
 EVENTS
 run_action STUB_EVENTS_FILE="$tmp/calls.jsonl"
-has "calls: counted" "$(summary)" "<summary>Calls (4)</summary>"
+has "calls: counted" "$(summary)" "<summary>Calls (3)</summary>"
 has "calls: a command, escaped, its first line" "$(summary)" "- ✓ bash: <code>cargo test &lt;all&gt;</code>"
 has "calls: a patch by its files" "$(summary)" "- ✗ apply_patch: <code>update src/a.rs, add b.md</code>"
 has "calls: one with no result yet" "$(summary)" "- … agents: <code>spawn</code>"
-has "calls: a search by its question" "$(summary)" "- ✓ grep: <code>where is a request sent again</code>"
 run_action
 if [[ $(summary) == *Calls* ]]; then fail "no calls: a list anyway"; else pass "no calls: no list"; fi
 

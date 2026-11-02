@@ -45,7 +45,7 @@ git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requ
 
 ### How they are built
 
-The agent works as at a terminal: `bash`, `apply_patch` and `grep`, with `gh`, `git` and `jq` in
+The agent works as at a terminal: `bash` and `apply_patch`, with `gh`, `git` and `jq` in
 its shell. There is no MCP server, no GitHub tool and no prompt built into the action: the task's
 prompt is in the workflow, where you can read it, and so is what gets posted.
 

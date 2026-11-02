@@ -70,9 +70,8 @@ are still set in the environment.
 
 What the tools can reach of them:
 
-- A path the model gives a tool (a patch's files, a command's `workdir`, a search's paths) is
-  refused under `~/.config/llx/` and the sessions directory (`~/.llx/sessions`, or
-  `LLX_SESSIONS`), and `grep` never lists a file there.
+- A path the model gives a tool (a patch's files, a command's `workdir`) is refused under
+  `~/.config/llx/` and the sessions directory (`~/.llx/sessions`, or `LLX_SESSIONS`).
 - On macOS a sandboxed command cannot read them either. On Linux it can: Landlock cannot take a
   path out of what it lets a command read. A command outside the sandbox can read them on both.
 - On Linux before 6.12 (Landlock's ABI 6), a sandboxed command can still send a signal to any
@@ -95,11 +94,8 @@ also sends to OpenRouter's decision model, whichever provider the chat model is:
 first goal, to pick its reasoning level under `--reasoning auto`; and when the main session's model
 answers, the task (its goal, each call with the start of its input and the end of its output, and
 the answer), cut to 60,000 characters. `--no-advice` (`LLX_NO_ADVICE=1`) turns it off. `llx
-decide` sends its question and its stdin (or each file) to OpenRouter's decision model too, and
-`llx grep` and the agent's `grep` tool send the question and the files it ranks best, with those
-they reach through the modules they name (each one's path, a short file whole, of a long one its
-start and some of its parts); with `--lexical`, or without the key, `grep` ranks by the words
-alone and sends nothing. Do not point llx at secrets you would not send there.
+decide` sends its question and its stdin (or each file) to OpenRouter's decision model too. Do
+not point llx at secrets you would not send there.
 
 ## Releases
 

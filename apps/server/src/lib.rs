@@ -20,7 +20,6 @@ mod desk;
 pub mod error;
 mod exit;
 mod gate;
-mod grep;
 mod input;
 mod instructions;
 pub mod interrupt;

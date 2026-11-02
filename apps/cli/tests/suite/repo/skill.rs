@@ -1,6 +1,6 @@
 //! The skill's reference is the help this llx prints: `skills/llx/SKILL.md` ends with
-//! `llx exec --help`, `llx grep --help` and `llx decide --help` as `scripts/skill-help` writes
-//! them, so an agent reading the skill reads what the binary does.
+//! `llx exec --help` and `llx decide --help` as `scripts/skill-help` writes them, so an agent
+//! reading the skill reads what the binary does.
 
 use std::fmt::Write;
 
@@ -19,7 +19,7 @@ fn the_skills_reference_is_the_help_llx_prints() {
         .expect("the skill has the marker line scripts/skill-help writes after");
     let home = Home::new();
     let mut printed = String::new();
-    for command in ["exec", "grep", "decide"] {
+    for command in ["exec", "decide"] {
         let out = home.run(&[command, "--help"]);
         assert!(out.status.success(), "llx {command} --help");
         let help = String::from_utf8(out.stdout).unwrap();

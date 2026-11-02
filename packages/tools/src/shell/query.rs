@@ -1,5 +1,4 @@
-//! A short command the app runs for itself (`/diff`'s `git`, the files `llx grep` lists, the shell
-//! `doctor` checks), with a deadline (R10): what it printed on stdout once it exited well; past
+//! A short command the app runs for itself (`/diff`'s `git`, the shell `doctor` checks), with a deadline (R10): what it printed on stdout once it exited well; past
 //! the deadline it is killed, with everything it started, as a `bash` command is. Its stderr is
 //! dropped, and nothing of what it prints is rendered or cut for a model.
 

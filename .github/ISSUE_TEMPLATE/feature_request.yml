@@ -13,4 +13,4 @@ body:
     id: today
     attributes:
       label: What you do today
-      description: The command or workaround, and what is wrong with it. llx has six tools on purpose; a new capability is usually an action of one of them, or a shell command.
+      description: The command or workaround, and what is wrong with it. llx has five tools on purpose; a new capability is usually an action of one of them, or a shell command.

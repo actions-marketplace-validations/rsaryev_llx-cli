@@ -8,14 +8,12 @@ use std::sync::atomic::AtomicU64;
 use contracts::chat::Chat;
 use contracts::gate::Gate;
 use contracts::history::History;
-use contracts::model::Decider;
 use contracts::tool::{Tool, ToolError, ToolOutput, ToolSpec};
 use serde_json::Value;
 use tools::fs::PatchTool;
 use tools::shell::BashTool;
 use tools::workspace::Workspace;
 
-use crate::grep::tool::GrepTool;
 use crate::mode::{Mode, ModeCell};
 use crate::output::Output;
 
@@ -50,20 +48,14 @@ pub(crate) struct Kit<'a> {
     pub forks: super::fork::Forks,
     /// The decision model's advice (C9), when one is reachable: an agent's is a level only.
     pub advice: Option<&'a crate::advice::Advice<'a>>,
-    /// The decision model `grep` reads the files with (B8), when one is reachable.
-    pub searcher: Option<&'a dyn Decider>,
-    /// What the decision model costs, charged to the task.
-    pub charge: &'a (dyn Fn(f64) + Sync),
 }
 
 /// A session's tools: `bash`, through which the model reads, searches and runs the checks,
-/// `apply_patch`, through which it changes files (ARCHITECTURE.md B1), and `grep`, which
-/// searches the code by what a question means (B8).
+/// and `apply_patch`, through which it changes files (ARCHITECTURE.md B1).
 pub(crate) struct Tools<'a> {
     kit: &'a Kit<'a>,
     bash: BashTool<'a>,
     patch: PatchTool<'a>,
-    grep: GrepTool<'a>,
 }
 
 impl<'a> Tools<'a> {
@@ -84,17 +76,12 @@ impl<'a> Tools<'a> {
                 workspace: kit.workspace,
                 gate,
             },
-            grep: GrepTool {
-                workspace: kit.workspace,
-                decider: kit.searcher,
-                charge: kit.charge,
-            },
         }
     }
 
     /// Run `work` with the tools as the agent offers them.
     pub(crate) fn with<T>(&self, work: impl FnOnce(&[&dyn Tool]) -> T) -> T {
-        let tools: [&dyn Tool; 3] = [&self.bash, &self.patch, &self.grep];
+        let tools: [&dyn Tool; 2] = [&self.bash, &self.patch];
         work(&tools)
     }
 

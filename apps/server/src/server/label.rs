@@ -24,15 +24,6 @@ pub(crate) fn label(name: &str, args: &Value) -> protocol::Label {
             }
             what(("Running", "Ran"), subject)
         }
-        // Its question, and where it looks when it was told, as a command and its directory.
-        "grep" => {
-            let mut subject = one_line(text("query"));
-            let paths = crate::grep::tool::strings(args, "paths");
-            if !paths.is_empty() {
-                subject = format!("{subject} (in {})", one_line(&paths.join(", ")));
-            }
-            what(("Searching", "Searched"), subject)
-        }
         "apply_patch" => {
             let paths = tools::fs::named_paths(args);
             let subject = if paths.is_empty() {

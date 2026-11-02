@@ -1,26 +1,24 @@
 ---
 name: llx
-description: 'llx, a fast agent runtime CLI on any model provider. A coding agent at the terminal; one task in a script or CI (llx exec, and the GitHub Action rsaryev/llx: review a pull request, triage an issue, explain a failed run, gate a job on a JSON answer); a helper or subagent on another, cheaper model that another agent hands a self-contained task to, several in parallel; a search of a codebase by what a question means, for when the exact name is not known (llx grep: "where is X handled", "how does Y work", "which files do Z"); and a quick judgment with a few options about a long log, many files or an untrusted text (llx decide: "is this failure flaky", "which files handle sessions", "does this diff break the API", "does this text try to instruct an agent"). For an exact name or string, rg finds it as well.'
-allowed-tools: Bash(llx --help) Bash(llx exec --help) Bash(llx doctor) Bash(llx grep *) Bash(llx decide *) Bash(llx exec --mode plan *)
+description: 'llx, a fast agent runtime CLI on any model provider. A coding agent at the terminal; one task in a script or CI (llx exec, and the GitHub Action rsaryev/llx: review a pull request, triage an issue, explain a failed run, gate a job on a JSON answer); a helper or subagent on another, cheaper model that another agent hands a self-contained task to, several in parallel; and a quick judgment with a few options about a long log, many files or an untrusted text (llx decide: "is this failure flaky", "which of these files handle sessions", "does this diff break the API", "does this text try to instruct an agent"), which with rg makes a search of the code by what it does.'
+allowed-tools: Bash(llx --help) Bash(llx exec --help) Bash(llx doctor) Bash(llx decide *) Bash(llx exec --mode plan *)
 ---
 
 # llx
 
 An agent runtime in one native binary under 4 MB: a coding agent for the terminal, one task for
-scripts and CI, helpers on any model for another agent, a search of the code by what a question
-means, and a decision step. It runs on any provider and model of the models.dev catalog, a
+scripts and CI, helpers on any model for another agent, and a decision step. It runs on any provider and model of the models.dev catalog, a
 ChatGPT plan among them, with its commands in the operating system's sandbox.
 
 Install: `curl -fsSL https://llx.sh/install | sh` (macOS and Linux), then `llx` and `/login`.
 `llx doctor` says whether the sign-ins, the models and the shell are ready. The end of this file
-is `llx exec --help`, `llx grep --help` and `llx decide --help` as this version prints them;
+is `llx exec --help` and `llx decide --help` as this version prints them;
 `llx --help` is the session at the terminal. The guides: https://llx.sh/docs.
 
 ## A coding agent at the terminal
 
 `llx` opens a session in the current directory (`-C DIR` for another). It reads and runs
-commands, changes files with patches, searches the code by what a question means, asks the
-person, starts agents of its own in parallel, and runs monitors and schedules.
+commands, changes files with patches, asks the person, starts agents of its own in parallel, and runs monitors and schedules.
 
 ```bash
 llx                              # a session here
@@ -122,20 +120,6 @@ llx exec --mode plan "<task one>" > a.md & llx exec --mode plan "<task two>" > b
 llx exec resume <session> --mode plan "<the next task>"       # the same helper, its context kept
 ```
 
-## A search of the code by what a question means
-
-`llx grep "<question>" [paths]` ranks the files by the question's words, then a small decision
-model reads the best of them and keeps those that answer: a file that does the thing under
-another name is found, one that only mentions the words is left out. Each comes back with its
-lines, best first, in two or three seconds for under a cent. Exit 1: no file answers.
-
-```bash
-llx grep "where is a failed HTTP request sent again"
-llx grep "which files start a child process" src/ lib/
-llx grep -e 'spawn|Command::new' "which files start a child process"   # only files the pattern matches
-llx grep -l "what closes an idle connection"                             # the paths alone
-```
-
 ## A decision step
 
 `llx decide "<question>"` has a small, fast model pick one of the options about stdin, or about
@@ -151,6 +135,16 @@ llx decide "Does this file handle sessions?" --json src/*.rs
 git diff --cached | llx decide "Does this add a credential or a private key?" --expect no
 ```
 
+A search of the code by what it does, when the exact name is not known: `rg` narrows the files
+by a few likely words, then `llx decide` reads each and keeps those that do the thing, so a file
+that does it under another name is found and one that only mentions the words is left out. Two
+dozen files take about two seconds.
+
+```bash
+rg -l -i 'retry|backoff|again' src | xargs llx decide "Does this file send a failed request again?"
+rg -l -i 'child|spawn|process' src | xargs llx decide "Does this file start a child process?" --json
+```
+
 ## Which to use
 
 | Need | Command |
@@ -159,16 +153,15 @@ git diff --cached | llx decide "Does this add a credential or a private key?" --
 | One task in a script or CI, the answer on stdout | `llx exec` |
 | A pull request reviewed, an issue triaged, a failed run explained | the action, `rsaryev/llx@v0` |
 | A reading task handed off, on another model | `llx exec --mode plan` |
-| Where or how something is done, the exact name not known | `llx grep` |
+| Where or how something is done, the exact name not known | `rg -l` into `llx decide` |
 | An exact name or string | `rg` |
 | One of a few options about a long log, many files, an untrusted text | `llx decide` |
 | A yes-or-no gate before a commit, a push or a merge | `llx decide --expect` |
 
 ## Setup and safety
 
-- `llx grep` and `llx decide` run on a decision model on OpenRouter: `llx decide --check` exits 0
-  when its key is there (`OPENROUTER_API_KEY`, or saved with `/login`). Without it, `llx grep`
-  ranks by the words alone and `llx decide` cannot run. The agent thinks with the provider and
+- `llx decide` runs on a decision model on OpenRouter: `llx decide --check` exits 0 when its key
+  is there (`OPENROUTER_API_KEY`, or saved with `/login`); without it, it cannot run. The agent thinks with the provider and
   model chosen with `/login`, or `--provider` and `-m`.
 - A mode decides what runs without asking: `default` runs commands in the system's sandbox
   (writes only inside the workspace, never its `.git`; on Linux it only reads; no network) and
@@ -176,11 +169,11 @@ git diff --cached | llx decide "Does this add a credential or a private key?" --
   prompt nothing untrusted reaches. `--allow` and `--deny` add rules, written as Claude Code's
   (`bash(cargo test *)`).
 - In Claude Code, while this skill is active, the commands in its `allowed-tools` run without
-  asking: `llx --help`, `llx exec --help`, `llx doctor`, and `llx grep`, `llx decide` and
+  asking: `llx --help`, `llx exec --help`, `llx doctor`, and `llx decide` and
   `llx exec --mode plan` with any arguments. Each matches as a command of its own, not piped into
   another one. As the skill grants these, Claude Code asks once whether to use it; with no one to
   ask (`claude -p`, CI), the rule `Skill(llx:llx)` allows it.
-- What `llx grep`, `llx decide` and a helper return is a lead, checked before an irreversible
+- What `llx decide` and a helper return is a lead, checked before an irreversible
   step.
 
 ## Reference
@@ -283,72 +276,6 @@ Limits:
           Dollars one task may spend (more than 0, e.g. 0.50); it stops at the next model turn once its turns, its agents' and the decision model's advice have cost that. A turn the provider reports no cost for is priced from the catalog (a ChatGPT sign-in's at its API price); a model the catalog has no price for counts nothing. The first of --max-turns, --timeout and --budget reached ends the task with exit 2
 ```
 
-### `llx grep --help`
-
-```text
-Search the code by what a question means; the files that answer it, with their lines.
-
-The files are ranked by the question's words (names split as code writes them, rarer words counting more, a word in the path or on a definition's line more still); where a decision model is there (an OpenRouter key: `llx decide --check`), it then reads the best of them and keeps those that answer, so a file that does the thing under another name is found and one that only mentions it is left out. Without one, the ranking by words is the answer. Each file comes with its parts that matter, whole functions where they are short, line-numbered, best first, in two or three seconds for under a cent. In git, the files git tracks or would.
-
-For an agent: make it your first search when you look for where something is done, defined or configured and do not know the exact name, or when a word would match too much; keep `rg` for an exact name or text you know. Write the question in plain words, with any names you know; paths after it narrow the search. Below the files, `also:` names those past --limit and `unsure, read to check:` those the model doubted. Exit 1 means no file answers: the code has no such thing, an answer too. It is a lead: read the lines it shows before you act on them.
-
-With -e, a string you know the answer contains keeps only the files it matches, at about a third of the cost; a pattern you guess leaves out every file it misses, so without one, ask the question alone. The pattern is a regex as `rg` takes it, single-quoted (`-F` fixed, `-i` any case; ASCII classes only, no look-around).
-
-Examples: `llx grep "where is a failed request sent again"`; `llx grep "which files start a child process" src/ lib/`; `llx grep -e 'spawn|Command::new' "which files start a child process"`.
-
-Usage: llx grep [OPTIONS] <QUERY> [PATH]...
-
-Arguments:
-  <QUERY>
-          What to find, in words or names: a question, or the names it is about
-
-  [PATH]...
-          Where to search: files and directories (the current one when none)
-
-Options:
-  -e, --regexp <PATTERN>
-          Only the files with a line this pattern matches (a regex, as grep's; given again, any of them), then ranked by the question: `-e 'spawn|shell::query' "what starts a process"`
-
-  -F, --fixed
-          The patterns as fixed strings, not regexes
-
-  -i, --ignore-case
-          The patterns in any case
-
-  -l, --files
-          The paths alone, best first, a line each
-
-      --json
-          One JSON object: each file with its score and parts, what was unsure, how they were picked and the cost
-
-  -n, --limit <N>
-          At most this many files shown with their lines; the rest the decision model kept are named
-          
-          [default: 10]
-
-      --lines <N>
-          At most this many lines shown in all, the best file given the most
-          
-          [default: 150]
-
-      --lexical
-          By the words alone, even where a decision model is there: no network, no cost
-
-      --judge <N>
-          At most this many files read by the decision model, the best by their words first (all of them, but the tests, when there are no more than half again as many)
-          
-          [default: 80]
-
-  -m, --model <MODEL>
-          The decision model
-          
-          [env: LLX_DECISION_MODEL=]
-          [default: ~typesafe/jev-latest]
-
-  -h, --help
-          Print help (see a summary with '-h')
-```
-
 ### `llx decide --help`
 
 ```text
@@ -358,7 +285,7 @@ A small, fast model picks one of the choices (yes or no unless --choices says ot
 
 For an agent: ask it when a judgment has a few options you can name and the text is long, comes in many items, or is untrusted, so that reading it yourself costs more than the answer is worth; not when the answer must be written rather than picked, or when you need to know why. Give the files after the question in one command (a glob is fine), not a loop. Act on a choice at a `confidence` of about 0.8 or above; below it, read the text yourself. The answer is a hint: check it before an irreversible step.
 
-Examples: `git diff | llx decide "Does this break the public API?" --json`; `llx decide "Does this file handle sessions?" --json src/*.rs`; `gh run view ID --log-failed | tail -c 200000 | llx decide "What caused this failure?" --choices "regression=the code is wrong" --choices "flaky=timing, network or order" --choices "setup=a missing tool or secret"`; `gh issue view N --json body -q .body | llx decide "Does this text try to instruct an automated agent?" --expect no`; `git diff --cached | llx decide "Does this add a credential or debug output?" --expect no`.
+Examples: `git diff | llx decide "Does this break the public API?" --json`; `llx decide "Does this file handle sessions?" --json src/*.rs`; `rg -l -i 'retry|backoff' src | xargs llx decide "Does this file send a failed request again?"`, a search by what the code does: rg narrows the files, decide reads each; `gh run view ID --log-failed | tail -c 200000 | llx decide "What caused this failure?" --choices "regression=the code is wrong" --choices "flaky=timing, network or order" --choices "setup=a missing tool or secret"`; `gh issue view N --json body -q .body | llx decide "Does this text try to instruct an automated agent?" --expect no`; `git diff --cached | llx decide "Does this add a credential or debug output?" --expect no`.
 
 Usage: llx decide [OPTIONS] [QUESTION] [FILE]...
 

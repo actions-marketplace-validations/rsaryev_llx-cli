@@ -1,5 +1,5 @@
-# llx: an ultrafast, lightweight agent runtime: six tools (bash, apply_patch, grep, ask, agents,
-# jobs) on any model.
+# llx: an ultrafast, lightweight agent runtime: five tools (bash, apply_patch, ask, agents, jobs)
+# on any model.
 #
 # Packages and apps, dependencies pointing inward only (ARCHITECTURE.md, rules L1-L10):
 #   packages/contracts      ports only: chat model, catalog, tools, advice, gate, person, decision
@@ -18,7 +18,7 @@
 #                           with its own policy (agents' answers, monitors, schedules, ...)
 #   packages/session        a history store: sessions as JSON files
 #   apps/server             the composition root (its library is `llx`): sessions, lanes,
-#                           agents, jobs, modes, grep, the command line, served through the
+#                           agents, jobs, modes, the command line, served through the
 #                           protocol
 #   apps/tui                the terminal interface: keys and drawing, through the client only
 #   apps/cli                the `llx` binary: the process, the terminal's wiring, the daemon's
@@ -188,9 +188,6 @@ miniz_oxide = "0.9.1"
 sha2 = "0.11.1"
 # models.dev's files, read by the catalog's build script alone: none of it reaches the binary.
 toml = "0.8"
-# `llx grep -e`'s patterns: the regex crate's own small engine (about 50 KB; linear time, ASCII
-# classes), not the full one (450 to 830 KB).
-regex-lite = "0.1.9"
 ureq = { version = "3", default-features = false, features = ["json", "gzip", "native-tls"] }
 
 # A small, self-contained binary: TLS is the OS's, and the code is optimized for size ("z"): the

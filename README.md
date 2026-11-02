@@ -34,13 +34,13 @@
   </a>
 </p>
 
-llx is a model in a loop over six tools, on any provider: `bash`, `apply_patch`, `grep` (a search of the code by what a question means, the one `llx grep` runs), `ask`, `agents` and `jobs`. A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema. One binary, three uses:
+llx is a model in a loop over five tools, on any provider: `bash`, `apply_patch`, `ask`, `agents` and `jobs`. A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema. One binary, three uses:
 
 | Who calls | Command | What they get |
 | --- | --- | --- |
 | **Your CI and scripts** | `llx exec --json --schema …` | One task, then exit: the answer in the shape you define, JSON events, an exit code to branch on |
 | **You** | `llx` | A minimal agent at your terminal |
-| **Your other agents** | `llx exec` · `llx grep` · `llx decide` | Commands they run from their shell: a helper on any model, a search by meaning, a quick decision. They extend the agent you use, never replace it |
+| **Your other agents** | `llx exec` · `llx decide` | Commands they run from their shell: a helper on any model, a quick decision. They extend the agent you use, never replace it |
 
 By default llx works in your project without asking: commands run in the system's sandbox, which writes only inside the workspace (never its `.git`; on Linux they only read) and opens no network, and file changes there are made; what must reach further is asked first, and refused where no one is there to ask. `plan` runs read-only in the same sandbox, `bypass` (`-y`) allows everything, and rules or a mode of your own say the rest ([modes](docs/modes.md)). A task is bounded by `--max-turns`, `--timeout` and `--budget`: the first reached ends it.
 
@@ -115,20 +115,19 @@ For a choice among a few options, `llx decide` asks a small decision model about
 $ git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 ```
 
-To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 2 to 3 s for $0.005 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone. With `-e`, a pattern as grep's keeps only the files it matches and the question ranks them: where you know a string the answer has, about a third of the cost, and an empty answer as quick as `rg`'s:
+With `rg`, it makes a search of the code by what it does: `rg -l` narrows the files by a few likely words, and `llx decide` reads each and keeps those that do the thing, under whatever name:
 
 ```console
-$ llx grep "where is a failed HTTP request sent again"
-$ llx grep -e 'spawn|shell::query' "which files start a child process" src
+$ rg -l -i 'retry|backoff|again' src | xargs llx decide "Does this file send a failed request again?"
 ```
 
 Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml), [a weekly audit](examples/github/audit.yml) and [a Jira work item made a draft pull request](examples/github/jira.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
 
 ## In other agents
 
-Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx grep` finds the code that answers a question, with its lines; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
+Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
 
-A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, `llx grep` and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
+A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
 ```bash
 npx skills add rsaryev/llx

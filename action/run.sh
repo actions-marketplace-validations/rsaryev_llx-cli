@@ -358,7 +358,7 @@ calls() {
         | (if (.arguments | type) == "string" then
               [.arguments | split("\n")[] | capture("^\\*\\*\\* (?<verb>Add|Update|Delete) File: (?<file>.*)$")?
                 | "\(.verb | ascii_downcase) \(.file)"] | join(", ")
-            else (.arguments.command // .arguments.query // .arguments.action // (.arguments | tostring)) | tostring | split("\n")[0]
+            else (.arguments.command // .arguments.action // (.arguments | tostring)) | tostring | split("\n")[0]
             end) as $what
         | "- \($mark) \(.name): <code>\($what | .[:160] | gsub("&"; "&amp;") | gsub("<"; "&lt;") | gsub(">"; "&gt;"))</code>"),
       "\n</details>\n"' "$1" 2>/dev/null | head -c 20000

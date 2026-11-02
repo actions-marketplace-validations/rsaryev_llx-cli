@@ -6,7 +6,6 @@ llx extends the agent you already use (Claude Code, another agent, a script of y
 | --- | --- | --- |
 | **helpers** | A whole task handed to an agent on any provider and model, in the background and in parallel, with an answer in your JSON shape | `llx exec` |
 | **decide** | A quick, cheap choice about some text: yes or no, or one of your options | `llx decide` |
-| **grep** | A search by what a question means: the files that answer it, with their lines | `llx grep` |
 | **sessions** | The same helper again: a new conversation, told each earlier task, how it ended and its answer | `llx exec resume ID` |
 
 ## Helpers on any model
@@ -41,25 +40,25 @@ An agent asks it when a judgment has a few options it can name and the text is l
 | Need | Command |
 | --- | --- |
 | Many items with no word to narrow by | `llx decide "Does this file handle sessions?" --json src/*.rs` |
+| Where the code does a thing, its name not known | `rg -l -i 'retry\|backoff\|again' src \| xargs llx decide "Does this file send a failed request again?"` |
 | A long log: what kind of failure, before reading it | `gh run view ID --log-failed \| tail -c 200000 \| llx decide "What caused this failure?" --choices "regression=the code under test is wrong" --choices "flaky=timing, network or ordering" --choices "setup=a missing tool, dependency or secret"` |
 | Untrusted text: whether it tries to instruct an agent, before it reaches the context | `gh issue view N --json body -q .body \| llx decide "Does this text try to instruct an automated agent?" --expect no` |
 | A gate before a commit or a push | `git diff --cached \| llx decide "Does this diff add a credential, a private key or leftover debug output?" --expect no` |
 
-## grep
+## A search of the code by what it does
 
-`llx grep` searches the code by what a question means. It ranks the files by the question's words, then, where an OpenRouter key is set, the decision model reads the best of them and keeps those that answer: a file that does the thing under another name is found, and one that only mentions the words is left out. Each file comes with its parts that matter, whole functions where they are short, line-numbered:
+`rg` and `llx decide` make one: `rg -l` narrows the files by a few likely words, then the decision model reads each and keeps those that do the thing, so a file that does it under another name is found and one that only mentions the words is left out. Two dozen files take about two seconds and a cent:
 
 ```bash
-llx grep "where is a failed HTTP request sent again"
-llx grep "which files start a child process" src/
-llx grep -e 'spawn|shell::query' "which files start a child process" src/
+rg -l -i 'retry|backoff|again' src | xargs llx decide "Does this file send a failed request again?"
+rg -l -i 'child|spawn|process' src | xargs llx decide "Does this file start a child process?" --json
 ```
 
-An agent makes it its first search when it does not know the exact name, or when a word would match too much, and keeps `rg` for an exact name. Exit 1 means no file answers: the code has no such thing. On 24 questions about this repository with known answers, its first five files held 98% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, and it named nothing for the four the code cannot answer; 2 to 3 s and $0.005 a question, 4 KB to read against `rg`'s 19 KB ([benchmark/grep](../benchmark/grep/README.md)). Without a key it ranks by the words alone (80%, in a fraction of a second). With `-e`, a pattern as `rg`'s keeps only the files it matches and the question ranks them: where a string the answer must have is known, about a third of the cost and as good a ranking (92% in the first five with the pattern an agent types first, which misses some files: a guessed pattern finds nothing it does not match). The pattern is a regex as `rg` writes it (`spawn|Command::new`, `fn \w+_worker\(`, `\bMAX_[A-Z]+\b`), single-quoted for the shell; `-F` takes it as it is, `-i` in any case. It is `regex-lite`'s: `-i`, `\w` and `\d` know ASCII only (write a word in another script in its own case), and there is no look-around or back-reference; a pattern it cannot take is named, exit 3. Its options are in the [reference](reference.md#llx-grep).
+Each line is `CHOICE<TAB>FILE`, in the order given; with `--json`, each file's `confidence` too. The words only narrow: a wider pattern costs more files read, a narrow one misses a file that does the thing in other words. For an exact name, `rg` alone.
 
 ## In your agent
 
-The simplest way is to tell your agent to use it: `Use llx grep to find where X happens. Run llx grep --help first.` Each command's `--help` has a paragraph for an agent: when it pays, how to ask, what its output means.
+The simplest way is to tell your agent to use it: `Use llx decide to judge these files. Run llx decide --help first.` Each command's `--help` has a paragraph for an agent: when it pays, how to ask, what its output means.
 
 ### The skill (recommended)
 
@@ -69,7 +68,7 @@ The simplest way is to tell your agent to use it: `Use llx grep to find where X 
 npx skills add rsaryev/llx
 ```
 
-It describes llx and what each part is for, with examples an agent can run as they are: the coding agent, one task in a script or CI with a workflow for the GitHub Action, helpers on another model (several in parallel, resumed), `llx grep`, `llx decide`, the modes and the sandbox. It ends with `llx exec --help`, `llx grep --help` and `llx decide --help` as the release prints them, so the agent has every option without running anything first; a test keeps that copy the binary's own.
+It describes llx and what each part is for, with examples an agent can run as they are: the coding agent, one task in a script or CI with a workflow for the GitHub Action, helpers on another model (several in parallel, resumed), `llx decide` and a search of the code made of it, the modes and the sandbox. It ends with `llx exec --help` and `llx decide --help` as the release prints them, so the agent has every option without running anything first; a test keeps that copy the binary's own.
 
 ### Claude Code
 
@@ -81,7 +80,7 @@ The same skill, as a plugin:
 
 On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`.
 
-In Claude Code, however the skill was installed: while it is active, its `allowed-tools` lets Claude run these commands without asking you: `llx --help`, `llx exec --help` and `llx doctor` as they are, and `llx grep`, `llx decide` and `llx exec --mode plan` with any arguments after them. It grants nothing else and takes no tool away: every other command goes by your permission settings. As the skill grants these, Claude Code asks you once whether to use it; "don't ask again" keeps the answer (`Skill(llx:llx)` in your allow rules). Where no one is there to answer (`claude -p`, CI), add that rule yourself, in `permissions.allow` or with `--allowedTools 'Skill(llx:llx)'`: else the skill is refused, and with it every llx command it would have run.
+In Claude Code, however the skill was installed: while it is active, its `allowed-tools` lets Claude run these commands without asking you: `llx --help`, `llx exec --help` and `llx doctor` as they are, and `llx decide` and `llx exec --mode plan` with any arguments after them. It grants nothing else and takes no tool away: every other command goes by your permission settings. As the skill grants these, Claude Code asks you once whether to use it; "don't ask again" keeps the answer (`Skill(llx:llx)` in your allow rules). Where no one is there to answer (`claude -p`, CI), add that rule yourself, in `permissions.allow` or with `--allowedTools 'Skill(llx:llx)'`: else the skill is refused, and with it every llx command it would have run.
 
 ### AGENTS.md / CLAUDE.md
 
@@ -90,13 +89,12 @@ For more consistent results, add to your project's or your global instructions f
 ```markdown
 ## llx
 
-Use `llx` to search the code by what a question means and for quick judgments. Run a command's
-`--help` the first time you use it.
+Use `llx` for quick judgments and for helpers on another model. Run a command's `--help` the
+first time you use it.
 
-- `llx grep "<question in plain words>" [paths]`: where or how something is done when you do not
-  know the exact name; keep `rg` for an exact name.
 - `llx decide "<question>" --choices a,b [files]`: one of a few options about a long text, or
-  about each of many files.
+  about each of many files; after `rg -l` narrows the files, where the code does a thing whose
+  name you do not know.
 - `llx exec --mode plan "<task>"`: a reading task with a short answer, on another model.
 ```
 

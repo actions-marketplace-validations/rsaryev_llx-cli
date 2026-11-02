@@ -23,7 +23,7 @@ const out = (text: string, tone: Tone = 'hi'): Block => ({ out: text, tone });
 
 /** The exit codes are exit.rs; the cost in the pipeline card is an illustration; the rules card
  *  uses llx's own wording of a refusal (packages/tools/src/lib.rs, apps/server/src/rules.rs), and
- *  the search card the line llx grep ends with (apps/server/src/grep/shown.rs). */
+ *  the search card is a run of rg into llx decide on this repository. */
 export const CARDS: Card[] = [
   {
     title: 'Ends every task with an exit code',
@@ -141,33 +141,24 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'A search by what a question means',
-    text: 'llx grep ranks the files by the question\'s words, then the decision model reads the best of them and keeps those that answer, so code that does the thing under another name is found and a file that only mentions it is left out. Each comes back with its lines, whole functions where they are short. Without a key, the ranking by words is the answer.',
-    link: { href: `${GITHUB}/tree/main/benchmark/grep`, label: 'The benchmark' },
+    title: 'A search of the code by what it does',
+    text: 'rg narrows the files by a few likely words; llx decide reads each and keeps those that do the thing, so code that does it under another name is found and a file that only mentions the words is left out. Two primitives, one pipe: the agent builds the search its question needs.',
+    link: { href: AGENTS_DOCS, label: 'In other agents' },
     panel: [
-      shell('$ llx grep "where is a failed HTTP request sent again"'),
+      shell(`$ rg -l -i 'retry|backoff' src |\n    xargs llx decide "Does this file send a failed HTTP request again?"`),
       {
         grid: [
-          [['hi', 'packages/providers/openrouter/src/client.rs'], ['ok', '0.98']],
-          [['hi', 'packages/providers/kit/src/retry.rs'], ['ok', '0.95']],
-          [['hi', 'packages/providers/openai/src/responses.rs'], ['ok', '0.86']],
+          [['ok', 'yes'], ['hi', 'packages/providers/kit/src/retry.rs']],
+          [['ok', 'yes'], ['hi', 'packages/providers/openai/src/responses.rs']],
+          [['ok', 'yes'], ['hi', 'packages/providers/openrouter/src/client.rs']],
         ],
-        align: 'lr',
       },
-      out('llx grep: 3 of 1199 files answer, 80 read by ~typesafe/jev-latest (2.1 s, $0.0050)', 'dim'),
-      {
-        grid: [
-          [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],
-          [['acc', 'llx grep'], ['ok', '98%'], ['ok', '4/4']],
-          [['', 'rg, as an agent types it'], ['bad', '46%'], ['bad', '2/4']],
-        ],
-        align: 'lrr',
-      },
+      out('12 more files: no (1.2 s, 15 files read by the decision model)', 'dim'),
     ],
   },
   {
     title: 'A skill for any agent',
-    text: 'One skill teaches Claude Code, Codex, Cursor and other agents when llx pays: it points them at each command\'s --help, so what they read always matches the installed llx. They search with llx grep and ask llx decide rather than read every file themselves.',
+    text: 'One skill teaches Claude Code, Codex, Cursor and other agents what llx does and when it pays, with examples to run as they are and each command\'s help as the installed llx prints it. They hand reading to a helper and ask llx decide rather than read every file themselves.',
     link: { href: `${GITHUB}/tree/main/skills/llx`, label: 'The skill' },
     panel: [
       shell('$ npx skills add rsaryev/llx'),
@@ -184,15 +175,14 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'Six tools, one binary under 4 MB',
-    text: 'bash reads, searches and runs the checks; apply_patch changes files; grep finds the code that answers a question; ask puts a question to you; agents and jobs do the rest. It takes no plugins, no skills and no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
+    title: 'Five tools, one binary under 4 MB',
+    text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. It takes no plugins, no skills and no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
     link: { href: DOCS, label: 'The docs' },
     panel: [
       {
         grid: [
           [['hi', 'bash'], ['dim', 'read, search, run the checks']],
           [['hi', 'apply_patch'], ['dim', 'add, change, delete, move files']],
-          [['hi', 'grep'], ['dim', 'the code that answers a question']],
           [['hi', 'ask'], ['dim', 'a question to the person']],
           [['hi', 'agents'], ['dim', 'other agents, in parallel']],
           [['hi', 'jobs'], ['dim', 'monitors and schedules']],

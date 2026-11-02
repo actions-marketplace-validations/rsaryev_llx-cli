@@ -265,7 +265,6 @@ pub(crate) fn served_titled(
             chat: chats[n],
             live: None,
             adviser: None,
-            searcher: None,
             namer,
         };
         lane_with(shared, seat, models, work)

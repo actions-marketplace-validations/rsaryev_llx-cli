@@ -197,7 +197,6 @@ fn a_lane_with_no_title_model_asks_nothing() {
         chat: &chat,
         live: None,
         adviser: None,
-        searcher: None,
         namer: None,
     };
     // The lane's end waits for a title still asked for: whatever was asked, was asked by then.

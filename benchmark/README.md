@@ -104,6 +104,5 @@ summary.
 
 ## The harness's own tests
 
-`bun test ./benchmark/lib ./benchmark/grep` tests what reads an agent's logs and what scores the
-search's answers, with no agent and no network. Not `bun test ./benchmark`: the tasks' acceptance
+`bun test ./benchmark/lib` tests what reads an agent's logs, with no agent and no network. Not `bun test ./benchmark`: the tasks' acceptance
 tests fail on their stubs.
