@@ -1,13 +1,16 @@
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use contracts::chat::{Chat, ChatError, Completion, Message, Request};
 
 use super::*;
 
-/// A chat model that answers `text` and keeps what it was asked.
+/// A chat model that answers `text` and keeps what it was asked, and by when.
 struct Namer {
     text: Result<String, ()>,
     asked: Mutex<Vec<(Vec<Message>, usize, bool)>>,
+    deadlines: Mutex<Vec<Option<Instant>>>,
 }
 
 impl Namer {
@@ -15,6 +18,7 @@ impl Namer {
         Self {
             text: text.map(str::to_string),
             asked: Mutex::new(vec![]),
+            deadlines: Mutex::new(vec![]),
         }
     }
 }
@@ -31,6 +35,7 @@ impl Chat for Namer {
             request.calling == Calling::Nothing,
         );
         self.asked.lock().unwrap().push(asked);
+        self.deadlines.lock().unwrap().push(request.deadline);
         match &self.text {
             Ok(text) => Ok(Completion {
                 text: Some(text.clone()),
@@ -96,4 +101,57 @@ fn a_long_task_is_cut_to_the_prompt_budget_on_a_character() {
     let prompt = prompt(&task);
     assert!(prompt.len() <= PROMPT_BYTES, "{}", prompt.len());
     assert!(prompt.ends_with('λ'));
+}
+
+/// The lane's end waits for a title still asked for: its request is held to a deadline.
+#[test]
+fn the_titles_request_is_given_up_within_a_minute() {
+    let namer = Namer::new(Ok("Fix the parser"));
+    assert!(ask(&namer, "fix the parser").is_some());
+    let deadline = namer.deadlines.lock().unwrap()[0];
+    let minute = Instant::now() + Duration::from_secs(60);
+    assert!(deadline.is_some_and(|by| by <= minute), "{deadline:?}");
+}
+
+/// The title's thread is the lane's: let go at the lane's end, the request still out is waited
+/// for there, so nothing of it outlives the lane (R2).
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a request that takes a moment, as a model's does"
+)]
+fn the_lanes_end_waits_for_the_title_still_asked_for() {
+    let answered = Arc::new(AtomicBool::new(false));
+    let theirs = Arc::clone(&answered);
+    let mut titling = Titling::default();
+    titling
+        .start(move || {
+            std::thread::sleep(Duration::from_millis(200));
+            theirs.store(true, Ordering::SeqCst);
+        })
+        .unwrap();
+    drop(titling);
+    assert!(
+        answered.load(Ordering::SeqCst),
+        "the lane ended before its title"
+    );
+}
+
+/// A task never waits for a title: the next one starts while one is still out, kept with it for
+/// the lane's end.
+#[test]
+fn a_task_never_waits_for_the_title_still_asked_for() {
+    let (release, held) = std::sync::mpsc::sync_channel::<()>(0);
+    let mut titling = Titling::default();
+    let slow = move || {
+        let _ = held.recv_timeout(Duration::from_secs(5));
+    };
+    titling.start(slow).unwrap();
+    let began = Instant::now();
+    titling.start(|| {}).unwrap();
+    assert!(
+        began.elapsed() < Duration::from_secs(2),
+        "the next task waited"
+    );
+    drop(release);
 }

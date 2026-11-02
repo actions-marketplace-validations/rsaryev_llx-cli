@@ -18,6 +18,7 @@ use crate::choice::Choice;
 use crate::interrupt::Interrupt;
 use crate::jobs::{Jobs, JobsTool};
 use crate::live::LiveChat;
+use crate::meta::title::Titling;
 use crate::mode::{self, Mode, ModeCell};
 use crate::output::Output;
 use crate::providers::Provider;
@@ -65,6 +66,8 @@ pub(crate) struct Rig<'a> {
     pub hidden: &'a Mutex<Vec<String>>,
     /// What is known of the session beside its tasks, made in the background, not saved yet.
     pub meta: crate::meta::Pending,
+    /// The threads asking for the session's title: the lane's, joined when it ends.
+    pub titling: &'a mut Titling,
     /// The decision model's advice, told the levels it may pick at each task.
     pub advice: Option<&'a crate::advice::Advice<'a>>,
 }
@@ -72,7 +75,7 @@ pub(crate) struct Rig<'a> {
 /// The agent built from `base` and `lane` with `seat`'s session, and `work` run with it. The
 /// agents' threads end with the session at the latest: each task waits for its own. The guard
 /// ends the jobs and stops the agents even when the session unwinds from a panic, or the scope
-/// would wait for their threads for ever.
+/// would wait for their threads for ever; a title still asked for is waited for after it.
 pub(super) fn drive(
     base: &Base,
     lane: &Lane,
@@ -87,6 +90,8 @@ pub(super) fn drive(
     } = seat;
     let shared = base.shared;
     std::thread::scope(|scope| {
+        // Dropped after the guard (made before it): the jobs and the agents are stopped first.
+        let mut titling = Titling::default();
         // Inside the scope: it is dropped while unwinding, before the scope waits for threads.
         let _ending = Ending {
             jobs: lane.jobs,
@@ -162,6 +167,7 @@ pub(super) fn drive(
                 live: base.live,
                 hidden: lane.hidden,
                 meta: crate::meta::Pending::default(),
+                titling: &mut titling,
                 advice: lane.kit.advice,
             };
             let code = work(&mut rig);

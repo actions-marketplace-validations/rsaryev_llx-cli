@@ -1,6 +1,10 @@
 //! A session's title, made from its first task while that task runs: the same model at its
 //! lowest level, asked once with no tools, its answer cleaned to one short line. The task never
-//! waits for it; a failure only leaves the session named by its task.
+//! waits for it; its thread is the lane's ([`Titling`]), joined when the lane ends. A failure
+//! only leaves the session named by its task.
+
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use contracts::catalog::Selection;
 use contracts::chat::{Calling, Chat, Message, Request, TaskId};
@@ -14,6 +18,9 @@ use protocol::Event;
 const MAX: usize = 36;
 /// Bytes of the prompt at most: a long task is cut, on a character.
 const PROMPT_BYTES: usize = 960;
+/// How long the title's request may take, its retries included (a host's own timeout is
+/// minutes): a title is a few seconds' answer, and the lane's end waits for one still asked for.
+const DEADLINE: Duration = Duration::from_secs(15);
 /// What the model is told.
 const INSTRUCTIONS: &str = "Generate a concise, single-line task title of at most 36 \
 characters and under five words where possible. Start with an imperative verb. Capitalize only \
@@ -24,7 +31,7 @@ markdown, or trailing punctuation. Do not answer the request. Reply with the tit
 /// Name the session of `rig` from `goal` on a thread of its own, in the interface only (one task
 /// of `exec` is not listed), when it has no title and none is being asked for. The title goes to
 /// the interface and to the saved session as an [`Update`].
-pub(crate) fn start(rig: &Rig, goal: &str) {
+pub(crate) fn start(rig: &mut Rig, goal: &str) {
     let Some(ui) = rig.ui.clone() else { return };
     let Some(naming) = rig.meta.begin(&rig.session) else {
         return;
@@ -35,8 +42,7 @@ pub(crate) fn start(rig: &Rig, goal: &str) {
     let history = session::Sessions {
         dir: rig.shared.history.dir.clone(),
     };
-    let naming_thread = std::thread::Builder::new().name("llx-title".into());
-    let started = naming_thread.spawn(move || {
+    let started = rig.titling.start(move || {
         let _naming = naming;
         let Some(chat) = provider.chat_in(&selection, vars.as_deref()) else {
             return;
@@ -52,6 +58,37 @@ pub(crate) fn start(rig: &Rig, goal: &str) {
     // No thread: the session stays untitled, and the naming ends with the closure, as on a
     // failed request.
     drop(started);
+}
+
+/// The threads that asked for a lane's titles, owned by the lane and lent to its [`Rig`] (R2):
+/// those that ended are joined as the next starts, and one still asking when the lane ends is
+/// waited for then, at most until its request's [`DEADLINE`]. A task never waits for one.
+#[derive(Default)]
+pub(crate) struct Titling(Vec<JoinHandle<()>>);
+
+impl Titling {
+    /// `naming` on a thread of its own, kept with those still asking; those that ended joined.
+    fn start(&mut self, naming: impl FnOnce() + Send + 'static) -> std::io::Result<()> {
+        let (ended, asking) = self.0.drain(..).partition(JoinHandle::is_finished);
+        self.0 = asking;
+        join(ended);
+        let thread = std::thread::Builder::new().name("llx-title".into());
+        self.0.push(thread.spawn(naming)?);
+        Ok(())
+    }
+}
+
+impl Drop for Titling {
+    fn drop(&mut self) {
+        join(std::mem::take(&mut self.0));
+    }
+}
+
+/// Wait for each of `threads`; a panic in one was its own, and leaves the session untitled.
+fn join(threads: Vec<JoinHandle<()>>) {
+    for thread in threads {
+        let _ = thread.join();
+    }
 }
 
 /// The same model at the lowest level it offers: a title needs no thought.
@@ -75,7 +112,7 @@ fn ask(chat: &dyn Chat, goal: &str) -> Option<String> {
         conversation: &conversation,
         tools: &[],
         calling: Calling::Nothing,
-        deadline: None,
+        deadline: Some(Instant::now() + DEADLINE),
         effort: None,
         task: TaskId::NONE,
     };
