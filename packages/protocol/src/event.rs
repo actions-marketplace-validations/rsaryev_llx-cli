@@ -64,7 +64,8 @@ pub enum Event {
     },
     /// The agent was closed: it stays in the tree, dimmed.
     Closed,
-    /// Tokens a model turn of the session (a lane or an agent) used, in and out.
+    /// Tokens a model turn used, in and out: in an agent, one of its own; in a lane, one of its
+    /// own or of its agents'.
     Spent(u64),
     /// What the session spent in all so far, its agents included: sent whole,
     /// never as a change, so a client that missed one is right at the next.

@@ -1,5 +1,6 @@
-//! Where an interface is, as it tells the server at its handshake (`Command::Initialize`), read
-//! from its own process: the daemon serves it there, with its environment.
+//! Where an interface is, read from its own process, as it tells the server at its handshake
+//! (`Command::Initialize`): the sessions it opens work there, with its environment and its
+//! command line, whether the server runs in this process or is the daemon.
 
 use std::path::Path;
 
