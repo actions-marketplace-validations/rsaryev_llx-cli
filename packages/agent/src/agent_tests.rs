@@ -690,3 +690,30 @@ fn cut_replies_with_calls_count_toward_the_cuts_in_a_row() {
     let run = agent(&chat, &[&echo], None, &Silent).run(None, "Do it", &[]);
     assert!(matches!(run.status, Status::Error(_)), "{:?}", run.status);
 }
+
+#[test]
+fn what_a_turn_carries_goes_back_with_it_on_the_next_request() {
+    let sealed = json!({"type": "reasoning", "encrypted_content": "abc"});
+    let chat = Scripted::new(vec![
+        Completion {
+            carried: vec![sealed.clone()],
+            ..calls("echo", json!({}))
+        },
+        done("Done."),
+    ]);
+    let echo = Echo::new(vec![ok("opened")]);
+    let run = agent(&chat, &[&echo], None, &Silent).run(None, "Open it", &[]);
+    assert_eq!(run.status, Status::Done);
+    let sent = chat.sent.lock().unwrap();
+    let carried: Vec<&Value> = (sent[1].0.iter())
+        .filter_map(|message| match message {
+            Message::Assistant { carried, .. } => Some(carried),
+            Message::System(_)
+            | Message::User(_)
+            | Message::ToolResult { .. }
+            | Message::Image { .. } => None,
+        })
+        .flatten()
+        .collect();
+    assert_eq!(carried, [&sealed]);
+}

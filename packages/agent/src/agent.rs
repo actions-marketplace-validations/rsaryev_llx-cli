@@ -219,7 +219,7 @@ impl Agent<'_> {
     /// A request's answer counted and kept in the conversation. `None` when the model could not
     /// be reached: the run has ended with the error.
     fn kept(&self, answered: Result<Completion, ChatError>, run: &mut Run) -> Option<Completion> {
-        let completion = match answered {
+        let mut completion = match answered {
             Ok(completion) => completion,
             Err(error) => {
                 run.status = Status::Error(error.to_string());
@@ -235,7 +235,13 @@ impl Agent<'_> {
             .as_deref()
             .is_some_and(|text| !text.is_empty());
         if said || !completion.calls.is_empty() {
-            run.conversation.push(completion.message());
+            // What goes back with the turn (a sealed reasoning, often the largest part of it) is
+            // the conversation's alone from here: moved, not copied.
+            run.conversation.push(Message::Assistant {
+                text: completion.text.clone(),
+                calls: completion.calls.clone(),
+                carried: std::mem::take(&mut completion.carried),
+            });
         }
         Some(completion)
     }
