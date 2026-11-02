@@ -9,11 +9,11 @@ those present) in a `Runtimes:` line.
 
 | Tool | What it is for |
 | --- | --- |
-| [`bash`](#bash) | Commands that run to their end: reading, searching, running checks |
+| [`bash`](#bash) | Commands: reading, searching, running checks; a long one goes on in the background |
 | [`apply_patch`](#apply_patch) | Files added, changed, deleted or moved, with a patch |
 | [`ask`](#ask) | A question to you |
 | [`agents`](#agents) | Other agents, in parallel |
-| [`jobs`](#jobs) | Monitors and schedules |
+| [`jobs`](#jobs) | Monitors, schedules, and the commands `bash` runs in the background |
 | [`result`](#result) | Only with `--schema`, after the work: the data in your shape |
 
 A turn's calls run in the order the model wrote them; those whose tool allows it run at once.
@@ -26,7 +26,8 @@ the file the cut fell in ([`apply_patch`](#apply_patch)).
 
 - `sh -c` in the workspace or a `workdir`, with stdin closed. It runs in its own session, with no terminal, so a program that prompts fails at once; git and pagers are told not to prompt or page. It runs with `AGENT=1` (test runners that look for it, such as bun, print only what failed), `NO_COLOR=1` and `TERM=dumb`, and without `FORCE_COLOR` or `CLICOLOR_FORCE`.
 - The model reads what Codex's `shell` returns: `Exit code: N`, `Wall time: 0.4 seconds`, then `Output:` with stdout and stderr as one stream, in the order written (one pipe for both) (a timeout reads `Timed out after: …`, a signal `Killed by signal: N`, a stop `Stopped: by the person`; a `workdir` adds `Directory: …`, a cut output `Total output lines: N`).
-- A timeout (120 s by default, at most 600 s) or Ctrl-C kills it with everything it started.
+- A command is waited for at most 120 s (or its `timeout_ms`, if less). One still running then is not killed: it goes on in the background as a job of [`jobs`](#jobs), and the model reads `Still running after: …` with what it printed so far and the file its whole output is written to; `run_in_background: true` starts it there at once (a server, a long build), named by `description`, its limit `timeout_ms` (at most 2 hours). Its end comes back to the model once, as a `<background>` message with its report as above, at the task's next step, or as a task of its own when none runs; the history shows `$ name · Exit code: 0`. It runs at most 30 minutes from the move (10 in `exec`, whose task waits for it); `jobs list` lists it, `jobs stop` or `x` on its row ends it with everything it started, and so does the end of the session. A command that starts with `sleep` is killed at its wait instead: waiting is the jobs' to do. Ctrl-C kills a command waited for with everything it started, not one in the background.
+- An agent keeps no jobs: its command is killed with everything it started at its `timeout_ms` (120 s by default, at most 600 s).
 - A server started in the background (`cmd > log 2>&1 &`) outlives a call that ends on its own; in the sandbox it cannot open a socket, so it needs `escalate` or an allow rule.
 - The output reads as a terminal shows it: colours, titles and links taken out, a line redrawn in place (`\r`, a progress bar) at its last state, a backspace applied; a line repeated is shown once with `... the same line N more times ...`.
 - It keeps about 80,000 characters of a command that succeeded (the first 16,000 and the last 64,000, cut at lines), so the files read in one command come whole, and about 40,000 of one that failed (8,000 and 32,000), whose end is what matters, and a line over 2,000 characters is shortened with how many more it had. When anything is left out, the whole output goes to a file (`$TMPDIR/llx-output-<uid>/`, the directory 0700 and each file 0600, kept a day and 512 MiB at most, 64 MiB a file), and the cut is marked ``... lines A-B of N cut (C characters); read them with `sed -n 'A,Bp' <file>` (the whole output is in that file) ...``; when no file could be written, it says to run the command again with its output redirected. A non-zero exit is a normal result.

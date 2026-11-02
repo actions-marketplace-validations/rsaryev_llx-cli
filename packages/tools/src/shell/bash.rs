@@ -2,7 +2,7 @@
 //! tests and git. The model reads the exit code and both streams; a failing command is an answer,
 //! not an error.
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use contracts::gate::{Effect, Gate, Needs};
 use contracts::tool::{Input, Tool, ToolError, ToolOutput, ToolSpec};
@@ -10,6 +10,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::SHELL;
+use super::background::{self, Background, Hand, Handed, MAX_BACKGROUND_MS, WAIT_MS};
 use super::process::{self, Ending, Finished, Job};
 use super::sandbox::{self, Scope};
 use crate::workspace::Workspace;
@@ -26,9 +27,14 @@ shown once with its count). Use it for builds, tests, git, package managers and 
 and `rg --files` where installed, `grep`, `find`), and for reading files (`cat`, `sed -n`, \
 `head`). Each call is a fresh shell: `cd` and variables do not carry over, so pass `workdir` or \
 chain with `&&`. Input is closed and there is no terminal: never start an interactive program \
-(an editor, a pager, a prompt); pass flags like `--yes` or `--no-pager`. The command is killed, \
-with everything it started, after `timeout_ms` (default 120000, at most 600000): start a server \
-in the background with its output sent to a file. The output of a command that succeeds keeps \
+(an editor, a pager, a prompt); pass flags like `--yes` or `--no-pager`. A command still running \
+after 120 s (or `timeout_ms`, if less) is not killed: it moves to the background as a job of \
+`jobs`, and its end comes back to you on its own as a `<background>` message; \
+`run_in_background` starts one there at once (a server, a long build or test run), named by \
+`description`. Do not poll or sleep for it, and do not start a second copy: `jobs stop` ends it. \
+A command that should end quickly and has not is more likely stuck (a loop, a wait) than slow: \
+find why before waiting again. Where the session keeps no jobs (an agent's), the command is \
+killed with everything it started after `timeout_ms` (default 120000, at most 600000). The output of a command that succeeds keeps \
 about 80000 characters (some 20000 tokens), so files of up to some 1500 lines in all read whole \
 in one command; that of one that fails, about 40000. Past that, the start and the end are kept, \
 and in any output, lines over 2000 characters are shortened; the result names a file with the \
@@ -44,6 +50,8 @@ struct Args {
     timeout_ms: Option<u64>,
     workdir: Option<String>,
     escalate: Option<bool>,
+    run_in_background: Option<bool>,
+    description: Option<String>,
 }
 
 pub struct BashTool<'a> {
@@ -56,6 +64,9 @@ pub struct BashTool<'a> {
     pub hidden: &'a (dyn Fn() -> Vec<String> + Sync),
     /// Whether the person stopped the task: a running command is killed when it says so.
     pub stop: &'a (dyn Fn() -> bool + Sync),
+    /// The session's jobs, where a command that runs on goes (B9); `None` where the session keeps
+    /// none (an agent's): a command is then killed at its timeout.
+    pub background: Option<&'a dyn Background>,
 }
 
 impl Tool for BashTool<'_> {
@@ -104,6 +115,10 @@ impl Tool for BashTool<'_> {
             },
         )
         .map_err(|reason| crate::refused(&reason))?;
+        let at_once = args.run_in_background == Some(true);
+        if at_once && self.background.is_none() {
+            return Err(ToolError::Failed(NO_JOBS.into()));
+        }
         let timeout = args
             .timeout_ms
             .unwrap_or(DEFAULT_TIMEOUT_MS)
@@ -118,8 +133,27 @@ impl Tool for BashTool<'_> {
             scope,
             workspace: self.workspace,
         };
-        let finished = process::run(&job)
-            .map_err(|error| ToolError::Failed(format!("the shell could not start: {error}")))?;
+        let mut running = process::start(&job).map_err(failed("the shell could not start"))?;
+        let finished = match self.background {
+            None => running.run_out(Instant::now() + job.timeout, job.stop),
+            Some(jobs) => {
+                let hand = Hand {
+                    command,
+                    name: args.description.as_deref(),
+                    timeout_ms: args.timeout_ms,
+                    at_once,
+                    stop: self.stop,
+                };
+                match background::hand(jobs, running, &hand)
+                    .map_err(failed("the command could not be waited for"))?
+                {
+                    Handed::Ended(finished) => Ok(finished),
+                    Handed::Job(report) => return Ok(report.into()),
+                    Handed::Refused(why) => return Err(ToolError::Failed(why)),
+                }
+            }
+        }
+        .map_err(failed("the command could not be waited for"))?;
         let refused = matches!(finished.ending, Ending::Exit(code)
             if scope == Scope::Workspace && sandbox::refused(code, &finished.output));
         let mut report = report(finished, place.as_deref());
@@ -169,6 +203,15 @@ impl BashTool<'_> {
     }
 }
 
+/// A call's failure, `what` with its cause.
+fn failed(what: &'static str) -> impl Fn(std::io::Error) -> ToolError {
+    move |error| ToolError::Failed(format!("{what}: {error}"))
+}
+
+/// What an agent that asks for the background is told.
+const NO_JOBS: &str = "this session keeps no jobs: run the command to its end (`timeout_ms`, at \
+most 600000)";
+
 /// What a command the sandbox seems to have refused is told.
 const REFUSED: &str = "\n(This looks like the sandbox's refusal: commands here write only inside \
 the workspace, never its .git (they only read it where it holds the home directory, and on Linux), \
@@ -185,8 +228,16 @@ fn parameters() -> Value {
         "type": "object",
         "properties": {
             "command": {"type": "string", "minLength": 1, "description": "The command to run."},
-            "timeout_ms": {"type": "integer", "minimum": 1, "maximum": MAX_TIMEOUT_MS,
-                "description": "Kill it after this many milliseconds (default 120000)."},
+            "timeout_ms": {"type": "integer", "minimum": 1, "maximum": MAX_BACKGROUND_MS,
+                "description": format!("How long to wait for it, in milliseconds, at most \
+                    {WAIT_MS} where the session keeps jobs (then it moves to the background), \
+                    else {MAX_TIMEOUT_MS} (then it is killed); with `run_in_background`, how \
+                    long the job may run (at most {MAX_BACKGROUND_MS}).")},
+            "run_in_background": {"type": "boolean",
+                "description": "Start it in the background at once, as a job whose end comes \
+                    back to you on its own."},
+            "description": {"type": "string",
+                "description": "A few words naming it, as its job is listed."},
             "workdir": {"type": "string",
                 "description": "The directory to run it in, relative to the workspace root."},
             "escalate": {"type": "boolean",
@@ -211,15 +262,15 @@ fn summary(command: &str) -> String {
 /// given one, how many lines it printed when some were left out, then `Output:` and stdout and
 /// stderr as one stream, in the order they were written. Each line is a `Key: value`, so the
 /// model reads the code the same way whatever tool it was trained on.
-fn report(finished: Finished, place: Option<&str>) -> String {
+pub(super) fn report(finished: Finished, place: Option<&str>) -> String {
     let seconds = format!("{:.1}", finished.elapsed.as_secs_f64());
     let mut out = vec![];
     match finished.ending {
         Ending::Exit(code) => out.push(format!("Exit code: {code}")),
         Ending::Signal(signal) => out.push(format!("Killed by signal: {signal}")),
         Ending::TimedOut { killed } => out.push(format!(
-            "Timed out after: {seconds} seconds ({}; raise timeout_ms, at most \
-             {MAX_TIMEOUT_MS}, or run it in the background)",
+            "Timed out after: {seconds} seconds ({}; one that should end quickly is more likely \
+             stuck, looping or waiting, than slow: find why before giving it longer)",
             killed_or_not(killed)
         )),
         Ending::Stopped { killed } => {

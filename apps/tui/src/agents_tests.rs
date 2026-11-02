@@ -291,6 +291,7 @@ fn job(id: &str, name: &str) -> protocol::JobRow {
     protocol::JobRow {
         id: id.into(),
         name: name.into(),
+        kind: protocol::JobKind::Schedule,
         detail: format!("say {name}"),
         until_at: None,
         next: Some("00:00".into()),

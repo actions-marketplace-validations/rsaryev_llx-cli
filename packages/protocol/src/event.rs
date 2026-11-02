@@ -152,14 +152,24 @@ pub struct Saved {
     pub meta: String,
 }
 
+/// What kind of job a row is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum JobKind {
+    Monitor,
+    Schedule,
+    /// A command `bash` runs in the background.
+    Shell,
+}
+
 /// A job as the list under the composer shows it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobRow {
     pub id: String,
     pub name: String,
+    pub kind: JobKind,
     /// Its command, or its cron and prompt.
     pub detail: String,
-    /// A monitor's deadline, milliseconds since the epoch.
+    /// A monitor's or a background command's deadline, milliseconds since the epoch.
     pub until_at: Option<u64>,
     /// A schedule's next run, as a clock shows it (`14:05`).
     pub next: Option<String>,

@@ -16,7 +16,7 @@ use crate::agents::{AgentsTool, Registry};
 use crate::brake::Brake;
 use crate::choice::Choice;
 use crate::interrupt::Interrupt;
-use crate::jobs::{Jobs, JobsTool};
+use crate::jobs::{Jobs, JobsTool, Shells};
 use crate::live::LiveChat;
 use crate::meta::title::Titling;
 use crate::mode::{self, Mode, ModeCell};
@@ -115,6 +115,10 @@ pub(super) fn drive(
             jobs: lane.jobs,
             scope,
         };
+        let shells = Shells {
+            jobs: lane.jobs,
+            scope,
+        };
         if shared.asks {
             let thread = std::thread::Builder::new().name("llx-scheduler".into());
             if let Err(why) = thread.spawn_scoped(scope, || lane.jobs.tick()) {
@@ -129,7 +133,7 @@ pub(super) fn drive(
             inner: base.brake,
             forks: &lane.kit.forks,
         };
-        lane.tools.with(|own| {
+        lane.tools.with_jobs(&shells, |own| {
             let mut tools: Vec<&dyn Tool> = own.to_vec();
             if shared.asks {
                 tools.push(base.ask);

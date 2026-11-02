@@ -253,3 +253,41 @@ fn an_agents_name_cannot_reach_the_terminal_from_the_composer() {
     assert!(screen.contains("❯ Viewing agent sc"), "{screen}");
     assert!(!screen.contains('\u{1b}'), "{screen:?}");
 }
+
+#[test]
+fn the_footer_counts_the_commands_and_monitors_the_session_shown_runs_in_the_background() {
+    let mut app = app();
+    let now = Instant::now();
+    let row = |id: &str, kind| protocol::JobRow {
+        id: id.into(),
+        name: id.into(),
+        kind,
+        detail: "x".into(),
+        until_at: Some(u64::MAX),
+        next: None,
+        events: 0,
+    };
+    let footer = |app: &App| {
+        let (lines, _) = render(app, now);
+        (lines.iter().map(style::plain))
+            .find(|line| line.starts_with("  default mode"))
+            .unwrap_or_default()
+    };
+    assert_eq!(footer(&app), "  default mode · shift+tab to cycle");
+    let rows = vec![
+        row("a", protocol::JobKind::Shell),
+        row("b", protocol::JobKind::Shell),
+        row("c", protocol::JobKind::Monitor),
+        row("d", protocol::JobKind::Schedule),
+    ];
+    app.event(Event::Jobs(rows), now);
+    assert_eq!(
+        footer(&app),
+        "  default mode · shift+tab to cycle · 2 shells, 1 monitor"
+    );
+    app.event(Event::Jobs(vec![row("c", protocol::JobKind::Monitor)]), now);
+    assert_eq!(
+        footer(&app),
+        "  default mode · shift+tab to cycle · 1 monitor"
+    );
+}

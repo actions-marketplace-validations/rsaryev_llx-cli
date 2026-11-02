@@ -6,6 +6,10 @@ fn job(name: &str, monitor: bool) -> JobRow {
     JobRow {
         id: format!("job-{name}"),
         name: name.into(),
+        kind: match monitor {
+            true => protocol::JobKind::Monitor,
+            false => protocol::JobKind::Schedule,
+        },
         detail: "gh run watch".into(),
         until_at: monitor.then_some(1),
         next: (!monitor).then(|| "14:05".to_string()),

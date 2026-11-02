@@ -230,7 +230,7 @@ fn a_delay_past_what_the_clock_counts_is_never_due() {
         let state = jobs.lock();
         let next = match &state.jobs[0].what {
             What::Schedule { next, .. } => *next,
-            What::Monitor { .. } => panic!("a schedule was asked for"),
+            What::Monitor { .. } | What::Shell { .. } => panic!("a schedule was asked for"),
         };
         assert!(next > crate::clock::now(), "due at {next}: at once");
     });

@@ -341,6 +341,7 @@ fn a_schedule_under_the_composer_does_not_break_a_chain() {
     let schedule = JobRow {
         id: "job-1".into(),
         name: "nightly".into(),
+        kind: protocol::JobKind::Schedule,
         detail: "run the checks".into(),
         until_at: None,
         next: Some("03:00".into()),

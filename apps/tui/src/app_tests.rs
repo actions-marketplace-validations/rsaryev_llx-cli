@@ -771,6 +771,7 @@ fn a_lane_closed_for_a_new_one_takes_its_jobs_with_it() {
     let schedule = protocol::JobRow {
         id: "job-1".into(),
         name: "nightly".into(),
+        kind: protocol::JobKind::Schedule,
         detail: "run the suite".into(),
         until_at: None,
         next: Some("02:00".into()),

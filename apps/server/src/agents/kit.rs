@@ -71,6 +71,8 @@ impl<'a> Tools<'a> {
                 gate,
                 hidden: kit.hidden,
                 stop,
+                // An agent keeps no jobs: its commands run to their end (B9).
+                background: None,
             },
             patch: PatchTool {
                 workspace: kit.workspace,
@@ -82,6 +84,21 @@ impl<'a> Tools<'a> {
     /// Run `work` with the tools as the agent offers them.
     pub(crate) fn with<T>(&self, work: impl FnOnce(&[&dyn Tool]) -> T) -> T {
         let tools: [&dyn Tool; 2] = [&self.bash, &self.patch];
+        work(&tools)
+    }
+
+    /// Run `work` with the main session's own tools: as an agent's, but its `bash` hands a
+    /// command that runs on to the session's jobs (B9).
+    pub(crate) fn with_jobs<T>(
+        &self,
+        jobs: &dyn tools::shell::Background,
+        work: impl FnOnce(&[&dyn Tool]) -> T,
+    ) -> T {
+        let bash = BashTool {
+            background: Some(jobs),
+            ..self.bash
+        };
+        let tools: [&dyn Tool; 2] = [&bash, &self.patch];
         work(&tools)
     }
 

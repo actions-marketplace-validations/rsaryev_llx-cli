@@ -33,6 +33,21 @@ impl Window {
         }
     }
 
+    /// The window as the model reads it while its command still runs: what it holds so far.
+    pub(super) fn so_far(&self) -> String {
+        let mut text = String::new();
+        for entry in &self.head {
+            show(&mut text, entry);
+        }
+        if let Some(cut) = self.cut {
+            self.say_cut(&mut text, cut, self.spill.as_ref().map(Spill::path));
+        }
+        for entry in &self.tail {
+            show(&mut text, entry);
+        }
+        text.trim_end().to_string()
+    }
+
     fn say_cut(&self, text: &mut String, cut: Cut, spill: Option<&Path>) {
         let Cut { first, last, chars } = cut;
         let lines = self.lines;

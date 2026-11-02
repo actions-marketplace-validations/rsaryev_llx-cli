@@ -18,6 +18,7 @@ fn bash(dir: &Scratch, gate: &dyn Gate, arguments: Value) -> Result<String, Tool
         gate,
         hidden: &Vec::new,
         stop: &|| false,
+        background: None,
     };
     tool.call(&arguments).map(|output| output.report)
 }
@@ -140,7 +141,7 @@ fn the_gate_is_told_a_symlinked_workdir_leads_outside() {
 fn a_command_past_its_timeout_is_killed_fast() {
     let dir = Scratch::new();
     let gate = Recorder::default();
-    let started = std::time::Instant::now();
+    let started = Instant::now();
     let report = bash(
         &dir,
         &gate,
@@ -250,6 +251,7 @@ fn a_command_runs_to_its_end_with_no_terminal() {
         gate: &Recorder::default(),
         hidden: &Vec::new,
         stop: &|| false,
+        background: None,
     };
     // No argument opens a terminal, and one asked for anyway fails the call before anything runs.
     let schema = tool.spec().input.schema();
@@ -274,6 +276,7 @@ fn a_command_runs_with_the_workspaces_environment_and_never_its_hidden_variables
         gate: &Recorder::default(),
         hidden: &|| vec!["SECRET_KEY".to_string()],
         stop: &|| false,
+        background: None,
     };
     let command = r#"echo "$LLX_ONLY_GIVEN|${SECRET_KEY-none}|${HOME-none}""#;
     let report = tool.call(&json!({"command": command})).unwrap().report;

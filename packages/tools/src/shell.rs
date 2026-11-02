@@ -4,17 +4,21 @@
 //! [`scoped`], [`kill`]), a short query ([`query()`]); every session
 //! still running is listed ([`track`]), for [`kill_all`] when the process must quit at once.
 
+mod background;
 mod bash;
 mod inherit;
 mod leaders;
 mod output;
 mod process;
 mod query;
+mod running;
 mod sandbox;
 mod sweep;
 
+pub use background::{Adopted, Background};
 pub use bash::BashTool;
 pub use leaders::{Tracked, kill_all, track};
 pub use process::{Quiet, SHELL, kill, scoped, shell};
 pub use query::{Unanswered, query};
+pub use running::Running;
 pub use sandbox::{Held, Scope, permit};

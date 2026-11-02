@@ -78,7 +78,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         let (id, name) = {
             let mut state = self.jobs.lock();
             room_for_a_monitor(&state)?;
-            let (id, name) = new_job(&mut state, name);
+            let (id, name) = super::new_job(&mut state, name);
             state.jobs.push(Job {
                 id: id.clone(),
                 name: name.clone(),
@@ -202,7 +202,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         let (id, name) = {
             let mut state = self.jobs.lock();
             room_for_a_schedule(&state)?;
-            let (id, name) = new_job(&mut state, name);
+            let (id, name) = super::new_job(&mut state, name);
             let stop = Arc::new(AtomicBool::new(false));
             let known = self.jobs.known(&id, &stop);
             state.jobs.push(Job {
@@ -308,14 +308,4 @@ fn room_for_a_schedule(state: &State) -> Result<(), ToolError> {
             "{kept} jobs are kept: stop one first"
         ))),
     }
-}
-
-/// A new job's id and name (the name given, else its id).
-fn new_job(state: &mut State, name: Option<String>) -> (String, String) {
-    state.made += 1;
-    let id = format!("job-{}", state.made);
-    let name = name
-        .filter(|name| state.jobs.iter().all(|job| job.name != *name))
-        .unwrap_or_else(|| id.clone());
-    (id, name)
 }

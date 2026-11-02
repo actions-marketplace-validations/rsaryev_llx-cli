@@ -35,7 +35,7 @@ its own at that time, between tasks, while the session is open; `recurring: true
 schedule (for 7 days at most). For reminders, polling a deploy, checking back later.";
 
 const REST: &str = "
-- `list`: what runs in the background now.
+- `list`: what runs in the background now, the commands `bash` runs there among it.
 - `stop` with `job` (its name or id): end that job.";
 
 /// What the model reads of `jobs`, as this run can carry it out: a run that ends with its task

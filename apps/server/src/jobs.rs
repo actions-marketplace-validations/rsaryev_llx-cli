@@ -7,6 +7,7 @@
 
 mod cron;
 mod monitor;
+mod shells;
 pub(crate) mod spec;
 mod tool;
 
@@ -17,10 +18,11 @@ use std::time::{Duration, Instant};
 use contracts::gate::Gate;
 use tools::workspace::Workspace;
 
+pub(crate) use self::shells::Shells;
 pub(crate) use self::tool::JobsTool;
 use crate::output::Output;
 use crate::sync::Bell;
-use protocol::{Event, JobRow};
+use protocol::{Event, JobKind, JobRow};
 
 /// What the jobs are built from.
 pub(crate) struct Kit<'a> {
@@ -80,6 +82,12 @@ enum What {
         next: u64,
         expires: u64,
     },
+    /// A command `bash` handed to the background (B9), until its end.
+    Shell {
+        command: String,
+        started: Instant,
+        until: Instant,
+    },
 }
 
 impl<'a> Jobs<'a> {
@@ -123,14 +131,12 @@ impl<'a> Jobs<'a> {
         }
     }
 
-    /// Whether the task must wait: in `exec`, a monitor still runs.
+    /// Whether the task must wait: in `exec`, a monitor or a command in the background still
+    /// runs.
     pub(crate) fn expecting(&self) -> bool {
         !self.kit.session
-            && self
-                .lock()
-                .jobs
-                .iter()
-                .any(|job| matches!(job.what, What::Monitor { .. }))
+            && (self.lock().jobs.iter())
+                .any(|job| matches!(job.what, What::Monitor { .. } | What::Shell { .. }))
     }
 
     /// The session is over: every job ends.
@@ -229,7 +235,31 @@ fn line(job: &Job) -> String {
                 .map_or_else(|| "once".into(), |cron| cron.text().to_string()),
             cron::clock(*next)
         ),
+        What::Shell {
+            command,
+            started,
+            until,
+        } => format!(
+            "- background command `{}` ({}): `{command}`, running {} s, {} min left",
+            job.name,
+            job.id,
+            started.elapsed().as_secs(),
+            until
+                .saturating_duration_since(Instant::now())
+                .as_secs()
+                .div_ceil(60)
+        ),
     }
+}
+
+/// A new job's id and name (the name given, else its id).
+fn new_job(state: &mut State, name: Option<String>) -> (String, String) {
+    state.made += 1;
+    let id = format!("job-{}", state.made);
+    let name = name
+        .filter(|name| state.jobs.iter().all(|job| job.name != *name))
+        .unwrap_or_else(|| id.clone());
+    (id, name)
 }
 
 /// When `until` comes, in milliseconds since the epoch: the wire carries no `Instant`.
@@ -249,6 +279,7 @@ fn row(job: &Job) -> JobRow {
         } => JobRow {
             id: job.id.clone(),
             name: job.name.clone(),
+            kind: JobKind::Monitor,
             detail: command.clone(),
             until_at: Some(epoch_ms(*until)),
             next: None,
@@ -259,12 +290,22 @@ fn row(job: &Job) -> JobRow {
         } => JobRow {
             id: job.id.clone(),
             name: job.name.clone(),
+            kind: JobKind::Schedule,
             detail: match cron {
                 Some(cron) => format!("{} · {prompt}", cron.text()),
                 None => prompt.clone(),
             },
             until_at: None,
             next: Some(cron::clock(*next)),
+            events: 0,
+        },
+        What::Shell { command, until, .. } => JobRow {
+            id: job.id.clone(),
+            name: job.name.clone(),
+            kind: JobKind::Shell,
+            detail: command.clone(),
+            until_at: Some(epoch_ms(*until)),
+            next: None,
             events: 0,
         },
     }

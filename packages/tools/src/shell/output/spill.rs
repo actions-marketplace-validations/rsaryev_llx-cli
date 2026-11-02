@@ -115,6 +115,11 @@ impl Spill {
         }
     }
 
+    /// Where it is.
+    pub(super) fn path(&self) -> &Path {
+        &self.path
+    }
+
     /// Written to its end; where it is.
     pub(super) fn finish(&mut self) -> PathBuf {
         if self.left > 0 {

@@ -14,7 +14,8 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use super::output::{Output, Span};
+use super::output::Output;
+use super::running::Running;
 use super::sandbox::{Held, Scope};
 use crate::workspace::Workspace;
 
@@ -75,12 +76,20 @@ pub(super) struct Finished {
     pub open: bool,
 }
 
-/// Run `job` in a shell, with no input.
+/// Run `job` in a shell, with no input, to its end: killed at its timeout.
+#[cfg(test)]
 pub(super) fn run(job: &Job) -> io::Result<Finished> {
-    // Held to the end: the scratch directory goes when it drops.
-    let (mut shell, _held) = scoped(job.command, job.scope, job.workspace, job.hidden, Quiet::On)?;
+    let mut running = start(job)?;
+    running.run_out(Instant::now() + job.timeout, job.stop)
+}
+
+/// Start `job` in a shell, with no input: running, its output read as it comes, until it is
+/// waited for (`Running`).
+pub(super) fn start(job: &Job) -> io::Result<Running> {
+    // Held to its end: the scratch directory goes when it drops.
+    let (mut shell, held) = scoped(job.command, job.scope, job.workspace, job.hidden, Quiet::On)?;
     let (reader, writer) = io::pipe()?;
-    let mut child = shell
+    let child = shell
         .current_dir(job.dir)
         .stdin(Stdio::null())
         .stdout(writer.try_clone()?)
@@ -88,31 +97,22 @@ pub(super) fn run(job: &Job) -> io::Result<Finished> {
         .spawn()?;
     // The command holds the pipe's writing ends now: ours go, so its end is the output's end.
     drop(shell);
-    // Listed until this run ends (after the reap and the drain), for a quit that cannot wait for it
+    // Listed until its run ends (after the reap and the drain), for a quit that cannot wait for it
     // (`leaders`).
-    let _listed = super::leaders::track(&child);
+    let listed = super::leaders::track(&child);
     let started = Instant::now();
     let output = Arc::new(Mutex::new(Output::new(std::env::temp_dir())));
     let shared = Arc::clone(&output);
     let reader_ended = pump(reader, "llx-pipe", move |bytes| {
         crate::lock(&shared).push(bytes)
     });
-    let bounds: (Instant, &dyn Fn() -> bool) = (started + job.timeout, job.stop);
-    let (ending, elapsed, closed) = watch(&mut child, bounds, started, &reader_ended)?;
-    let open = !closed && reader_ended.recv_timeout(DRAIN_GRACE).is_err();
-    let span = if ending == Ending::Exit(0) {
-        Span::Wide
-    } else {
-        Span::Narrow
-    };
-    let captured = crate::lock(&output).finish(span);
-    Ok(Finished {
-        ending,
-        elapsed,
-        output: captured.text,
-        cut_lines: captured.cut.then_some(captured.lines),
-        open,
-    })
+    Ok(Running::new(
+        child,
+        output,
+        reader_ended,
+        started,
+        (held, listed),
+    ))
 }
 
 /// Whether a command's environment is made quiet for an agent's reading (`quiet`), as the
@@ -141,7 +141,34 @@ fn quiet(shell: &mut Command) {
 }
 
 /// Wait for `child` to exit, killing it at its `deadline` or when `stop` says the person stopped
-/// the task; how it ended, when, and whether its output closed meanwhile. A command's exit closes
+/// the task; how it ended, when, and whether its output closed meanwhile.
+pub(super) fn watch(
+    child: &mut Child,
+    bounds: (Instant, &dyn Fn() -> bool),
+    started: Instant,
+    reader_ended: &Receiver<()>,
+) -> io::Result<(Ending, Duration, bool)> {
+    let mut closed = false;
+    match wait(child, bounds, started, reader_ended, &mut closed)? {
+        Seen::Ended(ending, elapsed) => Ok((ending, elapsed, closed)),
+        Seen::Late => {
+            let elapsed = started.elapsed();
+            let killed = kill(child);
+            Ok((Ending::TimedOut { killed }, elapsed, closed))
+        }
+    }
+}
+
+/// What a wait saw: the command's end, or its deadline with the command still running.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum Seen {
+    Ended(Ending, Duration),
+    Late,
+}
+
+/// Wait for `child` to exit until its `deadline`, killing it when `stop` says the person stopped
+/// the task; how it ended and when, or [`Seen::Late`] with it still running, left as it is.
+/// `closed` says whether its output closed meanwhile, kept across waits. A command's exit closes
 /// its output, so the wait is on the pipe's reader (`reader_ended`, a message once the pipe
 /// closes): the exit is seen at once (R9). The stop is looked at, and an exit that leaves the
 /// output to a background process seen, within [`POLL`].
@@ -150,37 +177,36 @@ fn quiet(shell: &mut Command) {
     reason = "a backoff of a few ms, bounded by the deadline: the pipes closed and the exit, which \
               std gives no event for, is a moment away"
 )]
-pub(super) fn watch(
+pub(super) fn wait(
     child: &mut Child,
     (deadline, stop): (Instant, &dyn Fn() -> bool),
     started: Instant,
     reader_ended: &Receiver<()>,
-) -> io::Result<(Ending, Duration, bool)> {
-    let (mut closed, mut pause) = (false, Duration::from_millis(1));
+    closed: &mut bool,
+) -> io::Result<Seen> {
+    let mut pause = Duration::from_millis(1);
     loop {
         match child.try_wait() {
-            Ok(Some(status)) => return Ok((ending(status), started.elapsed(), closed)),
+            Ok(Some(status)) => return Ok(Seen::Ended(ending(status), started.elapsed())),
             Ok(None) => {}
             Err(error) => {
                 kill(child);
                 return Err(error);
             }
         }
-        let late = Instant::now() >= deadline;
-        if late || stop() {
+        if stop() {
             let elapsed = started.elapsed();
             let killed = kill(child);
-            let ending = match late {
-                true => Ending::TimedOut { killed },
-                false => Ending::Stopped { killed },
-            };
-            return Ok((ending, elapsed, closed));
+            return Ok(Seen::Ended(Ending::Stopped { killed }, elapsed));
+        }
+        if Instant::now() >= deadline {
+            return Ok(Seen::Late);
         }
         let left = deadline.saturating_duration_since(Instant::now());
-        if !closed {
+        if !*closed {
             match reader_ended.recv_timeout(POLL.min(left)) {
                 // A reader gone without a word: the pipe will say no more either.
-                Ok(()) | Err(RecvTimeoutError::Disconnected) => closed = true,
+                Ok(()) | Err(RecvTimeoutError::Disconnected) => *closed = true,
                 Err(RecvTimeoutError::Timeout) => {}
             }
         } else {

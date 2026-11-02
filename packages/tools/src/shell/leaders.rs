@@ -14,6 +14,7 @@ static LIVE: Mutex<Vec<libc::pid_t>> = Mutex::new(Vec::new());
 
 /// A command's session, listed until this is dropped (after the command is reaped).
 #[must_use = "the session is unlisted when this is dropped"]
+#[derive(Debug)]
 pub struct Tracked(libc::pid_t);
 
 /// List the session `child` leads.

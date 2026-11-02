@@ -4,7 +4,7 @@
 
 use std::sync::{Mutex, MutexGuard};
 
-use protocol::{Event, JobRow, Running};
+use protocol::{Event, JobKind, JobRow, Running};
 
 #[derive(Default)]
 struct Lane {
@@ -94,10 +94,10 @@ impl Work {
         let working = lanes.iter().filter(|lane| lane.busy);
         let working = working.map(|lane| ("session", lane.title.clone()));
         let jobs = lanes.iter().flat_map(|lane| &lane.jobs).map(|job| {
-            let kind = if job.until_at.is_some() {
-                "monitor"
-            } else {
-                "schedule"
+            let kind = match job.kind {
+                JobKind::Monitor => "monitor",
+                JobKind::Schedule => "schedule",
+                JobKind::Shell => "command",
             };
             (kind, job.name.clone())
         });

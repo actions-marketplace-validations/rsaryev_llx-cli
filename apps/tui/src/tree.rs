@@ -157,20 +157,28 @@ fn others(app: &App) -> Option<String> {
     Some(said)
 }
 
-/// The jobs' rows: a monitor (`≋`, its command, how much is left) or a schedule (`◷`, when).
+/// The jobs' rows: a monitor (`≋`, its command, how much is left), a command in the background
+/// (`$`, its command, how much is left) or a schedule (`◷`, when).
 fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static>> {
     let mut out = vec![];
     let focus = app.views.row();
     for (at, (_, job)) in app.views.jobs.iter().enumerate().take(ROWS) {
-        let (glyph, right) = match (job.until_at, &job.next) {
-            (Some(until), _) => {
-                let left = until.saturating_sub(now_ms()) / 1000;
+        let left = || {
+            let until = job.until_at.unwrap_or_default();
+            cells::clock(until.saturating_sub(now_ms()) / 1000)
+        };
+        let (glyph, right) = match job.kind {
+            protocol::JobKind::Monitor => {
                 let events = cells::count(job.events as u64, "event");
-                let right = format!("{events} · {} left", cells::clock(left));
+                let right = format!("{events} · {} left", left());
                 (Span::styled("≋", style::code()), right)
             }
-            (None, next) => {
-                let when = next.as_deref().unwrap_or_default();
+            protocol::JobKind::Shell => {
+                let right = format!("running · {} left", left());
+                (Span::styled("$", style::code()), right)
+            }
+            protocol::JobKind::Schedule => {
+                let when = job.next.as_deref().unwrap_or_default();
                 (Span::styled("◷", style::waiting()), format!("next {when}"))
             }
         };

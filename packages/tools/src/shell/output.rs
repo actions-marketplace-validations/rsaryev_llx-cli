@@ -90,6 +90,21 @@ impl Output {
             .push(bytes, &mut |line, ends| window.push(line, ends));
     }
 
+    /// What was printed so far, as the model reads it, the command still running.
+    pub(super) fn so_far(&self) -> String {
+        self.window.so_far()
+    }
+
+    /// The file every line printed from now on, and every one held, is written to; `None` when
+    /// none could be made.
+    pub(super) fn keep_whole(&mut self) -> Option<PathBuf> {
+        self.window.open_spill();
+        self.window
+            .spill
+            .as_ref()
+            .map(|spill| spill.path().to_path_buf())
+    }
+
     pub(super) fn finish(&mut self, span: Span) -> Captured {
         let window = &mut self.window;
         self.render

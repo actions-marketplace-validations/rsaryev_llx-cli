@@ -243,6 +243,10 @@ fn waiting(text: &str) -> String {
 fn footer(app: &App, now: Instant) -> String {
     let window = |at: Instant| super::time::in_quit_window(at, now);
     let mode = format!("{} mode · shift+tab to cycle", app.lane().mode);
+    let mode = match running(app) {
+        Some(running) => format!("{mode} · {running}"),
+        None => mode,
+    };
     if app.quitting.is_some_and(window) {
         let back = if app.discarded {
             "↑ brings it back · "
@@ -275,6 +279,22 @@ fn footer(app: &App, now: Instant) -> String {
         Some(context) => format!("{mode} · {context}"),
         None => mode,
     }
+}
+
+/// What the lane shown runs in the background, counted: `2 shells, 1 monitor`.
+fn running(app: &App) -> Option<String> {
+    let lane = app.lane_id();
+    let ours = || (app.views.jobs.iter()).filter(move |(of, _)| of == lane);
+    let of = |kind| ours().filter(|(_, job)| job.kind == kind).count() as u64;
+    let counted = [
+        (of(protocol::JobKind::Shell), "shell"),
+        (of(protocol::JobKind::Monitor), "monitor"),
+    ];
+    let said: Vec<String> = (counted.iter())
+        .filter(|(n, _)| *n > 0)
+        .map(|(n, noun)| super::cells::count(*n, noun))
+        .collect();
+    (!said.is_empty()).then(|| said.join(", "))
 }
 
 #[cfg(test)]
