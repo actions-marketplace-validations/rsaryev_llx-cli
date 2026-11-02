@@ -275,9 +275,9 @@ prepare() {
   } >"$dir/prompt.txt"
   pwd >"$dir/cwd"
 
-  # What llx runs with beside the step's own variables: a run is one process, no catalog fetch.
+  # What llx runs with beside the step's own variables: no catalog fetch.
   {
-    printf '%s\0' LLX_MODELS_REFRESH=0 LLX_NO_DAEMON=1
+    printf '%s\0' LLX_MODELS_REFRESH=0
     [ -z "${INPUT_PROVIDER:-}" ] || printf 'LLX_PROVIDER=%s\0' "$INPUT_PROVIDER"
     [ -z "${INPUT_MODEL:-}" ] || printf 'LLX_MODEL=%s\0' "$INPUT_MODEL"
     [ -z "${INPUT_REASONING:-}" ] || printf 'LLX_REASONING=%s\0' "$INPUT_REASONING"

@@ -408,21 +408,6 @@ fn the_job_chosen_stays_chosen_as_another_lane_ends_with_its_jobs() {
 }
 
 #[test]
-fn a_gap_that_takes_the_job_chosen_gives_the_keys_back_to_the_prompt() {
-    let now = Instant::now();
-    let mut app = app();
-    app.event(Event::Jobs(vec![job("tui-gap-job", "watch")]), now);
-    press(&mut app, KeyCode::Down, now);
-    let screen = Term::new(&app).draw(&mut app, now);
-    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
-    // What is shown may be incomplete: the jobs start again from what follows.
-    app.frame(protocol::ToClient::Gap, now);
-    // No list is drawn to choose in: ← is the prompt's, which lists the sessions.
-    press(&mut app, KeyCode::Left, now);
-    assert_eq!(commands(&mut app), [Command::List]);
-}
-
-#[test]
 fn the_last_job_ending_gives_the_keys_back_to_the_prompt() {
     let now = Instant::now();
     let mut app = app();

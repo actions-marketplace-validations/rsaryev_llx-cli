@@ -2,7 +2,7 @@
 //! providers and thousands of models, and a run uses one: `llx decide` reads none of them, and
 //! `llx exec` decodes only what it uses. What is counted is memory, the peak a run reaches with a
 //! large catalog against the same run without one: unlike time, it is the same on a loaded CI
-//! machine as on a laptop, and it is what a daemon keeps for as long as it lives.
+//! machine as on a laptop.
 
 use std::io::Read;
 use std::process::{Command, Stdio};

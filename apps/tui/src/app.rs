@@ -36,8 +36,6 @@ pub(crate) enum Action {
     Suspend,
     /// Quit although work runs: every lane is stopped first ("Exit and stop tasks").
     QuitNow,
-    /// Quit, the work left running in the server ("Move to background and exit").
-    Background,
 }
 
 /// A question open, by the id its reply goes under.
@@ -103,8 +101,6 @@ pub(crate) struct App {
     pub(super) closed: Option<String>,
     /// What runs, in every session (asked of the server): quitting stops it.
     pub(super) work: Box<dyn Fn() -> Vec<protocol::Running> + Send>,
-    /// Whether the server keeps work once the interface leaves: quitting may leave it there.
-    pub(super) background: bool,
     /// The modes `/mode` offers, each with what it does, as the server says them.
     pub(super) modes: Vec<(String, String)>,
     /// Lanes the server keeps open at most.
@@ -135,7 +131,6 @@ impl App {
             saved: vec![],
             closed: None,
             work: Box::new(Vec::new),
-            background: false,
             modes: vec![],
             max_lanes: 8,
             outbox: vec![],
@@ -222,10 +217,6 @@ impl App {
             }
             // What a command came to is the client's.
             ToClient::Done { .. } => None,
-            ToClient::Gap => {
-                self.gap();
-                None
-            }
         }
     }
 

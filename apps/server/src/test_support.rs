@@ -1,11 +1,10 @@
 //! Test support the binary's tests drive the server with (ARCHITECTURE.md L4, D7): a session at
 //! the desk, its lanes thinking with gated models, served in process through the protocol's
-//! frames; what an agent's view is sent; a daemon's socket. Built for this crate's tests and, with
+//! frames; what an agent's view is sent. Built for this crate's tests and, with
 //! the `testing` feature, for the binary's, the one crate that knows both the server and the
 //! interface; never in the release build. The server's own types stay its own: a test holds the
 //! server's side of a desk as a [`Server`].
 
-use std::os::unix::net::UnixListener;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
@@ -27,7 +26,6 @@ use crate::desk::{Work, run};
 use crate::meta::title::Namer;
 use crate::mode::Mode;
 use crate::output::Output;
-use crate::server::host::Host;
 use crate::server::serve::{Info, serve};
 use crate::server::{Peer, Ui};
 use crate::sync::lock;
@@ -175,7 +173,7 @@ pub(crate) fn setup(scratch: &Scratch, mode: Mode, asks: bool) -> Setup {
     }
 }
 
-/// The interface's ends of the in-process transport: what the server sends, and where to send.
+/// The interface's ends of the seam: what the server sends, and where to send.
 pub struct Link {
     pub frames: Receiver<ToClient>,
     pub to_server: Sender<ToServer>,
@@ -199,18 +197,6 @@ impl Server {
     /// No interface is left: every prompt gets nothing.
     pub fn leave(&self) {
         self.0.inputs.leave();
-    }
-
-    /// A client attached now: what it is told, what the server keeps for one first.
-    #[cfg(test)]
-    pub(crate) fn attach(&self) -> Receiver<ToClient> {
-        #[expect(
-            clippy::disallowed_methods,
-            reason = "the in-process transport's channel, as the binary makes it"
-        )]
-        let (out, frames) = channel();
-        self.0.hub.attach(out);
-        frames
     }
 }
 
@@ -247,7 +233,7 @@ pub(crate) fn served_titled(
     let (shared, seat) = setup(&scratch, bypass, true).split();
     #[expect(
         clippy::disallowed_methods,
-        reason = "the in-process transport and the desk's requests, as the binary makes them"
+        reason = "the seam's channels and the desk's requests, as the binary makes them"
     )]
     let ((to_server, incoming), (out, frames), (to_desk, asked)) =
         (channel(), channel(), channel());
@@ -276,10 +262,9 @@ pub(crate) fn served_titled(
             max_lanes: MAX_LANES,
             commands: vec![],
             modes: vec![],
-            host: None,
         };
         let served = Arc::clone(&peer);
-        scope.spawn(move || serve(None, &incoming, &served, &to_desk, &info));
+        scope.spawn(move || serve(&incoming, &served, &to_desk, &info));
         person(Link { frames, to_server }, &Server(Arc::clone(&peer)));
         let deadline = Instant::now() + Duration::from_secs(10);
         while !desk.is_finished() {
@@ -300,7 +285,7 @@ pub(crate) fn served_titled(
 pub fn said_by_agent(id: &str, name: &str, text: &str) -> Vec<ToClient> {
     #[expect(
         clippy::disallowed_methods,
-        reason = "the in-process transport's channel, as the binary makes it"
+        reason = "the seam's channel, as the binary makes it"
     )]
     let (out, frames) = channel();
     let ui = Ui::new(Peer::new(out));
@@ -318,40 +303,4 @@ pub fn said_by_agent(id: &str, name: &str, text: &str) -> Vec<ToClient> {
     };
     watch.said(text);
     frames.try_iter().collect()
-}
-
-/// A listener at `path`, as the daemon binds its socket.
-pub fn bound(path: &Path) -> std::io::Result<UnixListener> {
-    crate::server::socket::bind(path)
-}
-
-/// A daemon of `build` at `path`, serving each connection as `llx serve` does (no lane opens).
-pub struct Daemon(Arc<Host>);
-
-impl Daemon {
-    pub fn at(path: &Path, build: String) -> std::io::Result<Self> {
-        let host = Host::new(build);
-        let served = Arc::clone(&host);
-        crate::server::socket::accept(bound(path)?, move |connection| {
-            #[expect(
-                clippy::disallowed_methods,
-                reason = "the desk's requests, as the binary makes its channel"
-            )]
-            let (desk, _requests) = channel();
-            let peer = Peer::new(connection.out);
-            let info = Info {
-                max_lanes: 1,
-                commands: vec![],
-                modes: vec![],
-                host: Some(Arc::clone(&served)),
-            };
-            serve(None, &connection.incoming, &peer, &desk, &info);
-        })?;
-        Ok(Self(host))
-    }
-
-    /// An interface attached, as the daemon counts them, while what this returns is held.
-    pub fn attach(&self) -> impl Sized + use<> {
-        self.0.attach()
-    }
 }

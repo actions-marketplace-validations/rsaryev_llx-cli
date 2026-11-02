@@ -86,9 +86,8 @@ In a session, an approval replaces the prompt with what would happen (`Run this 
 - **Ctrl-D** at an empty prompt (or `/exit`) quits, asked first while work runs, as below. Esc twice on an empty prompt with nothing running rewinds (`esc again to rewind`).
 - **Quitting while work runs** asks first (`Background work is running`, then each thing that would stop: `session · <its title>`, `monitor · <name>`, `schedule · <name>`):
   - "Exit and stop tasks" stops every session, waits at most 2 s for them and exits (a task whose model request is still in flight then is not recorded);
-  - "Move to background and exit", offered only when the sessions run in the daemon, leaves them working there; the next `llx` in that directory comes back to them (what they did meanwhile is drawn, then any question still waiting) and you go on in the same conversation;
   - "Stay" (or Esc) closes the question.
-- A terminal closed without that choice (its window closed, SIGTERM or SIGHUP) stops its sessions' work, as "Exit and stop tasks" does, in the daemon too; only "Move to background and exit" keeps it going.
+- A terminal closed (its window closed, SIGTERM or SIGHUP) stops its sessions' work, as "Exit and stop tasks" does, and gives the terminal back.
 
 ## Trust boundaries
 

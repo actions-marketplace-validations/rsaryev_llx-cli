@@ -146,12 +146,6 @@ pub(crate) fn job_key(lane: &str, id: &str) -> String {
 /// What sets a job's key apart: no session's or agent's id has it.
 const JOB: char = '/';
 
-/// The monitors and schedules running, in every lane of the process.
-pub(crate) fn jobs() -> usize {
-    let stops = lock(&STOPS);
-    stops.iter().filter(|(id, _, _)| id.contains(JOB)).count()
-}
-
 /// Stop session `id`'s task: whether to quit instead (it was stopped already); an unknown one
 /// is left alone.
 pub(crate) fn stop(id: &str) -> bool {
@@ -166,13 +160,18 @@ pub(crate) fn stop(id: &str) -> bool {
     quit
 }
 
-/// Tasks running in the process, in every session.
-pub(crate) fn working() -> usize {
-    PROCESS.busy.load(Ordering::SeqCst)
-}
-
 /// The write end of the pipe that wakes the quitting thread, or -1 before [`install`].
 static QUIT_FD: AtomicI32 = AtomicI32::new(-1);
+
+/// What the quitting thread does last, before the process ends: the binary's, which gives the
+/// terminal back (a signal at the prompt quits through that thread, never past the interface).
+static ON_QUIT: std::sync::OnceLock<fn()> = std::sync::OnceLock::new();
+
+/// `last` is done by the quitting thread once every command is killed, before the process ends.
+/// The first one set stays.
+pub fn on_quit(last: fn()) {
+    let _ = ON_QUIT.set(last);
+}
 
 /// Quit now, as a second Ctrl-C does: every command and monitor started is killed first (their
 /// sessions outlive the process otherwise), by a thread that can do what a signal handler cannot;
@@ -205,6 +204,9 @@ fn reaper() {
         // SAFETY: read fills one byte of `byte`, which lives here; the descriptor is this thread's.
         while unsafe { libc::read(read, (&raw mut byte).cast(), 1) } < 0 {}
         tools::shell::kill_all();
+        if let Some(last) = ON_QUIT.get() {
+            last();
+        }
         // SAFETY: _exit ends the process at once.
         unsafe { libc::_exit(crate::exit::INTERRUPTED) }
     });

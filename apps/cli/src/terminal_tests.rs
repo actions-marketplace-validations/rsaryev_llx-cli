@@ -237,7 +237,7 @@ fn quit_with_lanes_that_stop_ends_without_the_hard_exit() {
     clippy::disallowed_methods,
     reason = "nothing tells a lane that it was not asked: time passing does, bounded"
 )]
-fn a_connection_that_ends_without_background_stops_the_work() {
+fn a_connection_that_ends_stops_the_work() {
     let (to_a, a) = gated();
     connected(
         &[&a],
@@ -256,52 +256,6 @@ fn a_connection_that_ends_without_background_stops_the_work() {
                 to_a.send(says("Done.")).unwrap();
             }
             assert_eq!(turns, 1, "the task was stopped, not asked to go on");
-        },
-    );
-}
-
-#[test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "nothing tells a lane that it was not asked: time passing does, bounded"
-)]
-fn moved_to_the_background_a_lane_waits_for_the_next_interface_and_keeps_its_jobs() {
-    let (to_a, a) = gated();
-    connected(
-        &[&a],
-        Some("remind me"),
-        &|| panic!("no hard exit"),
-        |mut person, peer| {
-            let later =
-                json!({"action": "schedule", "prompt": "check", "in": "2h", "name": "later"});
-            to_a.send(call("jobs", later)).unwrap();
-            to_a.send(says("Scheduled.")).unwrap();
-            let lane = person.first();
-            person.until("A waits", |app| app.ended(&lane) && app.ready());
-            person.command(Command::Background);
-            drop(person);
-            std::thread::sleep(Duration::from_millis(500));
-            let kept = peer.running();
-            let schedule = protocol::Running {
-                kind: "schedule".into(),
-                name: "later".into(),
-            };
-            // An entry from the next interface reaches the lane: its prompt still waits.
-            to_a.send(says("Again.")).unwrap();
-            let again = protocol::Input {
-                session: lane,
-                text: "again".into(),
-                ..protocol::Input::default()
-            };
-            peer.input(again);
-            let deadline = Instant::now() + Duration::from_secs(5);
-            while a.turns() < 3 && Instant::now() < deadline {
-                std::thread::sleep(Duration::from_millis(20));
-            }
-            let turns = a.turns();
-            peer.leave();
-            assert_eq!(kept, [schedule], "its schedule runs on");
-            assert_eq!(turns, 3, "the lane took the next interface's entry");
         },
     );
 }

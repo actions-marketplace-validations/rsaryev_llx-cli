@@ -21,8 +21,8 @@
 #                           agents, jobs, modes, the command line, served through the
 #                           protocol
 #   apps/tui                the terminal interface: keys and drawing, through the client only
-#   apps/cli                the `llx` binary: the process, the terminal's wiring, the daemon's
-#                           client side, and the integration tests
+#   apps/cli                the `llx` binary: the process, the terminal's wiring, and the
+#                           integration tests
 [workspace]
 resolver = "3"
 members = [
@@ -198,7 +198,7 @@ ureq = { version = "3", default-features = false, features = ["json", "gzip", "n
 codegen-units = 1
 lto = "fat"
 opt-level = "z"
-# A panic unwinds: the daemon serves many terminals, and one command's panic must end only that
-# command (ARCHITECTURE.md W8), not every session in the process.
+# A panic unwinds: one command's or lane's panic must end only that request (ARCHITECTURE.md W8),
+# not every session in the process.
 panic = "unwind"
 strip = true

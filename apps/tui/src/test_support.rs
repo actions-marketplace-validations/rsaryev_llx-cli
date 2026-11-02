@@ -158,7 +158,6 @@ pub(crate) fn in_session(id: &str, event: Event) -> protocol::ToClient {
     protocol::ToClient::Event {
         session: Some(id.into()),
         event,
-        seq: None,
     }
 }
 

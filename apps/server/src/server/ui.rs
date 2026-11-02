@@ -12,14 +12,10 @@ use std::time::Duration;
 
 use protocol::{Adjustment, Approval, Asked, Event, Group, Reply, ToClient};
 
-use super::hub::{ClientId, Hub};
 use super::inputs::{Inputs, Typed};
 use super::work::Work;
 use crate::picker::{Item, Lines, Picker};
 use crate::sync::{Bell, lock};
-
-/// The client [`Peer::new`] attaches.
-pub(crate) const FIRST: ClientId = 0;
 
 /// How often a waiting question looks at its stop on its own: a stop by id rings [`ring`], but a
 /// stop of the whole process (SIGTERM, the window closed) cannot, from a signal handler.
@@ -40,10 +36,12 @@ pub(crate) fn ring() {
 /// A question waiting: the session it is in, and where its reply goes.
 type Waiting = (Option<Arc<str>>, SyncSender<Reply>);
 
-/// What the server holds of its interfaces: every client attached and what they were told
-/// ([`Hub`]), the questions waiting for a reply, and every lane's entries.
+/// What the server holds of its interface: where its frames go, the questions waiting for a
+/// reply, and every lane's entries.
 pub(crate) struct Peer {
-    pub(crate) hub: Arc<Hub>,
+    /// The interface's channel: a send never blocks (W6), and one to an interface that is gone
+    /// is let go, as nobody is there to read it.
+    out: Sender<ToClient>,
     asked: Mutex<HashMap<u64, Waiting>>,
     next: AtomicU64,
     pub(crate) inputs: Inputs,
@@ -52,21 +50,15 @@ pub(crate) struct Peer {
 }
 
 impl Peer {
-    /// A peer with one client attached, `out`, as its first ([`FIRST`]).
+    /// A peer whose frames go to `out`, the interface's channel.
     pub(crate) fn new(out: Sender<ToClient>) -> Arc<Self> {
-        let hub = Arc::new(Hub::new(super::hub::KEPT, super::hub::KEPT_BYTES));
-        let told = Arc::clone(&hub);
+        let told = out.clone();
         let inputs = Inputs::new(move |lane, event| {
             let session = Some(lane.to_string());
-            told.send(ToClient::Event {
-                session,
-                event,
-                seq: None,
-            });
+            let _ = told.send(ToClient::Event { session, event });
         });
-        hub.attach(out);
         Arc::new(Self {
-            hub,
+            out,
             asked: Mutex::default(),
             next: AtomicU64::new(1),
             inputs,
@@ -74,8 +66,8 @@ impl Peer {
         })
     }
 
-    /// The person's reply to question `id`: the first wins, and every client is told it no
-    /// longer waits (W5); a later one is let go.
+    /// The person's reply to question `id`, and the interface told it no longer waits (W5); a
+    /// reply to a question that does not wait (withdrawn, or answered already) is let go.
     pub(crate) fn replied(&self, id: u64, reply: Reply) {
         let waiting = self.waiting().remove(&id);
         if let Some((_, waiting)) = waiting {
@@ -87,16 +79,16 @@ impl Peer {
 
     /// Nobody will answer what session `lane` (every session, for `None`) waits for: the person
     /// left, or the lane was closed. Its questions end with nothing; each thread that asked one
-    /// tells the clients, after its question (R7: told here, it could come first).
+    /// tells the interface, after its question (R7: told here, it could come first).
     pub(crate) fn abandon(&self, lane: Option<&str>) {
         self.waiting()
             .retain(|_, (session, _)| lane.is_some_and(|lane| session.as_deref() != Some(lane)));
         ring();
     }
 
-    /// `frame` to every client attached.
+    /// `frame` to the interface; nothing when it is gone.
     pub(crate) fn send(&self, frame: ToClient) {
-        self.hub.send(frame);
+        let _ = self.out.send(frame);
     }
 
     fn waiting(&self) -> MutexGuard<'_, HashMap<u64, Waiting>> {
@@ -137,11 +129,7 @@ impl Ui {
         }
         self.peer.work.saw(self.lane.as_deref(), &event);
         let session = self.lane.as_deref().map(str::to_string);
-        self.peer.send(ToClient::Event {
-            session,
-            event,
-            seq: None,
-        });
+        self.peer.send(ToClient::Event { session, event });
     }
 
     /// The person's next entry; `None` when they leave or the lane is closed.
@@ -232,8 +220,8 @@ impl Ui {
         let session = self.session().to_owned();
         self.peer.send(ToClient::Ask { id, session, asked });
         let reply = wait(&answer, until);
-        // Withdrawn, by its stop or by `abandon`: the clients are told by the thread that asked,
-        // so it always reaches them after the question.
+        // Withdrawn, by its stop or by `abandon`: the interface is told by the thread that asked,
+        // so it always reaches it after the question.
         if reply.is_none() {
             self.peer.waiting().remove(&id);
             self.peer.send(ToClient::Resolved { id });

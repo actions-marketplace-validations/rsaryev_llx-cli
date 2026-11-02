@@ -1,10 +1,7 @@
 //! What the server tells the interface happened, each in a session (a lane or an agent) or in
 //! the server as a whole. Events are data the interface shows; none waits for an answer.
 
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type", content = "data", rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Event {
     /// The session's first row: the version and what it runs with.
     Header(Vec<String>),
@@ -97,7 +94,7 @@ pub enum Event {
 
 /// What a call does, in a few words, as the server that knows the tool says it: the verb while
 /// it runs and once done, and its subject (`Running`/`Ran` `cargo test`).
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Label {
     pub doing: String,
     pub done: String,
@@ -105,7 +102,7 @@ pub struct Label {
 }
 
 /// Tokens and money, in all.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct Total {
     pub input_tokens: u64,
     /// Input tokens read from the provider's prompt cache.
@@ -116,14 +113,12 @@ pub struct Total {
 }
 
 /// How a call ended, as the interface shows it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Outcome {
     Done {
         report: String,
         /// What only the person reads under the call (an edit's diff). Optional (W3): an older
         /// server sends none.
-        #[serde(default, skip_serializing_if = "String::is_empty")]
         shown: String,
     },
     /// The model is told why; `declined` when the person refused the call.
@@ -133,7 +128,7 @@ pub enum Outcome {
 }
 
 /// A task of a session as the transcript shows it again.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Turn {
     /// What was asked, as shown.
     pub goal: String,
@@ -142,13 +137,13 @@ pub struct Turn {
 }
 
 /// A change to a session's facts; a field left `None` stays as it is.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Update {
     pub title: Option<String>,
 }
 
 /// A saved session, as the list shows it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Saved {
     pub id: String,
     /// Its title, else its first task.
@@ -158,7 +153,7 @@ pub struct Saved {
 }
 
 /// A job as the list under the composer shows it.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobRow {
     pub id: String,
     pub name: String,

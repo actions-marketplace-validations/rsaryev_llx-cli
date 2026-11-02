@@ -86,28 +86,22 @@ fn a_name_with_a_control_sequence_is_shown_escaped() {
 }
 
 #[test]
-fn a_server_that_keeps_work_offers_the_background() {
+fn the_quit_question_offers_to_exit_and_stop_or_to_stay() {
     let now = Instant::now();
     let mut app = two(false, now);
     busy(&mut app);
-    app.background = true;
     let digit = |c| crate::test_support::key(KeyCode::Char(c));
     assert_eq!(app.input(ctrl('d'), now), None);
     let shown = render(&mut app, now);
-    for said in [
-        "1. Exit and stop tasks",
-        "2. Move to background and exit",
-        "3. Stay",
-    ] {
+    for said in ["1. Exit and stop tasks", "2. Stay"] {
         assert!(shown.contains(said), "{said}: {shown}");
     }
-    assert_eq!(app.input(digit('3'), now), None);
-    assert!(app.questions.is_empty(), "3 stays");
+    assert!(!shown.contains("background and exit"), "{shown}");
+    assert_eq!(app.input(digit('2'), now), None);
+    assert!(app.questions.is_empty(), "2 stays");
     app.input(ctrl('d'), now);
     assert_eq!(press(&mut app, KeyCode::Esc, now), None);
     assert!(app.questions.is_empty(), "Esc stays");
-    app.input(ctrl('d'), now);
-    assert_eq!(app.input(digit('2'), now), Some(Action::Background));
     app.input(ctrl('d'), now);
     assert_eq!(press(&mut app, KeyCode::Enter, now), Some(Action::QuitNow));
 }

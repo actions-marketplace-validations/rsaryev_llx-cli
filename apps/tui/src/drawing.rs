@@ -11,7 +11,6 @@ use ratatui::text::Line;
 
 use super::app::{Action, App};
 use super::event::{Input, Out};
-use super::farewell::Leaving;
 use super::screen::Screen;
 use super::{live, style, terminal};
 
@@ -41,7 +40,6 @@ pub(super) fn draw(mut app: App, inbox: &Receiver<Input>, seat: &Seat) -> Vec<Li
     let mut screen = Screen::new(terminal::out(), style::colour_on(&io::stdout()));
     let mut over = false;
     let mut shown = None;
-    let mut background = false;
     while !over {
         let wait = if app.moving() { FRAME } else { IDLE };
         let first = match inbox.recv_timeout(wait) {
@@ -66,7 +64,6 @@ pub(super) fn draw(mut app: App, inbox: &Receiver<Input>, seat: &Seat) -> Vec<Li
                 })
             );
             let action = app.input(input, Instant::now());
-            background |= matches!(action, Some(Action::Background));
             over |= act(action, ended, &mut app, &mut screen, &mut shown, seat);
             flush(&mut app, &seat.client);
         }
@@ -90,10 +87,9 @@ pub(super) fn draw(mut app: App, inbox: &Receiver<Input>, seat: &Seat) -> Vec<Li
         shown = Some(drawn);
     }
     let _ = screen.clear();
-    match (background, app.left) {
-        (true, _) => app.farewell(Leaving::Background),
-        (false, true) => app.farewell(Leaving::Quit),
-        (false, false) => vec![],
+    match app.left {
+        true => app.farewell(),
+        false => vec![],
     }
 }
 
@@ -137,11 +133,6 @@ fn act(
             app.leave();
             app.outbox.push(Out::Call(Command::QuitAll));
         }
-        // The server keeps the work; told before the connection ends, which then stops nothing.
-        Some(Action::Background) => {
-            let _ = seat.client.call(Command::Background, ANSWER);
-            return true;
-        }
         Some(Action::Quit) if ended => return true,
         Some(Action::Quit) => app.leave(),
         None => {}
@@ -167,7 +158,7 @@ fn stop(screen: &mut Terminal, app: &mut App, seat: &Seat, session: String) {
         let _ = screen.frame(history, &[], None, app.height, app.width);
         let _ = screen.clear();
         terminal::restore();
-        terminal::say(&app.farewell(Leaving::Quit));
+        terminal::say(&app.farewell());
         (seat.quit_now)();
     }
 }

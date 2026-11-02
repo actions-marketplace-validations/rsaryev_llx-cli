@@ -304,55 +304,37 @@ fn a_title_answered_as_its_lane_ends_is_told_before_the_end() {
     to_chat.send(says("Done.")).unwrap();
     let lane = Mutex::new(String::new());
     let titles = asked_of(&namer);
-    let scratch = served_titled(
-        &[&chat],
-        Some(&titles),
-        Some("fix"),
-        &|| {},
-        |link, peer| {
-            let mut told = vec![];
-            listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
-                has(told, task_ended) && namer.turns() == 1
-            });
-            let ended = told.iter().find(|(_, event)| task_ended(event));
-            let id = ended.and_then(|(session, _)| session.clone()).unwrap();
-            // The lane closed while its title is still asked for; the title comes a moment later.
-            let session = id.clone();
-            let command = Command::Close { session };
-            link.to_server
-                .send(ToServer::Call { id: 1, command })
-                .unwrap();
-            let moment = Duration::from_millis(500);
-            listen(&link.frames, &mut told, moment, |told| {
-                has(told, lane_ended)
-            });
-            to_namer.send(says("Fix the parser")).unwrap();
-            listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
-                has(told, lane_ended) && has(told, named)
-            });
-            let at = |is: fn(&Event) -> bool| {
-                (told.iter())
-                    .position(|(session, event)| session.as_ref() == Some(&id) && is(event))
-            };
-            let (named_at, ended_at) = (at(named), at(lane_ended));
-            assert!(
-                named_at.is_some() && named_at < ended_at,
-                "the title was told after its lane's end: {told:#?}"
-            );
-            // What the ring replays, read for a moment: it keeps the lane's end, so an empty
-            // replay never passes for one without the title.
-            let mut later = vec![];
-            listen(&peer.attach(), &mut later, moment, |_| false);
-            assert!(has(&later, lane_ended), "nothing replayed: {later:#?}");
-            let told_title = (later.iter())
-                .any(|(session, event)| session.as_ref() == Some(&id) && named(event));
-            assert!(
-                !told_title,
-                "a later client is told the ended lane's title: {later:#?}"
-            );
-            *lane.lock().unwrap() = id;
-        },
-    );
+    let scratch = served_titled(&[&chat], Some(&titles), Some("fix"), &|| {}, |link, _| {
+        let mut told = vec![];
+        listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
+            has(told, task_ended) && namer.turns() == 1
+        });
+        let ended = told.iter().find(|(_, event)| task_ended(event));
+        let id = ended.and_then(|(session, _)| session.clone()).unwrap();
+        // The lane closed while its title is still asked for; the title comes a moment later.
+        let session = id.clone();
+        let command = Command::Close { session };
+        link.to_server
+            .send(ToServer::Call { id: 1, command })
+            .unwrap();
+        let moment = Duration::from_millis(500);
+        listen(&link.frames, &mut told, moment, |told| {
+            has(told, lane_ended)
+        });
+        to_namer.send(says("Fix the parser")).unwrap();
+        listen(&link.frames, &mut told, Duration::from_secs(10), |told| {
+            has(told, lane_ended) && has(told, named)
+        });
+        let at = |is: fn(&Event) -> bool| {
+            (told.iter()).position(|(session, event)| session.as_ref() == Some(&id) && is(event))
+        };
+        let (named_at, ended_at) = (at(named), at(lane_ended));
+        assert!(
+            named_at.is_some() && named_at < ended_at,
+            "the title was told after its lane's end: {told:#?}"
+        );
+        *lane.lock().unwrap() = id;
+    });
     let history = session::Sessions {
         dir: scratch.path().join("sessions"),
     };

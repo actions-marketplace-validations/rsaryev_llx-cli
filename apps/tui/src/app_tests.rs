@@ -958,26 +958,6 @@ fn a_sessions_copy_is_the_interfaces_to_do() {
 }
 
 #[test]
-fn a_gap_clears_what_is_shown_and_draws_again_from_what_follows() {
-    let now = Instant::now();
-    let mut app = app();
-    let mut term = crate::test_support::Term::new(&app);
-    app.event(Event::TaskStarted("the old task".into()), now);
-    let _asked = approve(&mut app, "", "rm -rf build", now);
-    let before = term.draw(&mut app, now);
-    assert!(
-        before.contains("the old task") && before.contains("rm -rf build"),
-        "{before}"
-    );
-    app.frame(ToClient::Gap, now);
-    app.event(Event::Note("what came after".into()), now);
-    let after = term.draw(&mut app, now);
-    assert!(after.contains("what came after"), "{after}");
-    assert!(!after.contains("the old task"), "{after}");
-    assert!(!after.contains("rm -rf build"), "{after}");
-}
-
-#[test]
 fn a_lane_that_ended_leaves_the_interface_with_its_agents_and_jobs() {
     let now = Instant::now();
     let mut app = lanes(now);
@@ -998,44 +978,6 @@ fn a_lane_that_ended_leaves_the_interface_with_its_agents_and_jobs() {
         1,
         "the last lane stays until the end"
     );
-}
-
-/// What the server replays to an interface back to a lane whose start the ring no longer holds
-/// (`server::hub`'s `a_ring_that_wrapped_still_gives_each_lane_whole_then_what_it_kept`): a gap,
-/// the lane's state, then the events it kept.
-#[test]
-fn a_ring_that_wrapped_rebuilds_the_lanes_and_the_person_can_type() {
-    let now = Instant::now();
-    let event = |session: Option<&str>, event| ToClient::Event {
-        session: session.map(str::to_string),
-        event,
-        seq: None,
-    };
-    let (id, name) = ("bg".to_string(), "moved to the background".to_string());
-    let mut replay = vec![
-        ToClient::Gap,
-        event(None, Event::LaneStarted { id, name }),
-        event(Some("bg"), Event::Header(vec!["llx 0.1".into()])),
-        event(Some("bg"), Event::Mode("plan".into())),
-    ];
-    replay.extend((16..20).map(|at| event(Some("bg"), Event::Note(format!("tick {at}")))));
-    let mut app = app();
-    for frame in replay {
-        app.frame(frame, now);
-    }
-    assert_eq!(app.lane_id(), "bg");
-    assert_eq!(app.lane().mode, "plan");
-    let shown = history(&mut app);
-    assert!(
-        shown.contains("llx 0.1") && shown.contains("tick 19"),
-        "{shown}"
-    );
-    typed(&mut app, "go on", now);
-    app.input(key(KeyCode::Enter), now);
-    let sent: Vec<(String, String)> = (sent(&mut app).into_iter())
-        .map(|input| (input.session, input.text))
-        .collect();
-    assert_eq!(sent, [("bg".to_string(), "go on".to_string())]);
 }
 
 #[test]

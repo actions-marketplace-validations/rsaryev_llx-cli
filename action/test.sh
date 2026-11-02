@@ -31,7 +31,7 @@ printf '%s\n' "$@" >"$STUB_DIR/args"
 echo "$0" >"$STUB_DIR/which"
 echo "$$" >"$STUB_DIR/pid"
 cat >"$STUB_DIR/prompt"
-{ pwd; echo "$LLX_PROVIDER|$LLX_MODEL|$LLX_REASONING|$LLX_NO_DAEMON|$LLX_MODELS_REFRESH"; } >"$STUB_DIR/env"
+{ pwd; echo "$LLX_PROVIDER|$LLX_MODEL|$LLX_REASONING|$LLX_MODELS_REFRESH"; } >"$STUB_DIR/env"
 env >"$STUB_DIR/fullenv"
 if [ -n "${STUB_PROBE:-}" ]; then # what a command llx runs could do: sudo, docker's socket
   {
@@ -115,7 +115,7 @@ eq "stdout has no answer" "" "$(cat "$tmp/run/stdout")"
 has "the trace reaches stderr" "$(cat "$tmp/run/stderr")" "trace: a line on stderr"
 eq "defaults" "$(printf '%s\001' exec --json -v -o "$tmp/run/rt/$(basename "$(dirname "$(output result-file)")")/result.txt" --timeout 900 -)" "$(args)"
 eq "the prompt is stdin" "go" "$(cat "$tmp/run/prompt")"
-eq "a run is one process" "|||1|0" "$(sed -n 2p "$tmp/run/env")"
+eq "no catalog fetch" "|||0" "$(sed -n 2p "$tmp/run/env")"
 shell=$(cat "$tmp/run/shell")
 if [[ $shell =~ ^[0-9]+$ ]]; then pass "the shell's pid was kept"; else fail "the shell's pid was not kept: [$shell]"; fi
 eq "llx takes the place of the step's shell (exec)" "$shell" "$(cat "$tmp/run/pid")"
@@ -181,7 +181,7 @@ has "rules" "$(args)" "--allow"$'\001'"bash(gh pr view *)"$'\001'"--allow"$'\001
 has "mode" "$(args)" "--mode"$'\001'"plan"$'\001'
 has "limits" "$(args)" "--timeout"$'\001'"60"$'\001'"--max-turns"$'\001'"9"$'\001'"--budget"$'\001'"0.50"$'\001'
 has "extra arguments, before the prompt" "$(args)" "--foo"$'\001'"bar"$'\001'"-"$'\001'
-eq "provider, model, reasoning" "openrouter|acme/m|low|1|0" "$(sed -n 2p "$tmp/run/env")"
+eq "provider, model, reasoning" "openrouter|acme/m|low|0" "$(sed -n 2p "$tmp/run/env")"
 run_action INPUT_ARGS=$'--foo bar\n--baz'
 has "extra arguments on several lines" "$(args)" "--foo"$'\001'"bar"$'\001'"--baz"$'\001'"-"$'\001'
 mkdir -p "$tmp/elsewhere"

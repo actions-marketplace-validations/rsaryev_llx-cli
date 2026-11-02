@@ -46,7 +46,7 @@ By default llx works in your project without asking: commands run in the system'
 
 It runs on 200+ model providers: a ChatGPT sign-in, OpenRouter, or a key ([models](MODELS.md)). With an OpenRouter key, a small decision model advises each task at its edges: it picks the reasoning level as a conversation opens (`--reasoning auto`, the default), and takes a second look at an answer that may leave work undone (`--no-advice` turns it off).
 
-Every run is saved as a session: `llx -c` goes on with the newest one in this directory, `llx sessions` lists them and `llx resume ID` opens one; `/new` opens another beside it ([sessions](docs/usage.md#sessions-and-the-daemon)).
+Every run is saved as a session: `llx -c` goes on with the newest one in this directory, `llx sessions` lists them and `llx resume ID` opens one; `/new` opens another beside it ([sessions](docs/usage.md#sessions)).
 
 ## Try it
 
@@ -137,7 +137,7 @@ In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/l
 
 ## Documentation
 
-[Using llx](docs/usage.md) · [CI](docs/ci.md) · [Recipes](docs/recipes.md) · [Tools](docs/tools.md) · [Modes and trust](docs/modes.md) · [In other agents](docs/agents.md) · [Reference](docs/reference.md) · [Daemon](docs/daemon.md) · [Architecture](ARCHITECTURE.md) · [Models](MODELS.md) · [Changelog](CHANGELOG.md)
+[Using llx](docs/usage.md) · [CI](docs/ci.md) · [Recipes](docs/recipes.md) · [Tools](docs/tools.md) · [Modes and trust](docs/modes.md) · [In other agents](docs/agents.md) · [Reference](docs/reference.md) · [Architecture](ARCHITECTURE.md) · [Models](MODELS.md) · [Changelog](CHANGELOG.md)
 
 ## Contributing
 

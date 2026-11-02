@@ -124,8 +124,7 @@ fn stop_shown_only() {
 fn quit_with_work_running_asks() {
     let command = format!("echo $$ > pid; {}", until_file("never"));
     let model = Model::start(vec![Reply::call("bash", json!({"command": command}))]);
-    // In process: the work ends with the interface, so there is no background to offer.
-    let mut term = Term::start(&model, &["-y", "--no-daemon"]);
+    let mut term = Term::start(&model, &["-y"]);
     term.type_text("first task").press(key::ENTER);
     term.wait_for("Running echo", LONG);
     new_session(&mut term, "❯ first task");
@@ -139,10 +138,6 @@ fn quit_with_work_running_asks() {
     ] {
         assert!(screen.contains(said), "{said}: {screen}");
     }
-    assert!(
-        !screen.contains("Move to background"),
-        "in process: {screen}"
-    );
     // Stay: nothing stops.
     term.type_text("2");
     wait_gone(&term, "Background work is running");
@@ -210,15 +205,11 @@ fn a_resumed_session_shows_its_earlier_tasks() {
 
 #[test]
 fn a_session_resumed_from_another_directory_says_so_on_the_screen() {
-    // Served by the daemon, a note on stderr would go to its log, not to the person.
     let model = Model::start(vec![]);
     let turns = r#"[{"goal": "fix the parser", "answer": "Fixed.", "status": "done", "at": 1}]"#;
     let term = Term::resuming_from(&model, "1700000000-ef56", turns, Some("/elsewhere/repo"));
     let screen = term.wait_for("ran in /elsewhere/repo", LONG);
     assert!(screen.contains("session 1700000000-ef56"), "{screen}");
-    // Said once, by the client: not again in the daemon's log.
-    let log = term.daemon_log();
-    assert!(!log.contains("ran in"), "{log}");
 }
 
 #[test]

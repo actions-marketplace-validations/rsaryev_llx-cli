@@ -136,7 +136,7 @@ pub(crate) fn resume(
     prompt: Option<&str>,
     options: RunOptions,
     kind: Kind,
-    at: run::At,
+    front: &'static dyn run::Front,
 ) -> Result<i32, Failure> {
     let root = run::root(&options)?;
     let here = root.root().display().to_string();
@@ -155,17 +155,14 @@ pub(crate) fn resume(
     };
     let session = session
         .map_err(|why| Failure::Usage(format!("{why}: `llx sessions` lists the saved ones")))?;
-    // Served, the client resolved the same session and said so at its terminal already; the
-    // daemon's stderr is its log.
-    let served = matches!(at, run::At::Served(_));
-    if !served && !session.workspace.is_empty() && session.workspace != here {
+    if !session.workspace.is_empty() && session.workspace != here {
         error::note(&format!(
             "llx: session {} ran in {}; this one runs in {here}\n",
             session.id,
             printable(&session.workspace)
         ));
     }
-    run::run(prompt, options, Some(session), kind, at)
+    run::run(prompt, options, Some(session), kind, front)
 }
 
 #[cfg(test)]

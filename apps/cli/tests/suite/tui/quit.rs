@@ -25,3 +25,18 @@ fn quitting_leaves_no_prompt_row_on_the_screen() {
         assert!(!screen.contains('❯'), "{keys:?} left:\n{screen}");
     }
 }
+
+#[test]
+fn killed_or_hung_up_on_it_gives_the_terminal_back() {
+    for signal in [libc::SIGTERM, libc::SIGHUP] {
+        let model = Model::start(vec![]);
+        let mut term = Term::start(&model, &[]);
+        assert!(!term.cooked(), "the interface has the terminal raw");
+        term.signal(signal);
+        assert!(
+            term.exited(super::LONG).is_some(),
+            "signal {signal} did not end it"
+        );
+        assert!(term.cooked(), "signal {signal} left the terminal raw");
+    }
+}

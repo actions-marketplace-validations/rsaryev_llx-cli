@@ -148,7 +148,7 @@ fn l3_tools_providers_and_stores_know_only_the_contracts() {
 /// What the interface and the server say to each other.
 const WIRE: &str = "protocol";
 
-/// L6: the wire is a leaf: no workspace package, nothing but serde to say it with.
+/// L6: the seam is a leaf: no crate at all, its frames never encoded.
 #[test]
 fn l6_the_protocol_is_a_leaf() {
     let packages = packages();
@@ -166,7 +166,7 @@ fn l6_the_protocol_is_a_leaf() {
             external.push(name.trim().to_string());
         }
     }
-    assert_eq!(external, ["serde"], "the protocol uses {external:?}");
+    assert!(external.is_empty(), "the protocol uses {external:?}");
 }
 
 /// The interface's side of the seam.

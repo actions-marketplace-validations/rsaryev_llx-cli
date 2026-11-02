@@ -14,15 +14,6 @@ use crate::sync::lock;
 /// How long "Exit and stop tasks" waits for the lanes it stopped.
 const QUIT_WAIT: Duration = Duration::from_secs(2);
 
-/// The lanes open in every desk of the process, by session id: what a daemon says of itself, and
-/// a session never open at two terminals at once (stops are by id, and the newest would win).
-static OPEN: Mutex<Vec<String>> = Mutex::new(Vec::new());
-
-/// How many lanes are open in every desk of the process, as `llx serve status` says it.
-pub(crate) fn open_anywhere() -> usize {
-    lock(&OPEN).len()
-}
-
 /// The lanes open, by session id, oldest first.
 #[derive(Default)]
 pub(super) struct Lanes {
@@ -41,15 +32,10 @@ impl Lanes {
         lock(&self.live).len()
     }
 
-    /// Open lane `id` here; false when it is open in another desk.
-    pub(super) fn join(&self, id: &str) -> bool {
-        let mut open = lock(&OPEN);
-        if open.iter().any(|known| known == id) {
-            return false;
-        }
-        open.push(id.to_string());
+    /// Open lane `id`: the desk shows one open already instead (`has`), so none is open twice
+    /// (stops are by id, and the newest would win).
+    pub(super) fn join(&self, id: &str) {
         lock(&self.live).push(id.to_string());
-        true
     }
 
     /// Wait up to `timeout` until `done` holds of the number of lanes open; whether it does.
@@ -96,7 +82,6 @@ impl Drop for Leaving<'_> {
             self.lanes.panicked.store(true, Ordering::SeqCst);
         }
         lock(&self.lanes.live).retain(|live| *live != self.id);
-        lock(&OPEN).retain(|open| *open != self.id);
         self.lanes.ended.notify_all();
         let _ = self.wake.send(super::Wake::Left);
     }

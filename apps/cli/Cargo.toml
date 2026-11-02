@@ -31,7 +31,6 @@ server.workspace = true
 tui.workspace = true
 client.workspace = true
 protocol.workspace = true
-log.workspace = true
 
 # The process's hardening, on Linux: a call std has no wrapper for.
 [target.'cfg(target_os = "linux")'.dependencies]

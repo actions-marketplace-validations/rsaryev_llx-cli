@@ -15,7 +15,6 @@ mod clock;
 pub mod commands;
 mod compose;
 mod context;
-pub mod daemon;
 mod desk;
 pub mod error;
 mod exit;

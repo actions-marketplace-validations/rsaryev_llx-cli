@@ -42,7 +42,7 @@ fn lanes(ids: &[&str], worked: &[&str]) -> App {
 fn a_session_with_a_task_says_how_to_resume_it() {
     let app = lanes(&["s1"], &["s1"]);
     assert_eq!(
-        plain(&app.farewell(Leaving::Quit)),
+        plain(&app.farewell()),
         ["Resume this session: llx resume s1"]
     );
 }
@@ -77,7 +77,7 @@ fn each_session_says_its_own_total_when_it_is_known() {
     );
     app.show("b");
     assert_eq!(
-        plain(&app.farewell(Leaving::Quit)),
+        plain(&app.farewell()),
         [
             "Session usage: 900 in · 40 out",
             "Resume this session: llx resume b",
@@ -90,7 +90,7 @@ fn each_session_says_its_own_total_when_it_is_known() {
 #[test]
 fn an_empty_session_says_nothing() {
     let app = lanes(&["s1"], &[]);
-    assert!(app.farewell(Leaving::Quit).is_empty());
+    assert!(app.farewell().is_empty());
 }
 
 #[test]
@@ -98,21 +98,10 @@ fn every_session_with_tasks_is_said_the_shown_one_first() {
     let mut app = lanes(&["a", "b", "c"], &["a", "c"]);
     app.show("c");
     assert_eq!(
-        plain(&app.farewell(Leaving::Quit)),
+        plain(&app.farewell()),
         [
             "Resume this session: llx resume c",
             "Resume this session: llx resume a"
         ]
-    );
-}
-
-#[test]
-fn moving_to_the_background_says_how_to_come_back() {
-    let app = lanes(&["s1"], &["s1"]);
-    let said = plain(&app.farewell(Leaving::Background));
-    assert_eq!(said.len(), 1);
-    assert!(
-        said[0].contains("background") && said[0].contains("llx"),
-        "{said:?}"
     );
 }

@@ -46,9 +46,9 @@ static SAVED: std::sync::OnceLock<libc::termios> = std::sync::OnceLock::new();
 static QUIT: std::sync::OnceLock<fn() -> !> = std::sync::OnceLock::new();
 
 /// SIGTERM and SIGHUP end the process with `quit` once the terminal is given back: its modes as
-/// they were, the cursor shown, nothing more reported (the client has no other handler; in
-/// process, `interrupt::install` replaces SIGTERM's with stopping the task). Called before the
-/// terminal is made raw, whose modes it keeps.
+/// they were, the cursor shown, nothing more reported (until a session runs: then
+/// `interrupt::install` replaces them with stopping the task, and its quit gives the terminal
+/// back through the binary). Called before the terminal is made raw, whose modes it keeps.
 pub(super) fn on_signals(quit: fn() -> !) {
     extern "C" fn given_back(_: libc::c_int) {
         if let Some(modes) = SAVED.get() {

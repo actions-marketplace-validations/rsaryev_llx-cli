@@ -62,12 +62,10 @@ fn slash_mode_offers_the_modes_the_server_says() {
 
 #[test]
 fn model_offers_a_provider_keyed_only_in_this_terminal() {
-    // The bug: in the daemon, `/model` read the daemon's own environment (that of the terminal
-    // that started it), so a key set only in this terminal's shell left its provider out.
     let model = Model::start(vec![]);
-    let first = Term::start(&model, &[]);
     let key_here = [("ANTHROPIC_API_KEY", "sk-ant-test-0123456789")];
-    let mut term = first.beside_with(&model, &[], &key_here);
+    let mut term = Term::spawn(&model, &[], &key_here);
+    term.wait_for("❯", LONG);
     term.type_text("/model").press(key::ENTER);
     let screen = term.wait_for("• Model", LONG);
     assert!(screen.contains("Anthropic"), "{screen}");

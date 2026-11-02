@@ -234,7 +234,6 @@ name = "client"
 version = "0.2.0"
 dependencies = [
  "protocol",
- "serde_json",
 ]
 
 [[package]]
@@ -1016,7 +1015,6 @@ dependencies = [
  "crossterm",
  "insta",
  "libc",
- "log",
  "protocol",
  "serde_json",
  "server",
@@ -1503,10 +1501,6 @@ dependencies = [
 [[package]]
 name = "protocol"
 version = "0.2.0"
-dependencies = [
- "serde",
- "serde_json",
-]
 
 [[package]]
 name = "provider-kit"

@@ -1,7 +1,6 @@
-//! The interface's side of the seam (ARCHITECTURE.md W4): one [`Client`] whatever carries the
-//! frames. In process the frames go over channels; over a socket the same frames go as
-//! lines. A command waits for what is done with it; everything else the server sends goes to the
-//! interface as it comes.
+//! The interface's side of the seam (ARCHITECTURE.md W1): one [`Client`] over the channels to
+//! the server in this process. A command waits for what is done with it; everything else the
+//! server sends goes to the interface as it comes.
 
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -11,7 +10,7 @@ use std::time::Duration;
 
 use protocol::{Command, Done, Reply, ToClient, ToServer};
 
-/// Why a command came to nothing: what carries the frames, or what the server said (W4).
+/// Why a command came to nothing: the server gone or late, or what it said.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CallError {
     /// The server is gone.
@@ -58,19 +57,8 @@ impl Client {
         from_server: Receiver<ToClient>,
         deliver: impl Fn(ToClient) + Send + 'static,
     ) -> std::io::Result<Self> {
-        Self::reading(to_server, from_server, deliver)
-    }
-
-    /// Whatever carries them, the server's frames are read here, one loop for both transports
-    /// (W4): what a command came to goes to it, the rest to `deliver`.
-    fn reading(
-        to_server: Sender<ToServer>,
-        from_server: impl IntoIterator<Item = ToClient, IntoIter: Send> + 'static,
-        deliver: impl Fn(ToClient) + Send + 'static,
-    ) -> std::io::Result<Self> {
         let pending = Arc::new(Mutex::default());
         let theirs = Arc::clone(&pending);
-        let from_server = from_server.into_iter();
         std::thread::Builder::new()
             .name("llx-client".into())
             .spawn(move || {
@@ -83,7 +71,6 @@ impl Client {
                             }
                         }
                         frame @ (ToClient::Event { .. }
-                        | ToClient::Gap
                         | ToClient::Ask { .. }
                         | ToClient::Resolved { .. }) => deliver(frame),
                     }
@@ -150,10 +137,6 @@ impl Client {
 fn lock(pending: &Mutex<Pending>) -> MutexGuard<'_, Pending> {
     pending.lock().unwrap_or_else(PoisonError::into_inner)
 }
-
-pub mod place;
-
-mod socket;
 
 #[cfg(test)]
 #[path = "lib_tests.rs"]

@@ -6,7 +6,7 @@ models, and how sessions are kept. For the short version see the [README](../REA
 - [Command line](#command-line)
 - [In a session](#in-a-session)
 - [Signing in and choosing a model](#signing-in-and-choosing-a-model)
-- [Sessions and the daemon](#sessions-and-the-daemon)
+- [Sessions](#sessions)
 - [Project instructions](#project-instructions)
 
 ## Command line
@@ -62,7 +62,6 @@ model must escalate it, which an `exec` with no terminal refuses (there is no on
 | `--max-turns N` | Model turns for one task (1 to 10000). None by default: `--timeout` bounds a task. |
 | `--budget USD` | Dollars one task may spend (more than 0, e.g. `0.50`). It stops at the next model turn once its turns, its agents' and the decision model's advice have cost that. A cost is the provider's where it reports one (OpenRouter), else the catalog's price for the tokens (a ChatGPT plan's requests at their API-equivalent value); a model the catalog has no price for never reaches it. |
 | `--timeout SECONDS` | Seconds one task may take (1800; at most 86400). At the limit a command or agent running is killed, and the task stops at its next model turn, or while it waits on its monitors or agents. Time spent waiting on you (an approval, a question) does not count. |
-| `--no-daemon` | Run the session in this process instead of the daemon (`llx serve`). Env `LLX_NO_DAEMON=1`. `exec` always runs in process. |
 
 ### Commands
 
@@ -72,7 +71,6 @@ model must escalate it, which an `exec` with no terminal refuses (there is no on
 - `sessions`: list the saved sessions, newest first, with the directory each ran in.
 - `logout`: forget every saved sign-in: the ChatGPT tokens and every provider's saved key. A key still set in the environment is named, to unset. (Signing in is `/login` in a session.)
 - `doctor`: check the sign-ins, both models (the agent's and the decision model, `--decision-model`) and the shell.
-- `serve`: the daemon the sessions run in. `serve status` says whether it runs (its pid, its build, the terminals attached, the sessions open and working, those moved to the background, the jobs; exit 1 when none runs), `serve stop` ends it, stopping every session's task first.
 
 ## In a session
 
@@ -163,22 +161,11 @@ The choice is put in at once, in the same conversation, and saved as the default
 { "provider": "openai", "model": "gpt-6-luna", "reasoning": "auto", "modes": { "audit": { "reach": "read-only" } } }
 ```
 
-## Sessions and the daemon
+## Sessions
 
 Every run is saved as a session in `~/.llx/sessions/<id>.json`; set `LLX_SESSIONS` to keep them elsewhere. A session records each task and how it ended, but not the conversation itself. `resume` therefore starts a new conversation that is told the earlier tasks, and the directory they ran in; at the terminal, the earlier tasks and their answers are drawn first (the last 20). In a session, each task continues the same conversation.
 
-A session at the terminal runs in a daemon, `llx serve`:
-
-- One per config directory, found at a socket in `$TMPDIR/llx-<uid>/` (a directory only you may enter), started by the first `llx` (detached, in a session of its own, its errors in `daemon.log` beside the sign-ins, what it did in `logs/llx.log`) and attached to by every later one.
-- It holds the sessions with their agents and jobs, and the models; `llx` draws, reads the keys and speaks to it over the socket.
-- Each terminal's sessions work in its directory, with its environment, and with the options its command line gave. Each terminal has its own questions, and quitting one names only its own work.
-- A session is open at one terminal at a time: resuming one open at another says so.
-- Closing a terminal stops its sessions' work; the daemon lives on until `llx serve stop`.
-- A plain `llx` in a directory where sessions were moved to the background comes back to them; `llx` with a task, `resume` or any option opens new sessions beside them, which wait for the next plain `llx`.
-- A daemon of another build is stopped and replaced only when nothing needs it (no terminal attached, no session open or moved to the background, no task, monitor or schedule); otherwise the session runs in this process, and llx says so, as it does when the daemon cannot be reached.
-- `--no-daemon` (or `LLX_NO_DAEMON=1`) always runs in process, and so does `exec`.
-
-The design is in [daemon.md](daemon.md).
+A session at the terminal runs in the `llx` process that shows it, with its agents and jobs: in its directory, with its environment and the options its command line gave. Quitting ends its work (asked first while something runs); `llx resume` or `llx -c` goes on with it later from its file.
 
 ## Project instructions
 

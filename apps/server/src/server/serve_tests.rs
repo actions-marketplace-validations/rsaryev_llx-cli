@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
 use std::time::Duration;
 
@@ -16,16 +17,11 @@ struct Served {
     peer: Arc<Peer>,
 }
 
-fn served() -> Served {
-    served_by(None)
-}
-
-/// [`served`], as the daemon `host` when there is one.
 #[expect(
     clippy::disallowed_methods,
-    reason = "the in-process transport's channels, as the binary makes them"
+    reason = "the seam's channels, as the binary makes them"
 )]
-fn served_by(host: Option<Arc<Host>>) -> Served {
+fn served() -> Served {
     let (to_server, incoming) = channel();
     let (out, from_server) = channel();
     let (desk, requests) = channel();
@@ -36,9 +32,8 @@ fn served_by(host: Option<Arc<Host>>) -> Served {
             max_lanes: 3,
             commands: vec![("help".into(), "the commands".into())],
             modes: vec![("plan".into(), "plan first".into())],
-            host,
         };
-        serve(None, &incoming, &theirs, &desk, &info);
+        serve(&incoming, &theirs, &desk, &info);
     });
     Served {
         to_server,
@@ -69,24 +64,15 @@ impl Served {
 }
 
 #[test]
-fn an_interface_that_attaches_is_told_what_the_server_allows() {
+fn an_interface_that_starts_is_told_what_the_server_allows() {
     let served = served();
-    served.call(
-        1,
-        Command::Initialize {
-            version: protocol::VERSION,
-            place: None,
-            build: String::new(),
-        },
-    );
+    served.call(1, Command::Initialize);
     assert_eq!(
         served.done(1),
         Done::Initialized {
-            version: protocol::VERSION,
             max_lanes: 3,
             commands: vec![("help".into(), "the commands".into())],
             modes: vec![("plan".into(), "plan first".into())],
-            background: false,
         }
     );
     let ui = Ui::new(Arc::clone(&served.peer));
@@ -205,50 +191,7 @@ fn once_the_interface_is_gone_nothing_waits_for_the_person() {
     assert_eq!(peer.inputs.next("s1"), None);
 }
 
-#[test]
-fn the_place_an_interface_attaches_from_goes_to_the_desk() {
-    let served = served();
-    let place = protocol::Place {
-        cwd: "/work/a".into(),
-        env: vec![("VIRTUAL_ENV".into(), "/work/a/.venv".into())],
-        ..protocol::Place::default()
-    };
-    let version = protocol::VERSION;
-    let initialize = Command::Initialize {
-        version,
-        place: Some(place.clone()),
-        build: String::new(),
-    };
-    served.call(1, initialize);
-    assert!(matches!(served.done(1), Done::Initialized { .. }));
-    assert_eq!(served.desk.recv_timeout(WAIT), Ok(Request::Attach(place)));
-}
-
-/// Another connection to the same sessions: where its frames go in, what comes out to it.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "the in-process transport's channels, as the binary makes them"
-)]
-fn another(served: &Served) -> (Sender<ToServer>, Receiver<ToClient>) {
-    let (to_server, incoming) = channel();
-    let (out, from_server) = channel();
-    let (desk, _requests) = channel();
-    let peer = Arc::clone(&served.peer);
-    std::thread::spawn(move || {
-        let info = Info {
-            max_lanes: 3,
-            commands: vec![],
-            modes: vec![],
-            host: None,
-        };
-        // A later interface joins as the daemon makes it: attached as its first frame comes.
-        let Ok(first) = incoming.recv() else { return };
-        rejoin(first, &incoming, &peer, out, &desk, &info);
-    });
-    (to_server, from_server)
-}
-
-/// What came of command `id` on a connection, and the frames before it.
+/// What came of command `id`, and the frames before it.
 #[expect(
     clippy::wildcard_enum_match_arm,
     reason = "a test picks out the variant it checks"
@@ -262,192 +205,6 @@ fn until_done(frames: &Receiver<ToClient>, id: u64) -> (Vec<ToClient>, Done) {
         }
     }
 }
-
-/// A first command on a connection, which attaches it.
-fn join(to_server: &Sender<ToServer>, id: u64) {
-    let command = Command::Work;
-    to_server.send(ToServer::Call { id, command }).unwrap();
-}
-
-#[test]
-fn a_connection_that_attaches_later_gets_what_it_missed_then_what_waits_then_the_rest() {
-    let served = served();
-    let ui = Ui::new(Arc::clone(&served.peer)).for_lane("s1");
-    ui.send(protocol::Event::Note("one".into()));
-    ui.send(protocol::Event::Note("two".into()));
-    let asker = ui.clone();
-    let asking = std::thread::Builder::new().name("asking".into());
-    let asking = asking
-        .spawn(move || asker.approve("bash", "ls", &|| false))
-        .unwrap();
-    let id = loop {
-        if let ToClient::Ask { id, .. } = served.out.recv_timeout(WAIT).unwrap() {
-            break id;
-        }
-    };
-    let (to_server, frames) = another(&served);
-    join(&to_server, 1);
-    let (before, done) = until_done(&frames, 1);
-    assert!(matches!(done, Done::Work { .. }), "{done:?}");
-    // Joining replayed everything the ring keeps, then the question waiting.
-    assert_eq!(before.len(), 3, "{before:?}");
-    assert!(matches!(&before[1], ToClient::Event { seq: Some(2), .. }));
-    assert!(matches!(&before[2], ToClient::Ask { id: asked, .. } if *asked == id));
-    // The first reply wins, from the later client; both are told it no longer waits.
-    let reply = Reply::Approval(Approval::Always);
-    to_server.send(ToServer::Reply { id, reply }).unwrap();
-    assert_eq!(asking.join().unwrap(), Approval::Always);
-    let late = Reply::Approval(Approval::No(None));
-    served
-        .to_server
-        .send(ToServer::Reply { id, reply: late })
-        .unwrap();
-    let resolved = ToClient::Resolved { id };
-    assert_eq!(frames.recv_timeout(WAIT).unwrap(), resolved);
-    let first = served.out.recv_timeout(WAIT).unwrap();
-    assert_eq!(first, resolved);
-    ui.send(protocol::Event::Note("three".into()));
-    for out in [&served.out, &frames] {
-        let three = out.recv_timeout(WAIT).unwrap();
-        assert!(
-            matches!(three, ToClient::Event { seq: Some(3), .. }),
-            "{three:?}"
-        );
-    }
-}
-
-#[test]
-fn a_connection_is_told_only_what_came_of_its_own_commands() {
-    let served = served();
-    let (to_server, frames) = another(&served);
-    join(&to_server, 1);
-    assert!(matches!(until_done(&frames, 1).1, Done::Work { .. }));
-    served.call(5, Command::Work);
-    assert!(matches!(served.done(5), Done::Work { .. }));
-    let call = ToServer::Call {
-        id: 6,
-        command: Command::Work,
-    };
-    to_server.send(call).unwrap();
-    let (before, done) = until_done(&frames, 6);
-    assert!(before.is_empty(), "{before:?}");
-    assert!(matches!(done, Done::Work { .. }), "{done:?}");
-}
-
-#[test]
-fn the_person_is_given_up_on_only_when_the_last_connection_is_gone() {
-    let served = served();
-    let peer = Arc::clone(&served.peer);
-    let (to_server, frames) = another(&served);
-    join(&to_server, 1);
-    until_done(&frames, 1);
-    open(&served, "s1");
-    let first = Input {
-        session: "s1".into(),
-        text: "first".into(),
-        ..Input::default()
-    };
-    served.call(9, Command::Input(first));
-    served.done(9);
-    drop(served);
-    let deadline = std::time::Instant::now() + WAIT;
-    while peer.hub.attached() > 1 {
-        assert!(
-            std::time::Instant::now() < deadline,
-            "the first never detached"
-        );
-        std::thread::yield_now();
-    }
-    let entry = Input {
-        session: "s1".into(),
-        text: "still here".into(),
-        ..Input::default()
-    };
-    let call = ToServer::Call {
-        id: 2,
-        command: Command::Input(entry),
-    };
-    to_server.send(call).unwrap();
-    until_done(&frames, 2);
-    assert_eq!(peer.inputs.next("s1").unwrap().text, "first");
-    assert_eq!(peer.inputs.next("s1").unwrap().text, "still here");
-    drop(to_server);
-    assert_eq!(peer.inputs.next("s1"), None);
-}
-
-#[test]
-fn moved_to_the_background_the_connections_end_leaves_the_prompts_waiting() {
-    let served = served();
-    open(&served, "s1");
-    served.call(1, Command::Background);
-    assert_eq!(served.done(1), Done::Ok);
-    let Served {
-        desk,
-        peer,
-        to_server,
-        ..
-    } = served;
-    // The desk is told, and then the connection is gone.
-    drop(to_server);
-    let asked: Vec<Request> = desk.iter().collect();
-    assert_eq!(asked, [Request::Background]);
-    let next = Input {
-        session: "s1".into(),
-        text: "from the next interface".into(),
-        ..Input::default()
-    };
-    assert!(peer.inputs.input(next, false), "the lane is open");
-    let entry = peer.inputs.next("s1").map(|entry| entry.text);
-    assert_eq!(entry.as_deref(), Some("from the next interface"));
-}
-
-#[test]
-fn a_daemon_says_what_it_is_and_ends_when_asked() {
-    let host = Host::new("0.4.0+a".into());
-    let served = served_by(Some(Arc::clone(&host)));
-    let _attached = host.attach();
-    served.call(1, Command::Status);
-    let Done::Status(protocol::Status {
-        build,
-        pid,
-        attached,
-        ..
-    }) = served.done(1)
-    else {
-        panic!("no status");
-    };
-    assert_eq!(
-        (build.as_str(), pid, attached),
-        ("0.4.0+a", std::process::id(), 1)
-    );
-    served.call(2, Command::Shutdown);
-    assert_eq!(served.done(2), Done::Ok);
-    host.wait();
-}
-
-#[test]
-fn a_daemon_refuses_a_client_of_another_build() {
-    let served = served_by(Some(Host::new("0.4.0+a".into())));
-    let hello = |build: &str| Command::Initialize {
-        version: protocol::VERSION,
-        place: None,
-        build: build.into(),
-    };
-    served.call(1, hello("0.4.0+b"));
-    assert!(matches!(served.done(1), Done::Failed { why } if why.contains("0.4.0+a")));
-    served.call(2, hello("0.4.0+a"));
-    assert!(matches!(served.done(2), Done::Initialized { .. }));
-}
-
-#[test]
-fn in_process_there_is_no_daemon_to_ask_or_stop() {
-    let served = served();
-    for (id, command) in [(1, Command::Status), (2, Command::Shutdown)] {
-        served.call(id, command);
-        assert!(matches!(served.done(id), Done::Failed { .. }));
-    }
-}
-
 #[test]
 fn what_is_typed_for_a_session_not_open_is_refused_and_kept_nowhere() {
     let served = served();
@@ -506,30 +263,4 @@ fn what_is_typed_for_a_lane_that_is_ending_is_refused_and_kept_nowhere() {
         )
     });
     assert!(!queued, "a queue told for a lane gone: {told:?}");
-}
-
-#[test]
-#[expect(
-    clippy::disallowed_methods,
-    reason = "the in-process transport's channels, as the binary makes them"
-)]
-fn moved_to_the_background_once_the_desk_ended_keeps_nothing() {
-    let (to_server, incoming) = channel();
-    let (out, _from_server) = channel();
-    let (desk, requests) = channel();
-    drop(requests);
-    let peer = Peer::new(out);
-    let background = ToServer::Call {
-        id: 1,
-        command: Command::Background,
-    };
-    to_server.send(background).unwrap();
-    drop(to_server);
-    let info = Info {
-        max_lanes: 1,
-        commands: vec![],
-        modes: vec![],
-        host: None,
-    };
-    assert!(!serve(None, &incoming, &peer, &desk, &info));
 }

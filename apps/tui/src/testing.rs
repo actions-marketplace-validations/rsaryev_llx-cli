@@ -172,14 +172,9 @@ impl Person {
                 self.app.leave();
                 None
             }
-            Some(
-                Action::Clipboard
-                | Action::Copy(_)
-                | Action::Editor
-                | Action::Suspend
-                | Action::Background,
-            )
-            | None => None,
+            Some(Action::Clipboard | Action::Copy(_) | Action::Editor | Action::Suspend) | None => {
+                None
+            }
         };
         self.app.outbox.extend(call.map(Out::Call));
         self.flush();
@@ -201,8 +196,7 @@ impl Person {
                 | Action::Copy(_)
                 | Action::Editor
                 | Action::Suspend
-                | Action::QuitNow
-                | Action::Background,
+                | Action::QuitNow,
             )
             | None => None,
         };

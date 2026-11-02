@@ -27,7 +27,7 @@ llx -c                           # the last session again
 llx sessions; llx resume <id>    # the saved ones
 ```
 
-Several sessions run side by side in a daemon that outlives the terminal. `/login` picks the
+Several sessions run side by side in one terminal (`/new`, ← to switch). `/login` picks the
 provider, the model and the reasoning level.
 
 ## One task in scripts and CI
@@ -224,11 +224,6 @@ Model:
           No advice from the decision model (OpenRouter's, with its key): neither the reasoning level picked under `auto`, nor a second look at whether a task is done
           
           [env: LLX_NO_ADVICE=]
-
-      --no-daemon
-          Run the session in this process, not in the daemon (`llx serve`) that a session at the terminal otherwise starts or attaches to. `exec` always runs in this process
-          
-          [env: LLX_NO_DAEMON=]
 
 Workspace:
   -C, --cd <DIR>

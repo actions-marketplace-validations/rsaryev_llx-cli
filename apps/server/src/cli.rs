@@ -60,11 +60,7 @@ from a session not shown names it. Quitting while a session works or a monitor o
 asks first, naming them: Exit and stop tasks stops them all.
 
 Ctrl-C stops the task of the session shown (the command running is killed, and an open question or \
-approval ends); a second Ctrl-C quits.
-
-A session runs in a daemon, `llx serve`, which the first `llx` starts and later ones attach to: it \
-keeps the sessions, and lives on when a terminal closes (whose sessions' work then stops) until \
-`llx serve stop`. --no-daemon runs the session in this process; exec always does.";
+approval ends); a second Ctrl-C quits.";
 
 const EXAMPLES: &str = "Examples:
   llx                                              a session at the terminal
@@ -85,8 +81,8 @@ or usage, 130 interrupted.
 
 Environment: OPENROUTER_API_KEY (else the key /login saved), LLX_PROVIDER, LLX_MODEL,
 LLX_REASONING, LLX_DECISION_MODEL (decide, doctor), LLX_MODELS_REFRESH (0: no background
-catalog refresh), LLX_NO_DAEMON (1: sessions in this process), LLX_SESSIONS (where sessions are
-kept, default ~/.llx/sessions). Sign-ins and the /login choice are kept in ~/.config/llx/ (0600).";
+catalog refresh), LLX_SESSIONS (where sessions are kept, default ~/.llx/sessions). Sign-ins and
+the /login choice are kept in ~/.config/llx/ (0600).";
 
 #[derive(Parser, Debug)]
 #[command(
@@ -170,47 +166,6 @@ pub(crate) enum Command {
     Logout,
     /// Check the sign-ins, both models and the shell.
     Doctor(DoctorArgs),
-    /// The daemon that runs the sessions: `llx` at a terminal starts it, and attaches to it.
-    ///
-    /// One per config directory. It holds every session, with its agents, jobs and terminal
-    /// sessions; a closed terminal stops its sessions' work, and the daemon lives on until
-    /// `llx serve stop`.
-    Serve(ServeArgs),
-}
-
-#[derive(Args, Debug)]
-pub(crate) struct ServeArgs {
-    #[command(subcommand)]
-    pub action: Option<ServeAction>,
-}
-
-#[derive(Subcommand, Debug)]
-pub(crate) enum ServeAction {
-    /// Whether the daemon runs: its process, its build, the terminals attached, the sessions.
-    Status,
-    /// End the daemon: every session's task is stopped first.
-    Stop,
-}
-
-impl Cli {
-    /// The options of the run the command line asks for.
-    pub(crate) fn options(&mut self) -> &mut RunOptions {
-        match &mut self.command {
-            Some(Command::Exec(exec)) => match &mut exec.command {
-                Some(ExecCommand::Resume(args)) => &mut args.run,
-                None => &mut exec.run,
-            },
-            Some(Command::Resume(args)) => &mut args.run,
-            None
-            | Some(
-                Command::Decide(_)
-                | Command::Sessions
-                | Command::Logout
-                | Command::Doctor(_)
-                | Command::Serve(_),
-            ) => &mut self.run,
-        }
-    }
 }
 
 #[derive(Args, Debug)]
@@ -420,11 +375,6 @@ pub(crate) struct RunOptions {
     /// level picked under `auto`, nor a second look at whether a task is done.
     #[arg(long, env = "LLX_NO_ADVICE", value_parser = clap::builder::FalseyValueParser::new())]
     pub no_advice: bool,
-
-    /// Run the session in this process, not in the daemon (`llx serve`) that a session at the
-    /// terminal otherwise starts or attaches to. `exec` always runs in this process.
-    #[arg(long, env = "LLX_NO_DAEMON", value_parser = clap::builder::FalseyValueParser::new())]
-    pub no_daemon: bool,
 }
 
 /// A budget in dollars: a number above zero.

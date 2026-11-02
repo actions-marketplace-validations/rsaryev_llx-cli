@@ -7,8 +7,6 @@ use std::time::Duration;
 mod agents;
 mod approval;
 mod commands;
-mod daemon;
-mod desks;
 mod keys;
 mod picker;
 mod quit;

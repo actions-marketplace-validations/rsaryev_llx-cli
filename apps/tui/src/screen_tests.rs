@@ -389,7 +389,6 @@ fn a_chain_is_still_one_when_its_session_is_shown_again() {
     term.draw(&mut app, now);
     let in_a = |event| ToClient::Event {
         session: Some("A".into()),
-        seq: None,
         event,
     };
     app.frame(in_a(Event::TaskStarted("inspect".into())), now);

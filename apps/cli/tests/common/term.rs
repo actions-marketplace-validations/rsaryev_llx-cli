@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use super::eventually;
-use super::home::{FAKE_KEY, Home, isolate, own_terminal, text};
+use super::home::{FAKE_KEY, Home, isolate, own_terminal};
 use super::model::Model;
 
 const COLS: u16 = 110;
@@ -36,10 +36,7 @@ pub(crate) struct Term {
     child: Child,
     input: File,
     screen: Arc<Mutex<vt100::Parser>>,
-    /// Every byte llx wrote, for what the screen does not keep (a query to the terminal).
-    raw: Arc<Mutex<Vec<u8>>>,
-    /// The home, shared by the terminals beside this one: its daemon stops, and it goes, with the
-    /// last of them (after its child, as fields drop after [`Drop::drop`]).
+    /// The home, shared by the terminals beside this one: it goes with the last of them (after its child, as fields drop after [`Drop::drop`]).
     home: Arc<Home>,
 }
 
@@ -76,30 +73,6 @@ impl Term {
     /// `llx` with `args` and the variables `env`, not waited on.
     pub(crate) fn spawn(model: &Model, args: &[&str], env: &[(&str, &str)]) -> Self {
         Self::spawn_at(place(), model, args, env)
-    }
-
-    /// Another terminal's `llx` with `args`, in this one's home and workspace, at its prompt.
-    pub(crate) fn beside(&self, model: &Model, args: &[&str]) -> Self {
-        self.beside_with(model, args, &[])
-    }
-
-    /// [`Term::beside`], with the variables `env` set in that terminal alone.
-    pub(crate) fn beside_with(&self, model: &Model, args: &[&str], env: &[(&str, &str)]) -> Self {
-        let term = Self::spawn_at(Arc::clone(&self.home), model, args, env);
-        term.wait_for("❯", Duration::from_secs(10));
-        term
-    }
-
-    /// [`Term::beside`], not waited on: for an `llx` that may end before its prompt shows.
-    pub(crate) fn next_to(&self, model: &Model, args: &[&str]) -> Self {
-        Self::spawn_at(Arc::clone(&self.home), model, args, &[])
-    }
-
-    /// `llx args…` in this session's home, run to its end: what it printed, and its exit code.
-    pub(crate) fn llx(&self, args: &[&str]) -> (String, i32) {
-        let output = self.home.run(args);
-        let said = text(&output.stdout) + &text(&output.stderr);
-        (said, output.status.code().unwrap_or(-1))
     }
 
     /// An interactive shell with job control, at its `$ ` prompt: what suspends and continues
@@ -157,8 +130,6 @@ impl Term {
         drop(slave);
         let screen = Arc::new(Mutex::new(vt100::Parser::new(ROWS, COLS, 0)));
         let reading = Arc::clone(&screen);
-        let raw = Arc::new(Mutex::new(vec![]));
-        let written = Arc::clone(&raw);
         let mut output = File::from(master.try_clone().unwrap());
         let reader = std::thread::Builder::new().name("term-reader".into());
         reader
@@ -169,7 +140,6 @@ impl Term {
                         break;
                     }
                     reading.lock().unwrap().process(&buffer[..n]);
-                    written.lock().unwrap().extend_from_slice(&buffer[..n]);
                 }
             })
             .unwrap();
@@ -177,14 +147,8 @@ impl Term {
             child,
             input: File::from(master),
             screen,
-            raw,
             home,
         }
-    }
-
-    /// Every byte llx wrote so far.
-    pub(crate) fn raw(&self) -> Vec<u8> {
-        self.raw.lock().unwrap().clone()
     }
 
     /// What the screen shows now, row by row.
@@ -303,12 +267,6 @@ impl Term {
     pub(crate) fn cooked(&self) -> bool {
         use std::os::fd::AsFd;
         cooked(self.input.as_fd())
-    }
-
-    /// What the daemon of this home wrote to its log so far.
-    pub(crate) fn daemon_log(&self) -> String {
-        let log = self.home.path().join("config/llx/daemon.log");
-        std::fs::read_to_string(log).unwrap_or_default()
     }
 }
 

@@ -7,7 +7,7 @@ export type NavGroup = { title: string; blurb: string; pages: NavPage[] };
 export const NAV: NavGroup[] = [
   {
     title: 'Start',
-    blurb: 'The command line, a session and its keys, signing in and choosing a model, saved sessions and the daemon, project instructions.',
+    blurb: 'The command line, a session and its keys, signing in and choosing a model, saved sessions, project instructions.',
     pages: [{ slug: 'usage', source: 'docs/usage.md' }],
   },
   {
@@ -35,7 +35,6 @@ export const NAV: NavGroup[] = [
 /** Markdown under docs/ that is not a page here, and why. A link to it goes to GitHub; any other
  *  file under docs/ must be in NAV or here, so a new doc is never left off the site unnoticed. */
 export const UNLISTED: Record<string, string> = {
-  'docs/daemon.md': "the daemon's design, for contributors",
 };
 
 /** The index at /docs. */

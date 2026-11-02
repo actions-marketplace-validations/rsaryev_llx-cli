@@ -115,7 +115,6 @@ impl Home {
 
 impl Drop for Home {
     fn drop(&mut self) {
-        stop_daemon(&self.0);
         let _ = std::fs::remove_dir_all(&self.0);
     }
 }
@@ -164,36 +163,6 @@ pub(crate) fn own_terminal(command: &mut Command) {
     // SAFETY: between fork and exec the closure only calls setsid and ioctl, which are
     // async-signal-safe and touch only the child.
     unsafe { command.pre_exec(lead) };
-}
-
-/// The daemon a test started in `home`, if any is left: asked to stop as a person asks
-/// (`llx serve stop`, so an instrumented binary writes its coverage), then killed by the pid its
-/// lock file still names on its first line (the second is its socket). A daemon that ended
-/// cleanly emptied that file.
-#[expect(
-    clippy::disallowed_methods,
-    reason = "`llx serve stop` waits a bounded time for the daemon, and ends"
-)]
-pub(crate) fn stop_daemon(home: &Path) {
-    let lock = home.join("config").join("llx").join("daemon.lock");
-    let pid = || {
-        let text = std::fs::read_to_string(&lock).ok()?;
-        text.lines().next()?.trim().parse::<i32>().ok()
-    };
-    if pid().is_none() {
-        return;
-    }
-    let mut command = Command::new(env!("CARGO_BIN_EXE_llx"));
-    isolate(&mut command, home);
-    let _ = (command.args(["serve", "stop"]))
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status();
-    if let Some(pid) = pid() {
-        // SAFETY: kill sends a signal and touches nothing of this process.
-        unsafe { libc::kill(pid, libc::SIGKILL) };
-    }
 }
 
 /// The environment every run of the binary gets, and nothing else of the shell that runs the

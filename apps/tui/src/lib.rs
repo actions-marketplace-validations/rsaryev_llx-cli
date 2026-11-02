@@ -72,17 +72,15 @@ pub struct Running {
 /// Where the server's frames that are not answers go, until the server is gone.
 pub type Deliver = Box<dyn Fn(ToClient) + Send>;
 
-/// The client to the server, made with where its frames go: over channels in process, or over
-/// the daemon's socket.
+/// The client to the server, made with where its frames go: over channels to the server in this
+/// process.
 pub type Connect<'a> = Box<dyn FnOnce(Deliver) -> io::Result<Client> + 'a>;
 
 /// What the interface is given: its connection to the server, the directory for `@` (where the
-/// sessions it opens work), this binary's build (a daemon of another refuses it), and how to end
-/// the process at once.
+/// sessions work), and how to end the process at once.
 pub struct Start<'a> {
     pub connect: Connect<'a>,
     pub root: &'a std::path::Path,
-    pub build: String,
     pub quit_now: fn() -> !,
 }
 
@@ -129,23 +127,11 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
     let client = (start.connect)(Box::new(move |frame| {
         let _ = gone.0.send(Input::Frame(frame));
     }))?;
-    let hello = Command::Initialize {
-        version: protocol::VERSION,
-        // Where this interface is: the sessions it opens work there, with its environment and
-        // the command line it was started with, whose options the sessions take.
-        place: Some(client::place::here(
-            start.root,
-            std::env::args().skip(1).collect(),
-        )),
-        build: start.build,
-    };
     let Ok(Done::Initialized {
         max_lanes,
         commands,
         modes,
-        background,
-        ..
-    }) = client.call(hello, drawing::ANSWER)
+    }) = client.call(Command::Initialize, drawing::ANSWER)
     else {
         return Err(io::Error::other("the server did not attach the interface"));
     };
@@ -161,7 +147,6 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
         Ok(Done::Work { running, .. }) => running,
         _ => vec![],
     });
-    app.background = background;
     app.max_lanes = max_lanes;
     app.modes = modes;
     let seat = drawing::Seat {
@@ -177,7 +162,7 @@ fn attach(start: Start, width: u16, height: u16) -> io::Result<Running> {
     })
 }
 
-/// Where the server's frames went: when the server is gone (a daemon stopped), the interface is
+/// Where the server's frames went: when the server is gone (its thread ended), the interface is
 /// told so and ends.
 struct Gone(Sender<Input>);
 
@@ -194,7 +179,6 @@ fn server_event(event: Event) -> Input {
     Input::Frame(ToClient::Event {
         session: None,
         event,
-        seq: None,
     })
 }
 

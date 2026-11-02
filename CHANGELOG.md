@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- **The daemon is gone** (`llx serve`, `--no-daemon`, `LLX_NO_DAEMON`): a session at the terminal runs in the `llx` that shows it, with its agents and jobs, and ends with it; `llx resume` and `llx -c` go on with it from its file. "Move to background and exit" is no longer offered, `llx serve status` and `stop` are gone, and no socket is left in `$TMPDIR/llx-<uid>/`. A session ran no faster in the daemon (0.2 ms more to start, nothing per event), and it cost code and bugs. `exec`, `decide` and the GitHub Action never used it.
+- SIGTERM or SIGHUP at the prompt gives the terminal back as it ends the process: a session run in process (`--no-daemon`, and now every session) left the terminal raw.
 - The binary no longer carries Mozilla's root certificates, which it never read: TLS verifies with the system's trust store, as before (`RootCerts::PlatformVerifier`). 132 KB less (2.76 MB on macOS).
 - The skill describes llx instead of sending the agent to its help first: what each part is for, with examples to run as they are (a pull-request review workflow for the action, a gate, helpers in parallel, `llx decide`, and a search of the code by what it does as `rg` and `llx decide` make it), and at its end `llx exec --help` and `llx decide --help` as the release prints them (`scripts/skill-help` writes them, a test checks them). In Claude Code the skill asks once before it is used, as it grants commands; `Skill(llx:llx)` allows it where no one can answer.
 - An answer given while background agents still worked, then stopped while it waited for them, read twice in the session: once as the words said as the wait began, once more as the task's answer. It is shown once; stdout, `-o` and `--json` have it as before.

@@ -91,7 +91,7 @@ long-context price band; the reason llx's default request ceiling is 272k);
   provider as an index of raw JSON, each model decoded the first time it is asked for (one that
   does not parse is left out, never the catalog). `source.rs` fetches the v2 API at most once an
   hour with its ETag, keeps it cut down in `<config>/models.json` (the ETag in `models.etag`), and
-  lays it over the built-in data: a running process, the daemon too, reads it again within a
+  lays it over the built-in data: a running process reads it again within a
   minute of a refresh writing a newer one. Nothing waits on the network; `LLX_MODELS_REFRESH=0`
   turns the refresh off.
 - **What llx reads:** a model is usable when its `type` is `chat`, `tools.supported`, `text` is

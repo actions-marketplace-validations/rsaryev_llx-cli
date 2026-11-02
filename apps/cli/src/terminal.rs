@@ -1,10 +1,7 @@
 //! The binary's side of a run (ARCHITECTURE.md D7), the one place that knows both the server and
-//! the interface: the interface at this terminal, attached to the daemon (`remote`) or to a server
-//! in this process, each lane's trace as the interface draws it, and the daemon's client side
-//! (`daemon`: its status, reach, start and stop). The server takes it as its `Front`.
+//! the interface: the interface at this terminal, attached to the server in this process, and
+//! each lane's trace as the interface draws it. The server takes it as its `Front`.
 
-mod daemon;
-mod remote;
 #[cfg(test)]
 mod test_support;
 
@@ -12,7 +9,6 @@ use std::any::Any;
 use std::io::IsTerminal;
 use std::path::Path;
 use std::sync::mpsc::{Receiver, Sender};
-use std::time::Duration;
 
 use client::Client;
 use protocol::{ToClient, ToServer};
@@ -25,22 +21,20 @@ use llx::output::{Answer, Drawing, Drawn};
 pub(crate) struct Here;
 
 impl Front for Here {
-    fn remote(&self, root: &Path) -> Result<(), Unready> {
-        remote::run(root).map_err(Unready)
-    }
-
     fn attach(
         &self,
         root: &Path,
         to_server: Sender<ToServer>,
         from_server: Receiver<ToClient>,
     ) -> Result<Box<dyn Any>, Unready> {
+        // A signal that quits at the prompt ends the process on the quitting thread: the
+        // terminal is given back there.
+        interrupt::on_quit(tui::restore);
         let connect: tui::Connect =
             Box::new(move |deliver| Client::in_process(to_server, from_server, deliver));
         let running = tui::start(tui::Start {
             connect,
             root,
-            build: String::new(),
             quit_now: interrupt::quit_now,
         })
         .map_err(|error| Unready(error.to_string()))?;
@@ -54,14 +48,6 @@ impl Front for Here {
 
     fn drawing(&self) -> Drawing {
         drawn
-    }
-
-    fn status(&self, path: &Path, wait: Duration) -> Option<protocol::Status> {
-        daemon::status(path, wait)
-    }
-
-    fn stop(&self, path: &Path) -> bool {
-        daemon::stop(path)
     }
 }
 

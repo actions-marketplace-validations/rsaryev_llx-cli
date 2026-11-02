@@ -59,7 +59,7 @@ type Tell = Box<dyn Fn(&str, Event) + Send + Sync>;
 #[derive(Default)]
 struct Table {
     lanes: HashMap<String, Lane>,
-    /// The person left: every prompt, a lane's first included, gets nothing until one is back.
+    /// The person left: every prompt, a lane's first included, gets nothing more.
     left: bool,
 }
 
@@ -180,11 +180,6 @@ impl Inputs {
     pub(crate) fn leave(&self) {
         self.lock().left = true;
         self.arrived.notify_all();
-    }
-
-    /// An interface is back (the sessions moved to the background): the prompts wait again.
-    pub(crate) fn back(&self) {
-        self.lock().left = false;
     }
 
     /// The lane ended: what it had waiting goes with it, and the interface lets it go. What

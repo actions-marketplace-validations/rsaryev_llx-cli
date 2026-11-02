@@ -127,12 +127,6 @@ impl Model {
         self.shared.lock().unwrap().advised.clone()
     }
 
-    /// How many requests the model received but the titles' and the advice it answered with
-    /// nothing.
-    pub(crate) fn received(&self) -> usize {
-        self.shared.lock().unwrap().requests.len()
-    }
-
     /// Every request the model received but the titles' and the advice it answered with nothing,
     /// as JSON, in order.
     pub(crate) fn requests(&self) -> Vec<Value> {

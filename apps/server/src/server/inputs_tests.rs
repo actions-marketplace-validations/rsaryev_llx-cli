@@ -260,7 +260,7 @@ fn what_comes_for_a_lane_once_it_is_forgotten_is_kept_nowhere() {
 }
 
 #[test]
-fn a_prompt_that_comes_after_the_person_left_gets_nothing_until_one_comes_back() {
+fn a_prompt_that_comes_after_the_person_left_gets_nothing() {
     let (inputs, _told) = inputs();
     inputs.leave();
     assert_eq!(
@@ -268,14 +268,4 @@ fn a_prompt_that_comes_after_the_person_left_gets_nothing_until_one_comes_back()
         None,
         "a lane that first waits after the leave"
     );
-    inputs.back();
-    let prompt = waiting_in(&inputs, "late");
-    inputs.input(
-        Input {
-            session: "late".into(),
-            ..sent("here again")
-        },
-        false,
-    );
-    assert_eq!(prompt.join().unwrap(), Some(Typed::from("here again")));
 }

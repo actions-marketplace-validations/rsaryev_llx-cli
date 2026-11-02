@@ -15,7 +15,6 @@ use std::time::Duration;
 use contracts::history::History;
 use protocol::{Event, Target};
 
-pub(crate) use self::ending::open_anywhere;
 use self::ending::{AllLanes, Lanes, Leaving};
 use crate::commands::repl;
 use crate::compose::{Rig, Seat, Shared};
@@ -35,13 +34,6 @@ pub(crate) enum Request {
     List,
     /// "Exit and stop tasks": every lane is stopped, then the process ends.
     Quit,
-    /// A client attached from this place: its directory, its environment and its command line.
-    Attach(protocol::Place),
-    /// "Move to background and exit": the lanes go on when the interface's connection ends.
-    Background,
-    /// The interface left without keeping the work: it stops, as "Exit and stop tasks" does.
-    /// Said where the desk's requests outlive the connection (a daemon keeps them for the next).
-    Gone,
 }
 
 /// What wakes the desk: a request, the interface's connection gone, a lane's end.
@@ -95,8 +87,7 @@ pub(crate) fn run(
     )]
     let (wake, woken) = std::sync::mpsc::channel();
     forward(requests, &wake);
-    // Moved to the background: the interface's end stops nothing.
-    let (mut kept, mut gone) = (false, false);
+    let mut gone = false;
     std::thread::scope(|scope| {
         let _all = AllLanes { lanes: &lanes, ui };
         let desk = Desk {
@@ -114,16 +105,9 @@ pub(crate) fn run(
                 Wake::Asked(Request::Open(target)) => desk.target(scope, target),
                 Wake::Asked(Request::List) => desk.list(),
                 Wake::Asked(Request::Quit) => lanes.quit(quit),
-                // The first client's place is the desk's, taken before it began: the sessions of
-                // a client that attaches later (back to those in the background) stay there.
-                Wake::Asked(Request::Attach(_)) => {}
-                Wake::Asked(Request::Background) => kept = true,
-                // Said where the requests outlive the connection; else the connection's end
-                // says it. Unless the person moved the session to the background, its work
-                // stops, as "Exit and stop tasks" does.
-                Wake::Asked(Request::Gone) | Wake::Gone => {
-                    let keep = kept && matches!(woke, Wake::Gone);
-                    if !keep && !std::mem::replace(&mut gone, true) {
+                // The interface is gone: the work stops, as "Exit and stop tasks" does.
+                Wake::Gone => {
+                    if !std::mem::replace(&mut gone, true) {
                         lanes.stop_all();
                     }
                 }
@@ -196,11 +180,7 @@ impl<'e> Desk<'e> {
     /// Start a lane on its own thread; one opened after the first is shown at once.
     fn open<'s>(&self, scope: &'s Scope<'s, 'e>, seat: Seat, task: Option<String>, first: bool) {
         let id = seat.session.id.clone();
-        if !self.lanes.join(&id) {
-            let said =
-                format!("llx: session {id} is open at another terminal: quit it there first");
-            return self.ui.send(Event::Error(said));
-        }
+        self.lanes.join(&id);
         // A resumed session is known by its title, else by its first task.
         let first_task = seat.session.turns.first().map(|turn| turn.goal.clone());
         let name = Some(seat.session.title.clone())

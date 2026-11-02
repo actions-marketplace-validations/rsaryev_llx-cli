@@ -51,11 +51,8 @@ anything that changes your machine. The repository's instruction files (`AGENTS.
 repository you check out can steer the model. It cannot change the rules, which come only from
 the command line and `~/.config/llx/settings.json`, never from the repository.
 
-A session runs in a daemon (`llx serve`), reached over a socket in a directory only you may enter
-(`$TMPDIR/llx-<uid>/`, mode 0700, the socket 0600), with no token: it serves the user who runs it.
-Any process of yours outside the sandbox can connect to it as `llx` does (and so come back to the
-sessions moved to the background in a directory, and answer their questions); a sandboxed command
-cannot, as it opens no socket.
+A session runs in the `llx` process at your terminal: it listens on no socket, and no other
+process can attach to it or answer its questions.
 
 ## Keys
 
