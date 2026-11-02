@@ -30,6 +30,7 @@ pub enum Needs {
 /// The answer to an effect.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Verdict {
+    /// Allowed as it stands: a command runs outside any sandbox.
     Allow,
     /// Allowed inside the workspace: a command runs where it can change only the workspace's
     /// files (the tool's sandbox), a file in the workspace is changed.

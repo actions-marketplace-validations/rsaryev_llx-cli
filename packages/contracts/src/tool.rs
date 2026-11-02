@@ -21,7 +21,7 @@ pub enum Input {
     Json(Value),
     /// Free text (a patch), with nothing to escape, in the Lark grammar given. A provider that
     /// takes such tools offers it so, holding the model to the grammar; any other offers a
-    /// function with one string argument ([`TEXT_ARGUMENT`]).
+    /// function with one string argument, `source`.
     Text(String),
 }
 
@@ -73,7 +73,7 @@ impl Input {
     }
 }
 
-/// What a call did, as the model reads it.
+/// What a call did: what the model reads, and what only the person sees.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ToolOutput {
     /// What happened: kept for the rest of the conversation.

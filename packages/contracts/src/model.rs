@@ -9,29 +9,36 @@ use serde_json::{Map, Value};
 /// One question: pick one key of `criteria`, or say how likely a statement is.
 #[derive(Debug, Clone)]
 pub enum Question {
+    /// One key of `criteria` picked, each key's value saying what it stands for.
     Choice {
         instructions: Value,
         criteria: Map<String, Value>,
     },
-    Noul {
-        instructions: Value,
-    },
+    /// How likely the statement in `instructions` holds of the state.
+    Noul { instructions: Value },
 }
 
+/// The answer to one question, of its kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Answer {
+    /// The key picked, and how likely each key was.
     Choice {
         choice: String,
         probabilities: BTreeMap<String, f64>,
         confidence: f64,
     },
+    /// The statement's probability, from 0 to 1.
     Noul(f64),
 }
 
+/// What came back for one state's questions.
 #[derive(Debug, Clone, Default)]
 pub struct Decision {
+    /// Each answer under its question's key; a question the model left unanswered is not here.
     pub answers: BTreeMap<String, Answer>,
+    /// The model that answered, as the provider names it.
     pub model: String,
+    /// US dollars.
     pub cost: f64,
     pub millis: u64,
 }

@@ -11,6 +11,7 @@ pub struct Session {
     pub id: String,
     /// Unix seconds.
     pub created: u64,
+    /// Unix seconds: when its last goal ended, or it was created.
     pub updated: u64,
     /// Where its goals ran, as the app names it (a directory): a session continued elsewhere is
     /// told apart from one continued in place. Empty in sessions saved before it was kept.
@@ -72,6 +73,7 @@ pub struct Spent {
 }
 
 impl Spent {
+    /// Whether it spent nothing, as a step that is not a model turn.
     pub fn is_empty(&self) -> bool {
         *self == Self::default()
     }

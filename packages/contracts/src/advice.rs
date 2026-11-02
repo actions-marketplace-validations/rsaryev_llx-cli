@@ -25,6 +25,7 @@ pub enum Review {
     GoOn(String),
 }
 
+/// What the loop asks at a task's edges; whoever composes the run answers.
 pub trait Advisor: Send + Sync {
     /// The level a new conversation thinks at, asked as its first task (`goal`) starts, before
     /// its first request; `None`: the level chosen stands. A conversation that goes on (a

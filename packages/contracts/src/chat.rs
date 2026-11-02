@@ -98,10 +98,12 @@ impl Completion {
 pub struct Usage {
     /// The model that answered, as the provider names it.
     pub model: String,
+    /// US dollars.
     pub cost: f64,
+    /// How long the completion took.
     pub millis: u64,
     pub input_tokens: u64,
-    /// Input tokens read from the provider's prompt cache.
+    /// Input tokens read from the provider's prompt cache: counted in `input_tokens` too.
     pub cached_tokens: u64,
     pub output_tokens: u64,
 }
@@ -166,7 +168,7 @@ impl std::fmt::Display for ChatError {
 
 impl std::error::Error for ChatError {}
 
-/// One request: the conversation so far and the tools it may call.
+/// One request: the conversation so far and the tools the model may call.
 #[derive(Debug, Clone, Copy)]
 pub struct Request<'a> {
     pub conversation: &'a [Message],

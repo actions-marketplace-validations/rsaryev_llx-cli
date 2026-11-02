@@ -4,10 +4,8 @@ use super::*;
 
 #[test]
 fn a_report_alone_is_an_output_that_shows_nothing_more() {
-    let output = ToolOutput::from("done".to_string());
-    assert_eq!(output.report, "done");
     assert_eq!(
-        output,
+        ToolOutput::from("done".to_string()),
         ToolOutput {
             report: "done".into(),
             ..ToolOutput::default()
