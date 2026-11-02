@@ -112,17 +112,15 @@ fn write(changed: &[&File]) -> Result<(), ToolError> {
     let (written, removed): (Vec<&&File>, Vec<&&File>) =
         changed.iter().partition(|file| file.now.is_some());
     let mut done: Vec<&File> = vec![];
+    // `bytes` at `path`, or no file there.
+    let put = |path: &Path, bytes: &Option<Vec<u8>>| match bytes {
+        Some(bytes) => atomic::write(path, bytes),
+        None => fs::remove_file(path),
+    };
     for file in written.into_iter().chain(removed) {
-        let result = match &file.now {
-            Some(bytes) => atomic::write(&file.path, bytes),
-            None => fs::remove_file(&file.path),
-        };
-        if let Err(error) = result {
+        if let Err(error) = put(&file.path, &file.now) {
             for back in done {
-                let _ = match &back.disk {
-                    Some(bytes) => atomic::write(&back.path, bytes),
-                    None => fs::remove_file(&back.path),
-                };
+                let _ = put(&back.path, &back.disk);
             }
             return Err(ToolError::Failed(format!(
                 "{} could not be written: {error}",
