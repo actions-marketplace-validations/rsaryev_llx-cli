@@ -18,7 +18,8 @@
 #                           with its own policy (agents' answers, monitors, schedules, ...)
 #   packages/session        a history store: sessions as JSON files
 #   apps/server             the composition root (its library is `llx`): sessions, lanes,
-#                           agents, jobs, modes, the command line, served through the protocol
+#                           agents, jobs, modes, grep, the command line, served through the
+#                           protocol
 #   apps/tui                the terminal interface: keys and drawing, through the client only
 #   apps/cli                the `llx` binary: the process, the terminal's wiring, the daemon's
 #                           client side, and the integration tests
@@ -164,8 +165,8 @@ tools = { path = "packages/tools" }
 tui = { path = "apps/tui" }
 base64 = "0.23.1"
 clap = { version = "4", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "env"] }
-# The sign-in's PKCE and state, and session ids: the version native-tls (through ureq) builds
-# already, so the tree holds one copy.
+# The sign-in's PKCE and state, and session ids: the version native-tls (through ureq) builds on
+# macOS already, so the tree holds one copy there.
 getrandom = "0.4"
 # The few unix calls std has no wrapper for.
 libc = "0.2"

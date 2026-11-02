@@ -93,9 +93,10 @@ first goal, to pick its reasoning level under `--reasoning auto`; and when the m
 answers, the task (its goal, each call with the start of its input and the end of its output, and
 the answer), cut to 60,000 characters. `--no-advice` (`LLX_NO_ADVICE=1`) turns it off. `llx
 decide` sends its question and its stdin (or each file) to OpenRouter's decision model too, and
-`llx grep` and the agent's `grep` tool send the question and the files its words rank best (a
-short file whole, a long one's start and the parts with those words); without the key, `grep`
-ranks by the words alone and sends nothing. Do not point llx at secrets you would not send there.
+`llx grep` and the agent's `grep` tool send the question and the files it ranks best, with those
+they reach through the modules they name (each one's path, a short file whole, of a long one its
+start and some of its parts); with `--lexical`, or without the key, `grep` ranks by the words
+alone and sends nothing. Do not point llx at secrets you would not send there.
 
 ## Releases
 
