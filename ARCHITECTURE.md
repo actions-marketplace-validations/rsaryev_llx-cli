@@ -30,9 +30,9 @@ does is known above the server.
                          apps/cli        the binary: the process, the terminal
                         ╱        ╲
            apps/tui             apps/server             composition root: the command line,
-           keys, drawing        sessions, lanes, agents, jobs, modes, the gate's and the person's answers
-                │                 │
-          packages/client        │        packages/agent                  the core
+           keys, drawing,       sessions, lanes, agents, jobs, modes, the gate's and the person's answers
+           its client             │
+                │                 │        packages/agent                  the core
                 │                 │        packages/tools, session, providers/*   adapters
                 │                 │
           packages/protocol                 packages/contracts, queue, providers/kit
@@ -49,10 +49,9 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 | Core | `agent` | `contracts` |
 | Adapters | `tools`, `session` | `contracts` |
 | Adapters | `providers/{models,openai,openrouter}` | `contracts`, `kit` |
-| Client | `client` (in process, over channels) | `protocol` |
-| Server | `apps/server` (library `llx`) | every package but `client` |
-| Interface | `apps/tui` | `client`, `protocol` |
-| Binary | `apps/cli` | `server`, `tui`, `client`, `protocol` (the client's frames, P7) |
+| Server | `apps/server` (library `llx`) | every package |
+| Interface | `apps/tui` (its client to the server a module, `client.rs`) | `protocol` |
+| Binary | `apps/cli` | `server`, `tui`, `protocol` (the frames and the offer it hands over, P7) |
 
 ## Dependency rules
 
@@ -71,13 +70,13 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **L6** _checked_: `protocol` depends on no crate. Its types are the seam's own, never the
   domain's: the server maps its values onto them (`server/wire.rs`), and the protocol never
   re-exports one.
-- **L7** _checked_ on `apps/tui`'s manifest and sources: the interface depends only on `client`
-  and `protocol`: never on
+- **L7** _checked_ on `apps/tui`'s manifest and sources: the interface depends only on
+  `protocol`: never on
   the agent, tools, providers, the session store or the server, nor on the app's other modules.
   What it needs to show, the protocol carries.
-- **L8** _checked_ (the server's manifest has no `client`, the client's only `protocol`): the
-  server is the only crate that serves the protocol and
-  the only one that knows every package; the client knows only the protocol.
+- **L8**: the server is the only crate that serves the protocol and the only one that knows
+  every package; the interface's client (`apps/tui`'s `client.rs`) is the only code that calls
+  it.
 - **L9**: a new edge between crates is a design change, recorded here first. A new `pub` item is
   an API change: visibility is the tightest that compiles (`pub(super)`, `pub(crate)`), and
   `pub use` across crates is not used to reach past a layer. (The agent's conversation and history
@@ -155,8 +154,8 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **K2**: sessions, approvals, the person, modes, agents and jobs are the server's; keys, the
   composer, drawing, `$EDITOR` and the clipboard the interface's.
 - **K3**: one person, one question at a time: every approval and `ask` goes through
-  `gate::one_question`, whichever thread asks. A person is one interface: the desk's lock
-  (`Shared::asking`), or the process's own for the terminal it asks at.
+  `gate::one_question`, whichever thread asks, on the one lock of the person the run has
+  (`Shared::asking`), whether the gate asks at the terminal or through the interface.
 - **K4**: something that reaches a run from outside its calls is a kind in `arrivals.rs` (its
   policy and tag) posted to the lane's queue; the agent's inbox knows no source.
 - **K5**: a mode is a named set of rules (`allow`, `deny`) and what its commands reach (`reach`:
@@ -187,21 +186,22 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 - **W1**: frames are values on two channels, `ToServer` and `ToClient` (`protocol`'s
   `frame.rs`), never encoded: a call (`ToServer::Call`) carries an `id` and gets exactly one
-  `ToClient::Done` with that id (a failed one too, `Failed` with why); a question
+  `ToClient::Done` with that id (a failed one too, `Failed` with why, which the interface
+  shows the person, whether it waited for the call or only sent it); a question
   (`ToClient::Ask`) has an id its `ToServer::Reply` and `ToClient::Resolved` name; every other
   frame is a notification, with no id.
 - **W2**: a frame holds protocol types only (`Command`, `Done`, `Event`, `Asked`, `Reply`); a
   frame's id is a number, a session's a string; times are `*_at` milliseconds since the epoch.
-- **W3**: `Initialize` comes first and once; the server answers with what it offers (its
-  commands, its modes, the lanes it opens at most). The sessions work where the process does: the
-  workspace the command line names, with the process's environment.
+- **W3**: what the server offers (its commands, its modes, the lanes it opens at most: the
+  protocol's `Offer`) is handed to the interface as it starts, with the channels, before any
+  frame; no frame asks for it. The sessions work where the process does: the workspace the
+  command line names, with the process's environment.
 - **W4**: (retired with the daemon: one transport, the channels.)
 - **W5**: a question the server asks a person belongs to the session: it waits under its id
   until the reply, and `Resolved` tells the interface it no longer waits (answered, or withdrawn
   when its task stops, its lane closes or the person leaves).
 - **W6**: the server never waits on the interface: its frames go out on a channel that never
-  blocks, read on the interface's own thread. (The ring a later client was given is retired with
-  the daemon.)
+  blocks, read on the interface's own thread.
 - **W7**: a request carries what the server needs to act on it (the session's id); the seam keeps
   no hidden state.
 - **W8**: one request's panic or failure never ends the server: it becomes that request's error.
@@ -360,22 +360,22 @@ command is cut.
   `Pipeline::default`, with a test, the long-dialogue simulation still passing.
 - **A protocol method:** a request to the server is a `Command` variant, and what it comes to a
   `Done` one, in `protocol`'s `command.rs`; served in the server (`server/serve.rs`), called
-  through `client` (`Client::call`); a test through the client only. What the server says
+  through the interface's client (`Client::call`); a test through the protocol's frames only. What the server says
   unasked is an `Event` variant (`event.rs`).
 - **A rule:** here, with an id, and its test in the same commit when a test can state it.
 
 ## The seam's steps
 
-- **D1** (done): the seam as the protocol, in process: `protocol` and `client` exist; the
-  interface speaks only through them. L6-L8 are checked.
+- **D1** (done): the seam as the protocol, in process: `protocol` exists, and the interface
+  speaks only through it, with its own client. L6 and L7 are checked.
 - **D2**, **D3**, **D4**: (retired with the daemon, `llx serve`, by the owner's decision: a
   session runs in the process of the terminal that shows it, so it carries no place of its own,
   no socket serves it, and nothing attaches to it later or keeps it in the background. It cost
   more code and bugs than it was worth, and no measured speed.)
 - **D5**, **D6**: (retired.)
-- **D7** (done): the split into crates. `apps/tui`, the interface: `client`, `protocol` and its
-  terminal libraries; the exec trace too (`Trace`), drawn from the protocol's events. `apps/server`,
-  the composition root: sessions, lanes, agents, jobs, modes, every package but `client`, and the
+- **D7** (done): the split into crates. `apps/tui`, the interface: its client, `protocol` and
+  its terminal libraries; the exec trace too (`Trace`), drawn from the protocol's events. `apps/server`,
+  the composition root: sessions, lanes, agents, jobs, modes, every package, and the
   command line's `Cli`; its run takes the terminal from the binary through its `Front` port.
   `apps/cli`, the binary: `main.rs`, the process's hardening, `terminal` (the `Front`: the
   interface in this process, each lane's trace), the tests that drive the interface's `App`
