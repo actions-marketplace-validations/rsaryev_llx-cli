@@ -137,8 +137,8 @@ pub trait History: Send + Sync {
     /// A new, empty session with a fresh id.
     fn start(&self) -> Session;
     fn save(&self, session: &Session) -> Result<(), HistoryError>;
-    /// The session with `id`, or the newest one for `None`.
-    fn load(&self, id: Option<&str>) -> Result<Session, HistoryError>;
+    /// The session with `id`.
+    fn load(&self, id: &str) -> Result<Session, HistoryError>;
     /// Every session, newest first.
     fn list(&self) -> Vec<Session>;
 }

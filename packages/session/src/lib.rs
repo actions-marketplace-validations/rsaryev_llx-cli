@@ -55,14 +55,7 @@ impl History for Sessions {
         write().map_err(|error| HistoryError::Write(error.to_string()))
     }
 
-    fn load(&self, id: Option<&str>) -> Result<Session, HistoryError> {
-        let Some(id) = id else {
-            // The newest of the list that is not an agent's: an agent's session goes on only
-            // through its parent.
-            return (self.list().into_iter())
-                .find(|session| !session.is_agent())
-                .ok_or(HistoryError::Empty);
-        };
+    fn load(&self, id: &str) -> Result<Session, HistoryError> {
         let text =
             std::fs::read_to_string(self.dir.join(format!("{id}.json"))).map_err(|error| {
                 if error.kind() == std::io::ErrorKind::NotFound {

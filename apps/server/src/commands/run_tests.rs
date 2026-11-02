@@ -100,7 +100,7 @@ fn compose_ending(
     let (shared, seat) = setup.split();
     let code = assemble(&shared, seat, models, &output, &interrupt, |rig| {
         let code = rig.task("make a file");
-        saved = Some(rig.shared.history.load(Some(&rig.session.id)).unwrap());
+        saved = Some(rig.shared.history.load(&rig.session.id).unwrap());
         code
     });
     Done {

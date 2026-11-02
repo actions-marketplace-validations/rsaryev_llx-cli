@@ -50,10 +50,10 @@ fn a_session_round_trips_and_the_newest_comes_first() {
     sessions.save(&new).unwrap();
     let listed: Vec<String> = sessions.list().into_iter().map(|s| s.id).collect();
     assert_eq!(listed, [new.id.clone(), "1-old".into()]);
-    let back = sessions.load(None).unwrap();
+    let back = sessions.load(&new.id).unwrap();
     assert_eq!(back.turns[0].goal, "find a quiz");
     assert_eq!(
-        sessions.load(Some("missing")).unwrap_err(),
+        sessions.load("missing").unwrap_err(),
         HistoryError::NotFound("missing".into())
     );
 }
@@ -84,21 +84,18 @@ fn a_list_of_hundreds_has_every_session_newest_first_and_skips_what_is_not_one()
 }
 
 #[test]
-fn the_newest_session_is_never_an_agent() {
+fn an_agents_session_keeps_its_parent_and_name() {
     let scratch = Scratch::new("agent");
     let sessions = scratch.sessions();
     let mut parent = sessions.start();
     parent.id = "1-parent".into();
-    parent.updated = 1;
     sessions.save(&parent).unwrap();
     let mut agent = sessions.start();
     agent.id = "2-agent".into();
-    agent.updated = 2;
     agent.parent = Some(parent.id);
     agent.name = "scout".into();
     sessions.save(&agent).unwrap();
-    assert_eq!(sessions.load(None).unwrap().id, "1-parent");
-    let back = sessions.load(Some("2-agent")).unwrap();
+    let back = sessions.load("2-agent").unwrap();
     assert_eq!(
         (back.parent.as_deref(), back.name.as_str()),
         (Some("1-parent"), "scout")
@@ -111,7 +108,7 @@ fn a_file_that_is_not_a_session_is_called_so_when_loaded() {
     let sessions = scratch.sessions();
     std::fs::create_dir_all(&scratch.0).unwrap();
     std::fs::write(scratch.0.join("1-odd.json"), "not json").unwrap();
-    let error = sessions.load(Some("1-odd")).unwrap_err().to_string();
+    let error = sessions.load("1-odd").unwrap_err().to_string();
     assert!(
         error.starts_with("session 1-odd is not a session: "),
         "{error}"
@@ -151,7 +148,7 @@ fn what_a_task_spent_is_kept_and_an_older_session_without_it_still_loads() {
         1,
         "a call that spent nothing says nothing"
     );
-    let back = sessions.load(Some(&session.id)).unwrap();
+    let back = sessions.load(&session.id).unwrap();
     assert_eq!(back.turns[0].steps[0], turn);
     // A session written before steps said what they spent.
     let mut older: serde_json::Value = serde_json::from_str(&saved).unwrap();
@@ -159,7 +156,7 @@ fn what_a_task_spent_is_kept_and_an_older_session_without_it_still_loads() {
     let step = &mut older["turns"][0]["steps"][0];
     assert!(step.as_object_mut().unwrap().remove("spent").is_some());
     std::fs::write(scratch.0.join("2-older.json"), older.to_string()).unwrap();
-    let older = sessions.load(Some("2-older")).unwrap();
+    let older = sessions.load("2-older").unwrap();
     assert_eq!(
         older.turns[0].steps[0].spent,
         contracts::history::Spent::default()

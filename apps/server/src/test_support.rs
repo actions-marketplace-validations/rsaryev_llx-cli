@@ -69,7 +69,7 @@ impl Scratch {
         let history = session::Sessions {
             dir: self.0.join("sessions"),
         };
-        let session = history.load(Some(id)).unwrap();
+        let session = history.load(id).unwrap();
         session.turns.into_iter().map(|turn| turn.goal).collect()
     }
 }

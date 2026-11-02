@@ -70,6 +70,30 @@ fn last_goes_on_with_the_newest_session_here_over_a_newer_one_elsewhere() {
 }
 
 #[test]
+fn last_never_goes_on_with_an_agents_session() {
+    // An agent's session goes on only through its parent, though it ran here and later.
+    let home = Home::new();
+    let here = home.path().canonicalize().unwrap();
+    let dir = here.display().to_string();
+    home.save_session("1700000000-main", &dir, 1700000000);
+    let agent = serde_json::json!({"id": "1800000000-agent", "created": 1800000000,
+        "updated": 1800000000, "workspace": dir, "parent": "1700000000-main", "name": "scout",
+        "turns": [{"goal": "look around", "answer": "Seen.", "status": "done",
+            "at": 1800000000}]});
+    let file = home.path().join("sessions/1800000000-agent.json");
+    std::fs::write(file, agent.to_string()).unwrap();
+    let model = Model::start(vec![]);
+    let mut command = home.with_model(&model, &["exec", "resume", "--last", "go", "on"]);
+    let resume = output(command.current_dir(&here));
+    assert_eq!(resume.status.code(), Some(0), "{}", text(&resume.stderr));
+    let turns = |id: &str| home.session(id)["turns"].as_array().unwrap().len();
+    assert_eq!(
+        (turns("1700000000-main"), turns("1800000000-agent")),
+        (2, 1)
+    );
+}
+
+#[test]
 fn resuming_a_session_from_elsewhere_says_where_it_ran() {
     let home = Home::new();
     home.save_session("1700000000-cd34", "/elsewhere/repo", 1700000000);

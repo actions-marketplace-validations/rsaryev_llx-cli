@@ -142,7 +142,7 @@ pub(crate) fn resume(
     let here = root.root().display().to_string();
     let store = store();
     let session = match id {
-        Some(id) => store.load(Some(id)),
+        Some(id) => store.load(id),
         None => {
             // Read once, newest first: the newest here, else the newest of all; an agent's
             // session goes on only through its parent.

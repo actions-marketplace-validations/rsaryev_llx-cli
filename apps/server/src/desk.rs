@@ -165,7 +165,7 @@ impl<'e> Desk<'e> {
                 let seat = shared.seat(shared.history.start(), Some(ui.clone()));
                 self.open(scope, seat, None, false);
             }
-            Target::Saved(id) => match shared.history.load(Some(&id)) {
+            Target::Saved(id) => match shared.history.load(&id) {
                 Ok(session) => {
                     let mut seat = shared.seat(session, Some(ui.clone()));
                     let root = shared.workspace.root();

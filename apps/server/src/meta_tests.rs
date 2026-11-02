@@ -32,13 +32,10 @@ fn a_title_made_before_the_first_save_is_saved_with_it() {
     let pending = Pending::default();
     let mut session = history.start();
     pending.post(&history, &session.id, titled("Fix the parser"));
-    assert!(
-        history.load(Some(&session.id)).is_err(),
-        "nothing on disk yet"
-    );
+    assert!(history.load(&session.id).is_err(), "nothing on disk yet");
     session.record(turn("fix the parser"));
     pending.save(&history, &mut session).unwrap();
-    let saved = history.load(Some(&session.id)).unwrap();
+    let saved = history.load(&session.id).unwrap();
     assert_eq!(saved.title, "Fix the parser");
 }
 
@@ -51,7 +48,7 @@ fn a_title_made_after_the_last_save_is_written_to_the_saved_session() {
     session.record(turn("fix the parser"));
     pending.save(&history, &mut session).unwrap();
     pending.post(&history, &session.id, titled("Fix the parser"));
-    let saved = history.load(Some(&session.id)).unwrap();
+    let saved = history.load(&session.id).unwrap();
     assert_eq!(
         (saved.title.as_str(), saved.turns.len()),
         ("Fix the parser", 1)
@@ -59,7 +56,7 @@ fn a_title_made_after_the_last_save_is_written_to_the_saved_session() {
     // The lane's next save, from its own copy that has no title, keeps it.
     session.record(turn("and the lexer"));
     pending.save(&history, &mut session).unwrap();
-    let saved = history.load(Some(&session.id)).unwrap();
+    let saved = history.load(&session.id).unwrap();
     assert_eq!(
         (saved.title.as_str(), saved.turns.len()),
         ("Fix the parser", 2)

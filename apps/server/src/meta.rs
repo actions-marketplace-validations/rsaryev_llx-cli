@@ -67,7 +67,7 @@ impl Pending {
     /// saved already.
     pub(crate) fn post(&self, history: &dyn History, id: &str, update: Update) {
         let mut pending = self.lock();
-        if let Ok(mut saved) = history.load(Some(id)) {
+        if let Ok(mut saved) = history.load(id) {
             update.apply(&mut saved);
             let _ = history.save(&saved);
         }
