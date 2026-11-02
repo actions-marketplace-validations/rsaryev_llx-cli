@@ -290,6 +290,26 @@ fn a_row_wider_than_the_terminal_is_redrawn_without_leaving_copies() {
     assert_eq!(all.matches("Run this command?").count(), 1, "{all}");
 }
 
+/// Rows split above the cursor move it down by what they added; a row split under it leaves it
+/// where it is.
+#[test]
+fn the_cursor_stays_on_its_row_between_rows_split_above_and_below_it() {
+    let mut screen = Screen::new(Vec::new(), false);
+    let (above, below) = ("a".repeat(70), "b".repeat(40));
+    screen
+        .frame(
+            History::default(),
+            &lines(&[&above, "❯ hi", &below]),
+            Some(Cursor { row: 1, column: 4 }),
+            ROWS as usize,
+            COLUMNS as usize,
+        )
+        .unwrap();
+    let mut parser = terminal();
+    feed(&mut parser, &mut screen);
+    assert_eq!(parser.screen().cursor_position(), (3, 4));
+}
+
 /// Reads of `paths`, each finishing in a frame of its own.
 fn reads(
     app: &mut crate::app::App,

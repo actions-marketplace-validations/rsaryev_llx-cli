@@ -91,11 +91,13 @@ impl<W: Write> Screen<W> {
         if asking {
             self.group = None;
         }
-        // A row split in two moves the rows under it, the cursor's among them.
+        // A row split in two moves the rows under it, the cursor's among them: only a row above
+        // the cursor's own, as it was given, moves it.
+        let given = cursor.map(|c| c.row);
         let mut split = vec![Line::default(); lead];
         for (at, line) in live.iter().enumerate() {
             let rows = fit(line.clone(), width);
-            if let Some(c) = cursor.as_mut().filter(|c| c.row > at + lead) {
+            if let Some(c) = cursor.as_mut().filter(|_| given > Some(at + lead)) {
                 c.row += rows.len() - 1;
             }
             split.extend(rows);
