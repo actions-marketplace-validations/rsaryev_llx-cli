@@ -1,6 +1,6 @@
 [package]
 name = "contracts"
-description = "llx's contracts: the chat-model, tool, gate, person, decision-model, history and inbox ports"
+description = "llx's contracts: the chat-model, catalog, tool, advisor, gate, person, decision-model, history and inbox ports"
 publish = false
 version.workspace = true
 edition.workspace = true
