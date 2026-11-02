@@ -178,7 +178,7 @@ eq "prompt-file first, read as it is" $'from the file $PR\n\nthen 7' "$(cat "$tm
 run_action INPUT_ALLOW=$'bash(gh pr view *)\n\n  jobs  \r\nbash(git log *)' INPUT_DENY=$'bash(git push *)\n' INPUT_MODE=plan \
   INPUT_PROVIDER=openrouter INPUT_MODEL=acme/m INPUT_REASONING=low INPUT_ARGS='--foo bar' INPUT_MAX_TURNS=9 INPUT_TIMEOUT=60 INPUT_BUDGET=0.50
 has "rules" "$(args)" "--allow"$'\001'"bash(gh pr view *)"$'\001'"--allow"$'\001'"jobs"$'\001'"--allow"$'\001'"bash(git log *)"$'\001'"--deny"$'\001'"bash(git push *)"$'\001'
-has "mode, limits and extra arguments" "$(args)" "--mode"$'\001'"plan"$'\001'
+has "mode" "$(args)" "--mode"$'\001'"plan"$'\001'
 has "limits" "$(args)" "--timeout"$'\001'"60"$'\001'"--max-turns"$'\001'"9"$'\001'"--budget"$'\001'"0.50"$'\001'
 has "extra arguments, before the prompt" "$(args)" "--foo"$'\001'"bar"$'\001'"-"$'\001'
 eq "provider, model, reasoning" "openrouter|acme/m|low|1|0" "$(sed -n 2p "$tmp/run/env")"
@@ -237,13 +237,16 @@ cat >"$tmp/calls.jsonl" <<'EVENTS'
 {"type":"tool.call","id":"2","name":"apply_patch","arguments":"*** Begin Patch\n*** Update File: src/a.rs\n@@\n*** Add File: b.md\n+x\n*** End Patch"}
 {"type":"tool.result","id":"2","name":"apply_patch","failed":true}
 {"type":"tool.call","id":"3","name":"agents","arguments":{"action":"spawn","task":"look"}}
+{"type":"tool.call","id":"4","name":"grep","arguments":{"query":"where is a request sent again","paths":["src"]}}
+{"type":"tool.result","id":"4","name":"grep","failed":false}
 {"type":"run.completed","status":"done","exit_code":0,"usage":{"agent":{"model":"acme/model","calls":3},"cost_usd":0.01},"duration_ms":1000}
 EVENTS
 run_action STUB_EVENTS_FILE="$tmp/calls.jsonl"
-has "calls: counted" "$(summary)" "<summary>Calls (3)</summary>"
+has "calls: counted" "$(summary)" "<summary>Calls (4)</summary>"
 has "calls: a command, escaped, its first line" "$(summary)" "- ✓ bash: <code>cargo test &lt;all&gt;</code>"
 has "calls: a patch by its files" "$(summary)" "- ✗ apply_patch: <code>update src/a.rs, add b.md</code>"
 has "calls: one with no result yet" "$(summary)" "- … agents: <code>spawn</code>"
+has "calls: a search by its question" "$(summary)" "- ✓ grep: <code>where is a request sent again</code>"
 run_action
 if [[ $(summary) == *Calls* ]]; then fail "no calls: a list anyway"; else pass "no calls: no list"; fi
 
@@ -358,7 +361,7 @@ has "instructions: why" "$(summary)" "fetch-depth: 0"
 # The install: the version from Cargo.toml, a checksum, the archive for this machine.
 case "$(uname -s)-$(uname -m)" in
   Linux-x86_64) target=x86_64-unknown-linux-gnu ;;
-  Linux-aarch64) target=aarch64-unknown-linux-gnu ;;
+  Linux-aarch64 | Linux-arm64) target=aarch64-unknown-linux-gnu ;;
   Darwin-*) target=universal-apple-darwin ;;
   *) target='' ;;
 esac
@@ -391,7 +394,6 @@ CURL
   run_action "${install_env[@]}" INPUT_VERSION=v1.2.3 STUB_ANSWER=installed
   has "install: a given version, with or without v" "$(cat "$tmp/run/urls")" "/download/v1.2.3/"
 fi
-
 
 [ "$failures" -eq 0 ] || { echo "$failures failed" >&2; exit 1; }
 echo "all passed"
