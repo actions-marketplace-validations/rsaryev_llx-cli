@@ -4,7 +4,7 @@
 //! choice opens must not answer it. A list longer than its window is searchable instead: letters
 //! go to a query that filters it (`search`), PageUp, PageDown, Home and End move too, and no
 //! number picks. A list in groups shows one at a time, as tabs (`tabs`): Tab and Shift+Tab
-//! switch, and a search looks in every one.
+//! switch, a number picks only in the tab shown, and a search looks in every one.
 //!
 //! ```text
 //! • Run this command?
@@ -285,13 +285,13 @@ impl Select {
             }
             KeyCode::Enter if self.rows().is_empty() => {}
             KeyCode::Enter => return self.pick(self.at),
+            // A number picks a row listed: never one of a tab out of sight.
             KeyCode::Char(c) => {
-                let numbered = c
-                    .to_digit(10)
-                    .map(|n| n as usize)
-                    .filter(|n| (1..=self.choices.len()).contains(n));
-                if let Some(n) = numbered {
-                    return self.pick(n - 1);
+                let numbered = (c.to_digit(10).map(|n| n as usize))
+                    .and_then(|n| n.checked_sub(1))
+                    .filter(|at| self.rows().contains(at));
+                if let Some(at) = numbered {
+                    return self.pick(at);
                 }
             }
             _ => {}

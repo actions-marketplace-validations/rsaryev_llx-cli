@@ -153,3 +153,33 @@ fn one_providers_list_is_named_by_its_tab_with_nothing_to_switch() {
     assert!(shown.contains("[OpenAI 1]"), "{shown}");
     assert!(!shown.contains("tab provider"), "{shown}");
 }
+
+/// A short list in tabs: its numbers pick, but only a row the tab shown lists, never one of a
+/// tab out of sight.
+#[test]
+fn a_number_picks_only_a_row_of_the_tab_shown() {
+    let rows: Vec<(String, String)> = ["GPT-6 Luna", "GPT-5", "Claude Opus", "Claude Haiku"]
+        .iter()
+        .map(|name| (name.to_string(), String::new()))
+        .collect();
+    let group = |name: &str, rows| Group {
+        name: name.into(),
+        rows,
+    };
+    let asked = Asked::ChooseAdjustable {
+        title: "Model".into(),
+        adjustments: vec![Adjustment::default(); rows.len()],
+        options: rows,
+        marked: Some(2),
+        groups: vec![group("OpenAI", 2), group("Anthropic", 2)],
+    };
+    let mut app = App::new(80, 40, vec![]);
+    app.asked(1, "", asked, Instant::now());
+    let shown = screen(&mut app);
+    assert!(shown.contains("3. Claude Opus"), "{shown}");
+    assert!(!shown.contains("GPT-6 Luna"), "{shown}");
+    press(&mut app, &[KeyCode::Char('1')]);
+    assert_eq!(picked(&mut app), [], "row 1 is OpenAI's, out of sight");
+    press(&mut app, &[KeyCode::Char('4')]);
+    assert_eq!(picked(&mut app), [(1, Reply::Adjusted(Some((3, 0))))]);
+}
