@@ -214,7 +214,8 @@ pub(crate) fn ending(status: &str) -> (Style, &'static str, &'static str, &'stat
     match status {
         "done" => (style::done(), "✓", "done", "finished"),
         "no_data" => (style::failed(), "✗", "no data", "finished with no data"),
-        "exhausted" => (style::failed(), "✗", "out of turns", "ran out of turns"),
+        // Its turns, its time or its budget: the status does not say which.
+        "exhausted" => (style::failed(), "✗", "limit reached", "reached a limit"),
         "interrupted" => (style::waiting(), "■", "stopped", "was stopped"),
         _ => (style::failed(), "✗", "failed", "failed"),
     }
