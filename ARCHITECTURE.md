@@ -96,7 +96,7 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **C4**: the prompt cache is a constraint. Nothing rewrites an earlier message unless a budget
   forces it, then in one pass with headroom; what was elided stays elided. Settings that change
   between tasks reach the model as a note at the end.
-- **C5**: untrusted content stays data. Tool output, agents' answers, monitor lines are
+- **C5**: untrusted content stays data. Tool output, agents' answers, a monitor's output are
   tagged (`<agent_result>`, `<monitor>`) where the agent reads them, never instructions.
 - **C6**: (retired.)
 - **C7**: no task- or site-specific wording in the prompt or the tool descriptions. A rule earns its place by the evals and stays general.
@@ -272,6 +272,15 @@ command is cut.
   end of its output, as `bash` reports a command), a task of its own when none runs; it ends
   with the session, and in `exec` the task waits for it. An agent's command, with no jobs, runs
   to its end or its `timeout_ms` (at most 600 s) and is killed there.
+- **B10**: a monitor waits for one thing, as Localix's does: its command is a check, run every
+  `every` seconds (5 at least; each run held to that interval, 30 s at most) until it exits 0 or
+  its time is up (`timeout_ms`, 5 minutes by default, 30 at most, 10 in `exec`). It wakes the
+  model once, with how it ended (met, timed out, or a check that cannot run: 126 or 127, at
+  once) and what the check printed last. No job hands the model a stream of lines: a monitor
+  that woke it on each line kept a task from ever ending (22 turns in 32 s). A command that runs
+  long and ends by itself is `bash` with `run_in_background` (B9); work again and again is a
+  schedule. A job the person or the model stops opens no task: the model asked for the stop, or
+  reads it with the person's next task.
 
 ## Concurrency and errors
 
