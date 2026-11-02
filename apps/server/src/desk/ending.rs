@@ -6,9 +6,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Condvar, Mutex, PoisonError};
 use std::time::Duration;
 
+use protocol::Event;
+
 use crate::server::Ui;
 use crate::sync::lock;
-use protocol::Event;
 
 /// How long "Exit and stop tasks" waits for the lanes it stopped.
 const QUIT_WAIT: Duration = Duration::from_secs(2);
@@ -17,6 +18,7 @@ const QUIT_WAIT: Duration = Duration::from_secs(2);
 /// a session never open at two terminals at once (stops are by id, and the newest would win).
 static OPEN: Mutex<Vec<String>> = Mutex::new(Vec::new());
 
+/// How many lanes are open in every desk of the process, as `llx serve status` says it.
 pub(crate) fn open_anywhere() -> usize {
     lock(&OPEN).len()
 }

@@ -1,7 +1,7 @@
 //! The daemon as its host knows it (docs/daemon.md): a socket per config directory in the
 //! person's own runtime directory (a test home gets its own daemon), a lock on the config
-//! directory a second daemon is refused, its build, and how it is started. A client's way to it
-//! (its status, `reach`, `stop`) is the binary's (its `terminal`, in apps/cli: D7).
+//! directory that a second daemon is refused, its build, and how it is started. A client's way to
+//! it (its status, `reach`, `stop`) is the binary's (its `terminal`, in apps/cli: D7).
 
 use std::fs::File;
 use std::io::Write;

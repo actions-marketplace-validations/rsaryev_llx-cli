@@ -55,7 +55,7 @@ struct Lane {
 /// How a lane's queue is shown in the interface.
 type Tell = Box<dyn Fn(&str, Event) + Send + Sync>;
 
-/// Every lane's entries; `tell` shows a lane's queue (and what it read) in the interface.
+/// Every lane's entries, and whether the person left.
 #[derive(Default)]
 struct Table {
     lanes: HashMap<String, Lane>,
@@ -63,6 +63,7 @@ struct Table {
     left: bool,
 }
 
+/// Every lane's entries; `tell` shows a lane's queue (and what it read) in the interface.
 pub(crate) struct Inputs {
     lanes: Mutex<Table>,
     arrived: Condvar,
@@ -139,8 +140,8 @@ impl Inputs {
     }
 
     /// What the person said to the task running, taken (and shown as theirs). Asked between
-    /// every turn, so nothing said costs no snapshot of the queue; the lane's entry is made all
-    /// the same, for `close` to find during its first task.
+    /// every turn, so when nothing was said it takes no snapshot of the queue; the lane's entry
+    /// is made all the same, for `close` to find during its first task.
     pub(crate) fn steered(&self, lane: &str) -> Vec<String> {
         let mut lanes = self.lock();
         let state = lanes.lanes.entry(lane.into()).or_default();
@@ -159,8 +160,9 @@ impl Inputs {
         (self.lock().lanes.get(lane)).is_some_and(|state| !state.steered.is_empty())
     }
 
-    /// The lane's prompt gets nothing more: it ends at its next wait. Only a lane that waited
-    /// once is closed: the interface closes a lane at its prompt, and one gone is not made again.
+    /// The lane's prompt gets nothing more: it ends at its next wait. Only a lane the table
+    /// already has is closed: the interface closes a lane at its prompt, and one gone is not
+    /// made again.
     pub(crate) fn close(&self, lane: &str) {
         if let Some(state) = self.lock().lanes.get_mut(lane) {
             state.over = true;

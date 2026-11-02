@@ -16,8 +16,9 @@ use crate::desk::Request;
 /// What the server tells an interface of itself when it attaches.
 pub(crate) struct Info {
     pub max_lanes: usize,
-    /// What `/` offers, and the modes, each with what it does.
+    /// What `/` offers, each command with what it does.
     pub commands: Vec<(String, String)>,
+    /// The modes, each with what it does.
     pub modes: Vec<(String, String)>,
     /// The daemon this server is, when it is one.
     pub host: Option<Arc<Host>>,

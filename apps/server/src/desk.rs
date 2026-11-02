@@ -1,8 +1,9 @@
 //! The desk: the lanes of a session at the terminal. Each lane is a whole session of its own
-//! (its conversation, agents, jobs and stop) on a thread of its own, over what they all
-//! share (the workspace, the session store). The person opens one with `/new`
-//! and the others go on in the background. The desk ends when the last lane does, and when one
-//! panics the others are stopped, so a scope never waits for ever on a lane at its prompt.
+//! (its conversation, agents, jobs and stop) on a thread of its own, over what they all share
+//! (the workspace, the session store). The person opens one with `/new` or from the list of saved
+//! sessions, and the others go on behind the one shown. The desk ends when the last lane does,
+//! and when one panics the others are stopped, so a scope never waits for ever on a lane at its
+//! prompt.
 
 mod ending;
 
@@ -12,14 +13,13 @@ use std::thread::Scope;
 use std::time::Duration;
 
 use contracts::history::History;
-use protocol::Target;
+use protocol::{Event, Target};
 
 pub(crate) use self::ending::open_anywhere;
 use self::ending::{AllLanes, Lanes, Leaving};
 use crate::commands::repl;
 use crate::compose::{Rig, Seat, Shared};
 use crate::server::Ui;
-use protocol::Event;
 
 /// Lanes open at most: opening another closes the oldest idle one.
 pub(crate) const MAX_LANES: usize = 8;
@@ -35,7 +35,7 @@ pub(crate) enum Request {
     List,
     /// "Exit and stop tasks": every lane is stopped, then the process ends.
     Quit,
-    /// A client attached from this place: its directory, environment and colours.
+    /// A client attached from this place: its directory, its environment and its command line.
     Attach(protocol::Place),
     /// "Move to background and exit": the lanes go on when the interface's connection ends.
     Background,

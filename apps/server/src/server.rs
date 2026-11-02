@@ -1,7 +1,9 @@
 //! The server's side of the seam (ARCHITECTURE.md K2, W1-W8): the sessions' port to the
-//! interface, the lanes' input queues, where a client is, what is done with what an interface sends, and how the
-//! server says what it knows. Everything here goes, with the sessions it serves, to
-//! `apps/server`.
+//! interface (`ui`), the lanes' input queues (`inputs`), every client attached and what it was
+//! told (`hub`), what is done with what an interface sends (`serve`) and the socket it may come
+//! over (`socket`), the daemon as a client sees it (`host`), where a client is (`place`), the
+//! gate's and the person's answers (`asking`), how a call reads (`label`), domain values as their
+//! wire form (`wire`), and what runs in the lanes (`work`).
 
 pub(crate) mod asking;
 pub(crate) mod host;

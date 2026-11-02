@@ -3,10 +3,10 @@ use std::time::Duration;
 
 use super::*;
 
-/// Inputs that keep what they told the interface.
 /// What the interface was told, each event with its lane.
 type Told = Arc<Mutex<Vec<(String, Event)>>>;
 
+/// Inputs that keep what they told the interface.
 fn inputs() -> (Arc<Inputs>, Told) {
     let told = Arc::new(Mutex::new(vec![]));
     let kept = Arc::clone(&told);

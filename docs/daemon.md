@@ -90,8 +90,8 @@ A command is tagged by `type` (`command.rs`), and names the session it is for (W
 no handshake: `llx serve status`, `llx serve stop` and a client looking for its daemon connect,
 send one, and get no desk. A command the desk carries out (`open`, `list`, `quit_all`,
 `background`) is answered `failed` once the sessions have ended. A command that panics is answered
-`failed` (W8); so is a call the server cannot read, under its id. Any other line that is not a frame is dropped, and the client is
-told in a note.
+`failed` (W8); so is a call the server cannot read, under its id, even one that is not UTF-8. Any
+other line that is not a frame is dropped, and the client is told in a note.
 
 The events (`event.rs`): a session's header, notes and errors, its mode, a task's start and end,
 a call and its result (its label and outcome), a step under the call running, the answer, the
