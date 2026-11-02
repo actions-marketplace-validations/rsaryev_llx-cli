@@ -191,8 +191,17 @@ fn a_question_with_no_word_found_finds_nothing_and_a_path_not_there_is_named() {
     // A question with no words asks nothing: a usage error, as a broken pattern is.
     for empty in ["", "   "] {
         let out = grep(&home, None, &["grep", empty, "project"]);
-        assert_eq!(out.status.code(), Some(3), "{empty:?}: {}", text(&out.stderr));
-        assert!(text(&out.stderr).contains("question"), "{}", text(&out.stderr));
+        assert_eq!(
+            out.status.code(),
+            Some(3),
+            "{empty:?}: {}",
+            text(&out.stderr)
+        );
+        assert!(
+            text(&out.stderr).contains("question"),
+            "{}",
+            text(&out.stderr)
+        );
     }
 }
 
