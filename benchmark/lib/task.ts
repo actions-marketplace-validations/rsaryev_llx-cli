@@ -4,12 +4,13 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 /** What the agent may not change: the acceptance tests and the project's configuration. */
-export const FIXED = ["test", "package.json", "tsconfig.json"];
+const FIXED = ["test", "package.json", "tsconfig.json"];
 
+/** A command run to its end: its stdout, and `out`, its stdout and stderr together. */
 export function sh(cmd: string[], cwd?: string, timeout?: number) {
   const p = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", timeout });
   const stdout = p.stdout.toString();
-  return { code: p.exitCode, stdout, out: stdout + p.stderr.toString() };
+  return { stdout, out: stdout + p.stderr.toString() };
 }
 
 /** `bun test` in `dir`: the passes, the failures and what it printed. */
@@ -56,7 +57,8 @@ export function prepare(project: string, work: string) {
   sh(["sh", "-c", "git init -q && git add -A && git -c user.email=b@b -c user.name=b commit -qm start"], work);
 }
 
-/** The task is sound: the reference passes every test, the stubs next to none. */
+/** The task is sound: the project and the reference have the same fixed files, the reference
+ * passes every test, the stubs fewer than a tenth of them. */
 export function check(taskDir: string): number {
   const ref = path.join(taskDir, "ref"), project = path.join(taskDir, "project");
   const differ = tampered(project, ref);

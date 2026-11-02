@@ -25,8 +25,8 @@ const version = (a: Agent) => a.commit ?? a.version;
 const table = (head: string[], rows: (string | number)[][]) =>
   [`| ${head.join(" | ")} |`, `|${"---|".repeat(head.length)}`, ...rows.map((r) => `| ${r.join(" | ")} |`)];
 
-/** The median, a whole number where it is one. */
-export function median(values: number[]): number {
+/** The median, rounded to four places. */
+function median(values: number[]): number {
   const v = [...values].sort((a, b) => a - b), mid = Math.floor(v.length / 2);
   const m = v.length % 2 ? v[mid] : (v[mid - 1] + v[mid]) / 2;
   return Math.round(m * 1e4) / 1e4;

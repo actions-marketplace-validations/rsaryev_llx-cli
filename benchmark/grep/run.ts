@@ -3,16 +3,20 @@
 // (queries.json), by group, beside `rg` as an agent would first type it.
 //
 // The repository at the queries' commit is put in a fresh git repository outside this one (so
-// `git ls-files` lists what it did then), and each question is asked in each mode:
+// `git ls-files` lists what it did then), and each question is asked in each mode (by default
+// words, judged and rg):
 //
 // - `words`:  `llx grep --lexical`, the ranking by the question's words alone (no network);
 // - `judged`: `llx grep`, the words' best files read by the decision model (an OpenRouter key);
+// - `hybrid`, `hybrid-words`: `llx grep -i -e PATTERN` with the question, the pattern rg is
+//   given, with the decision model and without;
 // - `rg`:     `rg -c -i PATTERN`, files by their count of matches, the pattern an agent would type.
 //
 // Each answer is scored against the files it must name (`must`) and those it may (`ok`): recall at
 // 5 and 10, precision of its first 5, the reciprocal rank of its first right file, for a question
-// with no answer whether it named none, the time, the cost, and the bytes an agent would read.
-// results/<date>_<time>[-label].json keeps every answer; HISTORY.md a line per run (--record).
+// with no answer whether it named none, the time, the cost, and the bytes an agent would read
+// (score.ts). results/<date>-<hh>-<mm>[-label].json, in UTC, keeps every answer; HISTORY.md a
+// line per run (--record).
 
 import * as fs from "node:fs";
 import * as os from "node:os";
@@ -45,7 +49,7 @@ const queries: Query[] = spec.queries.filter(
 
 function sh(cmd: string[], cwd: string): { out: string; err: string; code: number; millis: number } {
   const started = performance.now();
-  const run = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe", env: process.env });
+  const run = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
   return {
     out: run.stdout.toString(),
     err: run.stderr.toString(),
@@ -117,7 +121,7 @@ if (opts.ranks) {
   let deepest = 0;
   for (const q of queries.filter((q) => q.must.length)) {
     const run = sh([opts.llx!, "grep", "--lexical", "-l", "-n", "5000", q.query, ...(q.paths ?? [])], repo);
-    // As the model's reading leaves tests out.
+    // In the order the decision model reads: tests left out, as for a question not about them.
     const listed = run.out.split("\n").filter((f) => f && !isTest(f));
     const ranks = q.must.map((m) => listed.indexOf(m) + 1 || null);
     const found = ranks.filter((r): r is number => r !== null);

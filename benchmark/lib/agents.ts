@@ -51,9 +51,11 @@ export function agent(spec: string): Agent {
   const label = eq < 0 ? kind : spec.slice(0, eq);
   const given = colon < 0 ? null : path.resolve(rest.slice(colon + 1));
   const binary = given ?? (kind === "llx" ? BUILT : Bun.which("codex"));
-  if (!binary || !fs.existsSync(binary)) throw new Error(`${kind}: no binary at ${binary} (cargo build --release?)`);
+  if (!binary) throw new Error(`${kind}: none on the PATH`);
+  if (!fs.existsSync(binary)) throw new Error(`${kind}: no binary at ${binary}${given ? "" : " (cargo build --release?)"}`);
   const version = sh([binary, "--version"]).stdout.trim();
-  // llx built from this repository is known by its commit; any other binary by its bytes.
+  // An llx is known by its bytes, and one built from this repository by its commit too; Codex
+  // by its version alone.
   let commit: string | null = null, bytes: number | null = null, sha256: string | null = null;
   if (kind === "llx") {
     const data = fs.readFileSync(binary);

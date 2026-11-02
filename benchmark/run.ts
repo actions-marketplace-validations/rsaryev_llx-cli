@@ -32,7 +32,7 @@ const gz = (from: string, to: string) => fs.writeFileSync(to, Bun.gzipSync(fs.re
 type Logs = { events: string; stderr: string; extra: { name: string; from: string }[] };
 type After = {
   exit: number | null; wall_s: number; pass: number; fail: number; tests: number;
-  tampered: string[]; test: string; src: string | null;
+  tampered: string[]; test: string; src: string;
 };
 
 /** A run's logs kept in `dir`, compressed, and what they say: the one record of a run. */
@@ -43,7 +43,7 @@ function keep(dir: string, a: Agent, i: number, logs: Logs, after: After, price:
   if (fs.existsSync(logs.stderr)) gz(logs.stderr, path.join(dir, "stderr.txt.gz"));
   for (const x of logs.extra) gz(x.from, path.join(dir, `${x.name}.gz`));
   fs.writeFileSync(path.join(dir, "test.txt.gz"), Bun.gzipSync(Buffer.from(after.test)));
-  if (after.src) sh(["tar", "czf", path.join(dir, "src.tar.gz"), "-C", path.dirname(after.src), path.basename(after.src)]);
+  sh(["tar", "czf", path.join(dir, "src.tar.gz"), "-C", path.dirname(after.src), path.basename(after.src)]);
   fs.writeFileSync(path.join(dir, "answer.md"), d.answer.trim() + "\n");
   const sum = (key: keyof Request) => d.requests.reduce((s, r) => s + r[key], 0);
   const [input, cached] = [sum("input"), sum("cached")];
@@ -105,13 +105,17 @@ async function main(): Promise<number> {
   });
   if (v.help) {
     console.log(`usage: bun benchmark/run.ts [options]  (see benchmark/README.md)
-  --task ${tasks.join("|")}     the task (default evalkit)
+${`  --task ${tasks.join("|")}`.padEnd(31)}the task (default evalkit)
   --agent [label=]kind[:path]  an agent (${KINDS.join(", ")}); repeat to compare (default: llx, this
                                repository's target/release/llx)
   --repeat N                   runs an agent (default 1)
   --note TEXT                  a line for the summary: what this run is for
   --no-advice                  llx without its advisor (Jev), which needs an OpenRouter key
-  --timeout S, --parallel N, --provider, --model, --reasoning
+  --provider P, --model M      what the agents think with (default openai, gpt-6-luna; Codex
+                               takes the model, not the provider)
+  --reasoning LEVEL            the level they think at (default low)
+  --timeout S                  each run's limit (default 1200; both agents are killed 60 s past it)
+  --parallel N                 at most N runs at once (default 4)
   --check                      only check the task: the reference passes, the stubs next to none
   --history                    only make HISTORY.md again from results/`);
     return 0;
@@ -130,10 +134,11 @@ async function main(): Promise<number> {
   const now = new Date();
   const out = path.join(RESULTS, `${stamp(now, "", "_")}-${v.task}`);
   fs.mkdirSync(out, { recursive: true });
-  const macos = os.type() === "Darwin" ? sh(["sw_vers", "-productVersion"]).stdout.trim() : os.release();
+  // macOS by its version, any other system by its kernel's.
+  const release = os.type() === "Darwin" ? sh(["sw_vers", "-productVersion"]).stdout.trim() : os.release();
   const run: Run = {
     when: stamp(now, ":", " "), task: v.task!, tests, provider: o.provider, model: o.model, reasoning: o.reasoning,
-    advice: o.advice, timeout_s: o.timeout, repeat, note: v.note!, machine: `${os.type()} ${os.arch()} ${macos}`,
+    advice: o.advice, timeout_s: o.timeout, repeat, note: v.note!, machine: `${os.type()} ${os.arch()} ${release}`,
     load: Math.round(os.loadavg()[0] * 10) / 10, agents, runs: [],
   };
   console.log(`${run.when} ${run.task} (${tests} tests): ${agents.map((a) => a.label).join(", ")}; load ${run.load}; ${out}`);
