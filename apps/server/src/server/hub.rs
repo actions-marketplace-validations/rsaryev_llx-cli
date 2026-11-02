@@ -23,7 +23,7 @@ mod ring;
 pub(crate) type ClientId = u64;
 
 /// Events kept for a client that attaches later.
-pub(crate) const KEPT: usize = 2_000;
+pub(super) const KEPT: usize = 2_000;
 
 /// Bytes the ring keeps at most, about: long tool reports are replayed only while they fit.
 pub(super) const KEPT_BYTES: usize = 8 << 20;

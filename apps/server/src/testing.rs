@@ -215,10 +215,11 @@ pub(crate) fn users(rig: &Rig) -> Vec<String> {
 pub(crate) struct Scripted {
     picks: VecDeque<Option<usize>>,
     pub(crate) shown: Vec<(String, Vec<crate::picker::Item>)>,
-    /// The groups each adjustable list was in: a name and its rows.
+    /// Each adjustable list's groups: a name and its rows.
     pub(crate) grouped: Vec<Vec<(String, usize)>>,
-    /// Each adjustable list's values, row by row, and the level picked when a pick names one.
+    /// Each adjustable list's values, row by row.
     pub(crate) adjusted: Vec<Vec<protocol::Adjustment>>,
+    /// The level an adjustable pick names, else the row's own.
     pub(crate) level: Option<usize>,
 }
 
@@ -226,10 +227,7 @@ impl Scripted {
     pub(crate) fn new(picks: &[Option<usize>]) -> Self {
         Self {
             picks: picks.iter().copied().collect(),
-            shown: vec![],
-            grouped: vec![],
-            adjusted: vec![],
-            level: None,
+            ..Self::default()
         }
     }
 

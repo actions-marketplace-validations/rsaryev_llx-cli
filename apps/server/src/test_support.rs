@@ -90,7 +90,7 @@ impl Drop for Scratch {
 /// and the conversations it was asked to go on from.
 pub struct Gated {
     replies: Mutex<Receiver<Completion>>,
-    pub(crate) asked: Mutex<Vec<Vec<Message>>>,
+    asked: Mutex<Vec<Vec<Message>>>,
 }
 
 /// A [`Gated`] model, and where its replies are sent.

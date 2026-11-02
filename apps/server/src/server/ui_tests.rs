@@ -1,9 +1,9 @@
-use super::*;
 use std::sync::mpsc::{self, Receiver, Sender};
-
-use protocol::{Command, ToServer};
 use std::time::Duration;
 
+use protocol::{Command, ToServer};
+
+use super::*;
 use crate::testing::fake_ui;
 
 #[test]

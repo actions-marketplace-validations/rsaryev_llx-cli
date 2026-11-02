@@ -15,7 +15,7 @@ use crate::server::{Peer, Ui};
 const WAIT: Duration = Duration::from_secs(5);
 
 /// A socket path in a directory of its own (made by `bind`), short enough for `sun_path`.
-pub(crate) fn place(name: &str) -> PathBuf {
+fn place(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("llx-s{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     dir.join("d.sock")
@@ -23,16 +23,16 @@ pub(crate) fn place(name: &str) -> PathBuf {
 
 /// A daemon at `path` serving each connection as the binary serves its interface: its peer
 /// handed to the test, and a word when its `serve` returns.
-pub(crate) struct Daemon {
-    pub(crate) peers: Receiver<Arc<Peer>>,
-    pub(crate) ended: Receiver<()>,
+struct Daemon {
+    peers: Receiver<Arc<Peer>>,
+    ended: Receiver<()>,
 }
 
 #[expect(
     clippy::disallowed_methods,
     reason = "the desk's requests, as the binary makes its channel"
 )]
-pub(crate) fn daemon(path: &Path) -> Daemon {
+fn daemon(path: &Path) -> Daemon {
     let (peers, peers_out) = sync_channel(4);
     let (ended, ended_out) = sync_channel(4);
     let peers: SyncSender<Arc<Peer>> = peers;
