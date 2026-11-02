@@ -1,8 +1,8 @@
 //! One queue for everything that reaches a session's run from outside its own calls: an agent's
-//! answer, a monitor's lines, a schedule's tick, and whatever comes later. The
-//! queue knows no source. Each entry carries its own policy, the one table every source
-//! answers: whether a running task takes it at its next step, and what becomes of it while no
-//! task runs. The reader (the agent's inbox) knows only entries.
+//! answer, a monitor's lines, a schedule's prompt, and whatever comes later. The queue knows no
+//! source. Each entry carries its own policy, the one table every source answers: whether a
+//! running task takes it at its next step, and what becomes of it while no task runs. The reader
+//! (the agent's inbox) knows only entries.
 //!
 //! Nothing leaks: the queue is bounded (the oldest go first, and the reader is told how many),
 //! an entry's body is data inside its tag and cannot close it, and a source's entries can be
@@ -35,9 +35,10 @@ pub struct Policy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
     pub policy: Policy,
-    /// What it is, and the tag it is read in (`agent_result`, `monitor`, `schedule`); empty for a
-    /// line of the queue's own.
+    /// What it is, and the tag it is read in (`agent_result`, `monitor`); empty for one read as
+    /// it is (a schedule's prompt, a line of the queue's own).
     pub tag: String,
+    /// The tag's attributes, in order (`job="j2"`).
     pub attrs: Vec<(String, String)>,
     pub body: String,
     /// Its source (an agent's session, a job), to take or forget its entries by.
@@ -112,6 +113,8 @@ struct State {
     dropped: usize,
 }
 
+/// The queue: its entries in the order they came, whether a task runs, and where an entry that
+/// opens a task of its own goes.
 pub struct Queue {
     state: Mutex<State>,
     wake: Condvar,
@@ -138,6 +141,8 @@ impl Queue {
         self
     }
 
+    /// An entry as it comes: kept while a task runs, else opened, kept for the next task or
+    /// dropped, as its policy says; a full queue lets its oldest go.
     pub fn post(&self, entry: Entry) {
         let mut state = self.lock();
         if !state.busy {
@@ -223,7 +228,8 @@ impl Queue {
         self.lock().entries.retain(|entry| !which(entry));
     }
 
-    /// Wait up to `timeout` for an entry to come.
+    /// Wait up to `timeout` for an entry to come; not at all when one a running task takes is
+    /// there already.
     pub fn wait(&self, timeout: Duration) {
         let state = self.lock();
         if state.entries.iter().any(|entry| entry.policy.joins) {
