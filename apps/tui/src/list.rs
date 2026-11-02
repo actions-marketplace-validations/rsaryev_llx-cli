@@ -17,10 +17,11 @@ use super::style;
 use super::wrap::cut;
 
 impl App {
-    /// The list's last row drawn: the jobs past the first few are only counted.
-    pub(super) fn last_row(&self) -> usize {
+    /// The list's last row drawn (the jobs past the first few are only counted); `None` while
+    /// it draws none, and has no row to choose.
+    pub(super) fn last_row(&self) -> Option<usize> {
         let rows = self.views.order().len() + self.views.jobs.len().min(super::tree::ROWS);
-        rows.saturating_sub(1)
+        rows.checked_sub(1)
     }
 
     /// Whether ↓ on the composer moves into the list: it is empty, offers nothing, and there
@@ -69,7 +70,9 @@ impl App {
         match key.code {
             KeyCode::Up if row == 0 => self.views.focus = None,
             KeyCode::Up => self.views.focus = Some(row - 1),
-            KeyCode::Down => self.views.focus = Some(stepped(row, self.last_row(), key.code)),
+            KeyCode::Down => {
+                self.views.focus = self.last_row().map(|last| stepped(row, last, key.code));
+            }
             KeyCode::Enter | KeyCode::Right => {
                 if let Some(id) = session.map(|view| view.id.clone()) {
                     self.views.focus = None;

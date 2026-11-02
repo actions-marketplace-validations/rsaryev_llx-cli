@@ -343,6 +343,22 @@ fn a_gap_that_takes_the_job_chosen_gives_the_keys_back_to_the_prompt() {
 }
 
 #[test]
+fn the_last_job_ending_gives_the_keys_back_to_the_prompt() {
+    let now = Instant::now();
+    let mut app = app();
+    app.event(Event::Jobs(vec![job("tui-last-job-ends", "watch")]), now);
+    press(&mut app, KeyCode::Down, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
+    // Its job ended, and the lane started no agent: no list is drawn to choose in.
+    app.event(Event::Jobs(vec![]), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert!(!screen.contains("watch"), "{screen}");
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
+}
+
+#[test]
 fn an_agent_started_in_a_lane_gets_its_events() {
     let now = Instant::now();
     let mut app = app();

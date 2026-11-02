@@ -77,9 +77,10 @@ impl App {
                 let mut jobs = std::mem::take(&mut self.views.jobs);
                 jobs.sort_by_key(|(lane, _)| self.views.find(lane));
                 self.views.jobs = jobs;
-                // A row that went takes the list's keys to the last one left.
+                // A row that went takes the list's keys to the last one left; with none left,
+                // the prompt has them (a list no longer drawn would take the next key).
                 let last = self.last_row();
-                self.views.focus = self.views.focus.map(|row| row.min(last));
+                self.views.focus = self.views.focus.zip(last).map(|(row, last)| row.min(last));
             }
             (Event::LaneStarted { id, name }, _) => {
                 self.views.lane_started(id.clone(), &name);
