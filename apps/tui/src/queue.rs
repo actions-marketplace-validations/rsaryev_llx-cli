@@ -33,9 +33,10 @@ impl App {
         held || self.questions.iter().any(|asked| asked.asker == view.id)
     }
 
-    /// The name lane `lane` is shown by on its questions while it is not shown; `None` when it is.
+    /// What lane `lane` is shown by on its questions while it is not shown, as the session list
+    /// names it (a lane with no name yet is a new session); `None` when it is shown.
     pub(super) fn label(&self, lane: usize) -> Option<String> {
-        (lane != self.views.home()).then(|| self.views.sessions[lane].name.clone())
+        (lane != self.views.home()).then(|| self.views.sessions[lane].title().to_string())
     }
 
     /// A question from the lane at `lane`: it waits behind those already asked. It ignores keys

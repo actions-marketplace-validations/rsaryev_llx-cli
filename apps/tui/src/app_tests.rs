@@ -551,6 +551,20 @@ fn hidden_lane_approval_opens_labelled() {
 }
 
 #[test]
+fn hidden_lane_with_no_name_yet_asks_as_the_session_list_names_it() {
+    let now = Instant::now();
+    let mut app = lanes(now);
+    let (id, name) = ("C".into(), String::new());
+    app.event(Event::LaneStarted { id, name }, now);
+    let _answer = approve(&mut app, "C", "cargo test -p jobs", now);
+    let shown = render(&mut app, now);
+    assert!(
+        shown.contains("session New session (in the background)"),
+        "{shown}"
+    );
+}
+
+#[test]
 fn own_lane_approval_has_no_label() {
     let now = Instant::now();
     let mut app = lanes(now);
