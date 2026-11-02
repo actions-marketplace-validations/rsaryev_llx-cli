@@ -21,6 +21,7 @@
 - A browser sign-in (`/login`) no longer waits for the browser to close where `xdg-open` keeps it in the foreground (Linux with no desktop it knows): the opener is left in the background, and its output never reaches the terminal.
 - With `--schema`, a field the schema's `required` names is checked where it lists no `properties` beside it: `{"type": "object", "required": ["price"]}` no longer takes `{}` as matching data.
 - A sign-in's callback, or the address pasted in its place, reads a percent escape only as `%` and two hex digits: `%+1` is no longer the byte 1, but `%`, a space and `1`.
+- Agents started in the same second are no longer given the same session id (a chance in 65,536 for each two of them), which mixed up their saved sessions, their stops, their answers and their views: a process counts its ids up from one random draw.
 
 ## 0.2.0
 
