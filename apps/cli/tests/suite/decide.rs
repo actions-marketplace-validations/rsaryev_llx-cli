@@ -262,10 +262,13 @@ fn a_file_that_cannot_be_read_is_named_and_the_others_are_still_answered() {
         .arg(home.path().join("a.txt"));
     let out = home.exec_command(command, "");
     assert_eq!(out.status.code(), Some(3));
+    let said = text(&out.stderr);
+    let line = said.lines().find(|line| line.contains("missing.txt"));
+    // One line, the command named once at its start: then the file, then why.
     assert!(
-        text(&out.stderr).contains("missing.txt"),
-        "{}",
-        text(&out.stderr)
+        line.is_some_and(|line| line.starts_with("llx decide: ")
+            && line.contains("missing.txt: could not read the file: ")),
+        "{said}"
     );
     assert!(
         text(&out.stdout).starts_with("no\t"),

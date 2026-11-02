@@ -38,8 +38,8 @@ pub(super) fn each(
             }
             Err(failure) => {
                 failed = true;
-                let why = failure.message().unwrap_or_default();
-                error::note(&format!("llx decide: {name}: {why}\n"));
+                // The reason alone: `message` is a line of its own, already headed `llx:`.
+                error::note(&format!("llx decide: {name}: {failure}\n"));
             }
         }
     }
