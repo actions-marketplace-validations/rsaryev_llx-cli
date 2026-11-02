@@ -36,3 +36,37 @@ fn the_claims_of_a_token_are_read_without_its_signature() {
     );
     assert_eq!(claims("not-a-token"), None);
 }
+
+/// An opener that runs the browser in the foreground until it is closed, as `xdg-open` does where
+/// no desktop is known: the sign-in must not wait for it, or the callback is never awaited.
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a backoff: the opener, left to the system, writes its file with no event to wait on"
+)]
+fn an_opener_that_stays_does_not_hold_up_the_sign_in() {
+    let dir = std::env::temp_dir().join(format!("llx-kit-open-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let (opener, marker) = (dir.join("opener"), dir.join("opened"));
+    // Written whole, then renamed: the file is there only once it says something.
+    let script = format!(
+        "#!/bin/sh\necho \"$1\" > '{0}.tmp' && mv '{0}.tmp' '{0}'\nsleep 5\n",
+        marker.display()
+    );
+    std::fs::write(&opener, script).unwrap();
+    std::fs::set_permissions(&opener, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+    let started = std::time::Instant::now();
+    opened(opener.to_str().unwrap(), "https://example.test/?a=1&b=2");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(2),
+        "{:?}",
+        started.elapsed()
+    );
+    let deadline = started + std::time::Duration::from_secs(5);
+    while !marker.exists() && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    let said = std::fs::read_to_string(&marker).unwrap();
+    assert_eq!(said.trim(), "https://example.test/?a=1&b=2");
+    let _ = std::fs::remove_dir_all(&dir);
+}

@@ -61,11 +61,24 @@ pub fn claims(token: &str) -> Option<Value> {
 /// opens the address shown instead).
 pub fn open(address: &str) {
     #[cfg(target_os = "macos")]
-    let command = std::process::Command::new("open").arg(address).spawn();
+    opened("open", address);
     #[cfg(not(target_os = "macos"))]
-    let command = std::process::Command::new("xdg-open").arg(address).spawn();
-    // The opener hands the address on and ends at once: waited for, it leaves no zombie behind
-    // in a daemon that runs for weeks. (R10's debt: a short local query with no deadline.)
+    opened("xdg-open", address);
+}
+
+/// Hand `address` to the opener `program`, started in the background of a shell that ends at
+/// once: an opener may stay until the browser it started is closed (`xdg-open` where no desktop
+/// is known), and the sign-in waits for the callback meanwhile. The shell is waited for, so a
+/// daemon that runs for weeks keeps no zombie; the opener, left to the system, is reaped by it.
+/// Its streams go nowhere: a browser's messages never reach the terminal llx draws in.
+fn opened(program: &str, address: &str) {
+    use std::process::{Command, Stdio};
+    let command = Command::new("sh")
+        .args(["-c", "\"$0\" \"$1\" &", program, address])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
     let _ = command.and_then(|mut child| child.wait());
 }
 
