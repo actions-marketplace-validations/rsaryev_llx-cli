@@ -154,7 +154,7 @@ export const CARDS: Card[] = [
         ],
         align: 'lr',
       },
-      out('llx grep: 4 of 1199 files answer, 80 read by ~typesafe/jev-latest (2.1 s, $0.0050)', 'dim'),
+      out('llx grep: 3 of 1199 files answer, 80 read by ~typesafe/jev-latest (2.1 s, $0.0050)', 'dim'),
       {
         grid: [
           [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],

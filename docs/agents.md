@@ -79,7 +79,7 @@ The same skill, as a plugin:
 /plugin install llx --marketplace rsaryev/llx
 ```
 
-On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs the commands that change nothing without asking: `llx grep`, `llx decide`, `llx exec --mode plan`, `llx doctor` and `llx --help`.
+On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs, without asking, the commands that change nothing: `llx grep`, `llx decide`, `llx exec --mode plan`, `llx doctor` and `llx --help`.
 
 ### AGENTS.md / CLAUDE.md
 
