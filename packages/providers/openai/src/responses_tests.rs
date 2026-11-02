@@ -835,6 +835,25 @@ fn what_is_said_within_a_task_keeps_its_routing_token() {
 }
 
 #[test]
+fn a_long_task_never_pushes_another_off_its_route() {
+    // An agent's task of a hundred turns, each reply naming its machine again, keeps one token:
+    // the main session's task, still at work, is routed to its own cache after it.
+    let main = conversation();
+    let agent = [
+        Message::System("rules".into()),
+        Message::User("an agent's brief".into()),
+    ];
+    let mut replies = vec![Some("main")];
+    replies.extend([Some("agent"); 100]);
+    replies.push(None);
+    let mut asked: Vec<(&[Message], u64)> = vec![(&main, 1)];
+    asked.extend([(&agent[..], 2); 100]);
+    asked.push((&main, 1));
+    let sent = tokens_sent(replies, &asked);
+    assert_eq!(sent.last(), Some(&Some("main".into())));
+}
+
+#[test]
 fn a_task_after_a_rewind_never_takes_the_token_of_the_one_it_replaces() {
     // The same goal at the same place in the conversation, but another task.
     let goal = &conversation()[..2];
