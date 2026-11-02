@@ -121,6 +121,32 @@ Ready-made GitHub workflows, each run for real: [pull request review](examples/g
 
 Claude Code, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` answers a yes or no about some text in about a second. See [docs/agents.md](docs/agents.md).
 
+For example, llx as a subagent of Claude Code: your session keeps thinking on its own model, and the bulk work (reading a large codebase, a long CI log, a first pass over a diff) goes to a cheaper model, or to the ChatGPT plan you already pay for. Put this in `.claude/agents/llx.md`:
+
+```markdown
+---
+name: llx
+description: Use proactively for bulk work whose answer is short (reading or searching a large codebase, summarizing a long log, a first pass over a diff). Hands the task to llx on a cheaper model.
+tools: Bash
+model: haiku
+effort: low
+maxTurns: 3
+---
+
+You only relay. Run the task you are given with llx, in one command, then reply with what it
+printed, as it is: no commentary, nothing of your own.
+
+    llx exec --mode plan --timeout 600 --budget 0.20 "<the task, with every path and fact it needs>" 2>/dev/null
+
+stdout is the answer alone; the trace goes to stderr. Add `--provider openai -m gpt-6-luna` for a
+ChatGPT sign-in, or `--provider openrouter -m <model>`. If it exits non-zero, run it once more
+without `2>/dev/null` and reply with the error. Never read the files or do the task yourself.
+```
+
+A Claude Code subagent always thinks on a Claude model, so here a small one (`haiku`, three turns at most) only hands the task over, and llx's model does the work. Allow the call once in `.claude/settings.json` (`"permissions": {"allow": ["Bash(llx exec *)"]}`) and start a new session: subagents are read as it starts. Claude delegates by the description alone only now and then; a line in `CLAUDE.md` ("hand bulk reading and searching to the llx subagent") makes it the habit. To skip the relay, a line there ("for bulk reading, run `llx exec --mode plan "…"`") has your session call llx itself.
+
+Codex takes the same as a few lines of its `AGENTS.md`: "for a task that is mostly reading or summarizing, run `llx exec --mode plan "…"` and use its stdout as the answer". llx needs the network and sets up its own sandbox, so approve the command outside Codex's.
+
 ## Documentation
 
 [Using llx](docs/usage.md) · [CI](docs/ci.md) · [Recipes](docs/recipes.md) · [Tools](docs/tools.md) · [Modes and trust](docs/modes.md) · [In other agents](docs/agents.md) · [Reference](docs/reference.md) · [Daemon](docs/daemon.md) · [Architecture](ARCHITECTURE.md) · [Models](MODELS.md) · [Changelog](CHANGELOG.md)
