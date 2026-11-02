@@ -1,5 +1,5 @@
-//! Where an interface is, as it tells the server at its handshake: both interfaces (the
-//! terminal's and its tests') read it the same way from their own process.
+//! Where an interface is, as it tells the server at its handshake (`Command::Initialize`), read
+//! from its own process: the daemon serves it there, with its environment.
 
 use std::path::Path;
 

@@ -42,13 +42,11 @@ struct Pending {
     gone: bool,
 }
 
-type Waiting = Mutex<Pending>;
-
 /// The interface's connection to the server; cheap to clone, one per thread that calls.
 #[derive(Clone)]
 pub struct Client {
     to_server: Sender<ToServer>,
-    waiting: Arc<Waiting>,
+    pending: Arc<Mutex<Pending>>,
     next: Arc<AtomicU64>,
 }
 
@@ -70,8 +68,8 @@ impl Client {
         from_server: impl IntoIterator<Item = ToClient, IntoIter: Send> + 'static,
         deliver: impl Fn(ToClient) + Send + 'static,
     ) -> std::io::Result<Self> {
-        let waiting = Arc::new(Waiting::default());
-        let theirs = Arc::clone(&waiting);
+        let pending = Arc::new(Mutex::default());
+        let theirs = Arc::clone(&pending);
         let from_server = from_server.into_iter();
         std::thread::Builder::new()
             .name("llx-client".into())
@@ -97,7 +95,7 @@ impl Client {
             })?;
         Ok(Self {
             to_server,
-            waiting,
+            pending,
             next: Arc::new(AtomicU64::new(1)),
         })
     }
@@ -107,21 +105,21 @@ impl Client {
         let (reply, done) = sync_channel(1);
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         {
-            let mut pending = lock(&self.waiting);
+            let mut pending = lock(&self.pending);
             if pending.gone {
                 return Err(CallError::Gone);
             }
             pending.waiting.insert(id, reply);
         }
         if self.to_server.send(ToServer::Call { id, command }).is_err() {
-            lock(&self.waiting).waiting.remove(&id);
+            lock(&self.pending).waiting.remove(&id);
             return Err(CallError::Gone);
         }
         match done.recv_timeout(wait) {
             Ok(Done::Failed { why }) => Err(CallError::Failed(why)),
             Ok(done) => Ok(done),
             Err(RecvTimeoutError::Timeout) => {
-                lock(&self.waiting).waiting.remove(&id);
+                lock(&self.pending).waiting.remove(&id);
                 Err(CallError::Timeout)
             }
             Err(RecvTimeoutError::Disconnected) => Err(CallError::Gone),
@@ -140,16 +138,17 @@ impl Client {
     }
 
     fn frame(&self, frame: ToServer) -> Result<(), CallError> {
-        if lock(&self.waiting).gone {
+        if lock(&self.pending).gone {
             return Err(CallError::Gone);
         }
         (self.to_server.send(frame)).map_err(|_gone| CallError::Gone)
     }
 }
 
-/// The table, whatever a thread that held it did: it is only a map of waiting channels.
-fn lock(waiting: &Waiting) -> MutexGuard<'_, Pending> {
-    waiting.lock().unwrap_or_else(PoisonError::into_inner)
+/// The table, even after a thread panicked holding it: each change to it is one insert, removal
+/// or flag, never left half made.
+fn lock(pending: &Mutex<Pending>) -> MutexGuard<'_, Pending> {
+    pending.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 pub mod place;
