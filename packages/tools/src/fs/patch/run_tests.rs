@@ -408,3 +408,15 @@ fn a_workspace_verdict_makes_the_change_and_one_inside_git_must_leave_the_sandbo
         ]
     );
 }
+
+#[test]
+fn a_change_inside_a_nested_repositorys_git_must_leave_the_sandbox_too() {
+    let dir = Scratch::new();
+    dir.file("sub/.git/config", "[core]\n");
+    let gate = Recorder::answering(Verdict::Workspace);
+    patch(&dir, &gate, "*** Add File: sub/.git/hooks/pre-commit\n+x\n").unwrap();
+    assert_eq!(
+        *gate.asked.lock().unwrap(),
+        ["apply_patch: create sub/.git/hooks/pre-commit (1 line) [open]"]
+    );
+}

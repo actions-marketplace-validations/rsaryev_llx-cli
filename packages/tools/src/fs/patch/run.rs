@@ -54,9 +54,13 @@ fn carry_out(workspace: &Workspace, gate: &dyn Gate, patch: &str) -> Result<Tool
         plan(workspace, &mut files, &mut steps, hunk)?;
     }
     for step in &steps {
-        // No sandbox keeps a change inside `.git` safe: a hook written there runs at the next
-        // commit (B3, B6).
-        let needs = match Path::new(&step.subject).starts_with(".git") {
+        // No sandbox keeps a change inside a `.git` safe, the workspace's or a nested
+        // repository's: a hook written there runs at the next commit (B3, B6). Any case: a
+        // macOS volume takes `.GIT` as `.git`.
+        let in_git = Path::new(&step.subject)
+            .components()
+            .any(|part| part.as_os_str().eq_ignore_ascii_case(".git"));
+        let needs = match in_git {
             true => Needs::Open,
             false => Needs::Sandbox,
         };

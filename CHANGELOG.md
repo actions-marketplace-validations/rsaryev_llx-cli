@@ -11,6 +11,7 @@
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
 - The cursor no longer lands a row too low when rows wider than the terminal sit both above and below it in the live area.
 - Ctrl+G's draft for `$EDITOR` is made as a new file only the person can read: a link planted at its name in a shared `/tmp` is no longer written through.
+- A patch to a file inside a nested repository's `.git` (`sub/.git/hooks/pre-commit`) is asked as one that must leave the sandbox, as one inside the workspace's own `.git` is: a hook written there would run at the next commit there.
 - A browser sign-in (`/login`) no longer waits for the browser to close where `xdg-open` keeps it in the foreground (Linux with no desktop it knows): the opener is left in the background, and its output never reaches the terminal.
 
 ## 0.2.0
