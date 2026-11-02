@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds release archives into dist/: one per target, named the way install.sh looks them up,
-# plus SHA256SUMS. CI (.github/workflows/release.yml) runs it once per
-# platform; it needs only what the runners have: cargo with rustup, tar, and lipo (macOS).
+# plus SHA256SUMS. CI (.github/workflows/release.yml) runs it once per platform; it needs only
+# what the runners have: cargo with rustup, tar, and lipo (macOS).
 #
 #   scripts/dist.sh                            # every target this host builds
 #   scripts/dist.sh x86_64-unknown-linux-gnu   # just these
