@@ -10,7 +10,7 @@ mod frame;
 
 pub use asked::{Adjustment, Answer, Approval, Asked, Choice, Group, Question, Reply};
 pub use command::{Command, Done, Input, Offer, Running, Target};
-pub use event::{Event, JobKind, JobRow, Label, Outcome, Saved, Total, Turn, Update};
+pub use event::{Event, JobEnd, JobKind, JobRow, Label, Outcome, Saved, Total, Turn, Update};
 pub use frame::{ToClient, ToServer};
 
 /// The input that switches to the next mode, as Shift+Tab sends it.

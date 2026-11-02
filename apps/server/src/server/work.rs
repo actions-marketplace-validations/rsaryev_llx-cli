@@ -44,6 +44,7 @@ impl Work {
             },
             Event::Jobs(rows) => &|state| state.jobs.clone_from(rows),
             Event::Header(_)
+            | Event::JobOutput { .. }
             | Event::Note(_)
             | Event::Error(_)
             | Event::Mode(_)
@@ -93,7 +94,9 @@ impl Work {
         let lanes = self.lock();
         let working = lanes.iter().filter(|lane| lane.busy);
         let working = working.map(|lane| ("session", lane.title.clone()));
-        let jobs = lanes.iter().flat_map(|lane| &lane.jobs).map(|job| {
+        // A command that ended is listed for the person to look at: nothing of it runs.
+        let jobs = lanes.iter().flat_map(|lane| &lane.jobs);
+        let jobs = jobs.filter(|job| job.ended.is_none()).map(|job| {
             let kind = match job.kind {
                 JobKind::Monitor => "monitor",
                 JobKind::Schedule => "schedule",

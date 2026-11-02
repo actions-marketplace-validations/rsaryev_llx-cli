@@ -776,6 +776,7 @@ fn a_lane_closed_for_a_new_one_takes_its_jobs_with_it() {
         until_at: None,
         next: Some("02:00".into()),
         events: 0,
+        ended: None,
     };
     app.frame(from("A", Event::Jobs(vec![schedule])), now);
     app.show("C");

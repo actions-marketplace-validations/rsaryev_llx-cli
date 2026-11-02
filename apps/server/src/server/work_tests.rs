@@ -14,6 +14,7 @@ fn job(name: &str, monitor: bool) -> JobRow {
         until_at: monitor.then_some(1),
         next: (!monitor).then(|| "14:05".to_string()),
         events: 0,
+        ended: None,
     }
 }
 
@@ -65,4 +66,20 @@ fn an_agents_task_is_not_a_lanes() {
     started(&work, "A", "first");
     work.saw(Some("agent-1"), &Event::TaskStarted("look".into()));
     assert_eq!(work.running(), []);
+}
+
+#[test]
+fn a_command_that_ended_is_not_work_to_stop() {
+    let work = Work::default();
+    started(&work, "A", "first");
+    let ended = JobRow {
+        kind: protocol::JobKind::Shell,
+        ended: Some(protocol::JobEnd {
+            how: "Exit code: 0".into(),
+            failed: false,
+        }),
+        ..job("build", false)
+    };
+    work.saw(Some("A"), &Event::Jobs(vec![job("watch", true), ended]));
+    assert_eq!(work.running(), [running("monitor", "watch")]);
 }

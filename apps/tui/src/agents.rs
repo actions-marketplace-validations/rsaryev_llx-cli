@@ -76,16 +76,7 @@ impl App {
                 }
                 return None;
             }
-            Event::Earlier(turns) => {
-                view.tasks += turns.len();
-                if let Some(last) = turns.last() {
-                    view.state = AgentState::Ended(last.status.clone());
-                }
-                for block in cells::earlier(&turns, width) {
-                    self.push(at, block);
-                }
-                return None;
-            }
+            Event::Earlier(turns) => return self.earlier(at, &turns),
             Event::Updated(update) => {
                 if let Some(title) = update.title {
                     view.name = title;
@@ -115,12 +106,26 @@ impl App {
             | Event::Prefill(_)
             | Event::Context(_)
             | Event::Jobs(_)
+            | Event::JobOutput { .. }
             | Event::Queue { .. }
             | Event::Steered(_)
             | Event::Copy(_)
             | Event::Quit) => return self.lane_event(at, event),
         };
         self.push(at, block);
+        None
+    }
+
+    /// The session at `at` was resumed: its earlier tasks, the last few drawn.
+    fn earlier(&mut self, at: usize, turns: &[protocol::Turn]) -> Option<Action> {
+        let view = &mut self.views.sessions[at];
+        view.tasks += turns.len();
+        if let Some(last) = turns.last() {
+            view.state = AgentState::Ended(last.status.clone());
+        }
+        for block in cells::earlier(turns, self.width) {
+            self.push(at, block);
+        }
         None
     }
 

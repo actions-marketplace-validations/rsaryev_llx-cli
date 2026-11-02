@@ -120,10 +120,8 @@ pub(crate) fn render(
     let on_agent = app.shown().parent.is_some();
     let others = others.unwrap_or_else(|| "← sessions".into());
     let hint = match (focus, on_agent) {
-        // Enter opens a session's transcript; a job has none.
-        (Some(_), _) if matches!(app.views.focus, Some(Chosen::Job { .. })) => {
-            "x stop · esc back".to_string()
-        }
+        // Enter opens a session's transcript, or a command's output; other jobs have neither.
+        (Some(_), _) if matches!(app.views.focus, Some(Chosen::Job { .. })) => job_keys(app),
         (Some(_), _) => "enter open · x stop · esc back".to_string(),
         (None, true) => format!("↓ manage · esc back to {}", app.home_title()),
         (None, false) => format!("↓ manage · {others}"),
@@ -172,16 +170,25 @@ fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static
             let until = job.until_at.unwrap_or_default();
             cells::clock(until.saturating_sub(now_ms()) / 1000)
         };
+        let mut weight = Weight::Plain;
         let (glyph, right) = match job.kind {
             protocol::JobKind::Monitor => {
                 let events = cells::count(job.events as u64, "event");
                 let right = format!("{events} · {} left", left());
                 (Span::styled("≋", style::code()), right)
             }
-            protocol::JobKind::Shell => {
-                let right = format!("running · {} left", left());
-                (Span::styled("$", style::code()), right)
-            }
+            // A command that ended stays listed with how: red when it failed or was stopped.
+            protocol::JobKind::Shell => match &job.ended {
+                None => (
+                    Span::styled("$", style::code()),
+                    format!("running · {} left", left()),
+                ),
+                Some(end) if end.failed => {
+                    weight = Weight::Failed;
+                    (Span::styled("✗", style::failed()), printable(&end.how))
+                }
+                Some(end) => (Span::styled("✓", style::dim()), printable(&end.how)),
+            },
             protocol::JobKind::Schedule => {
                 let when = job.next.as_deref().unwrap_or_default();
                 (Span::styled("◷", style::waiting()), format!("next {when}"))
@@ -195,7 +202,7 @@ fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static
                 name: &job.name,
                 detail: job.detail.clone(),
                 right,
-                weight: Weight::Plain,
+                weight,
             },
             names,
             width,
@@ -205,6 +212,22 @@ fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static
         out.push(more(app.views.jobs.len() - ROWS, "↓"));
     }
     out
+}
+
+/// The keys of the job chosen: a command in the background opens, one that ended is removed.
+fn job_keys(app: &App) -> String {
+    let Some(Chosen::Job { lane, job }) = &app.views.focus else {
+        return String::new();
+    };
+    let row = (app.views.jobs.iter()).find(|(its, row)| its == lane && row.id == *job);
+    match row.map(|(_, row)| (row.kind, row.ended.is_some())) {
+        Some((protocol::JobKind::Shell, false)) => "enter open · x stop · esc back",
+        Some((protocol::JobKind::Shell, true)) => "enter open · x remove · esc back",
+        Some((protocol::JobKind::Monitor | protocol::JobKind::Schedule, _)) | None => {
+            "x stop · esc back"
+        }
+    }
+    .to_string()
 }
 
 #[cfg(test)]

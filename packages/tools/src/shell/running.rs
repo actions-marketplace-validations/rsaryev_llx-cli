@@ -103,6 +103,12 @@ impl Running {
         crate::lock(&self.output).so_far()
     }
 
+    /// What it prints, read while whoever holds it waits: for the person to look at.
+    #[must_use]
+    pub fn watch(&self) -> Watch {
+        Watch(Arc::clone(&self.output))
+    }
+
     /// The file every line it prints from now on, and every one it printed, is written to; `None`
     /// when no file could be made.
     pub(super) fn keep_whole(&self) -> Option<PathBuf> {
@@ -126,6 +132,19 @@ impl Running {
             cut_lines: captured.cut.then_some(captured.lines),
             open,
         }
+    }
+}
+
+/// What a [`Running`] command printed, read from another thread while it runs.
+#[derive(Debug, Clone)]
+pub struct Watch(Arc<Mutex<Output>>);
+
+impl Watch {
+    /// What it printed so far, as the model reads it: its start and its end, the middle of a
+    /// long output cut.
+    #[must_use]
+    pub fn so_far(&self) -> String {
+        crate::lock(&self.0).so_far()
     }
 }
 

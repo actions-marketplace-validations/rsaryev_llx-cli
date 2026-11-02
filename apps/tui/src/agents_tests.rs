@@ -296,6 +296,7 @@ fn job(id: &str, name: &str) -> protocol::JobRow {
         until_at: None,
         next: Some("00:00".into()),
         events: 0,
+        ended: None,
     }
 }
 

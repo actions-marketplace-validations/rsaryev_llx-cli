@@ -111,6 +111,7 @@ impl Trace {
             | Event::Prefill(_)
             | Event::Context(_)
             | Event::Jobs(_)
+            | Event::JobOutput { .. }
             | Event::Queue { .. }
             | Event::Steered(_)
             | Event::Copy(_)

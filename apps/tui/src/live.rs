@@ -85,6 +85,10 @@ pub(crate) fn render(app: &App, now: Instant) -> (Vec<Line<'static>>, Option<Cur
         out.extend(app.sessions_render(now, &spinner));
         return (out, None);
     }
+    if app.watching.is_some() {
+        out.extend(super::watch::render(app, width));
+        return (out, None);
+    }
     let prompt = Span::styled("❯ ", style::bold());
     let shown = app.shown();
     let viewing = shown.parent.as_ref().map(|_| {
@@ -285,6 +289,8 @@ fn footer(app: &App, now: Instant) -> String {
 fn running(app: &App) -> Option<String> {
     let lane = app.lane_id();
     let ours = || (app.views.jobs.iter()).filter(move |(of, _)| of == lane);
+    // A command that ended is listed for a look: nothing of it runs.
+    let ours = || ours().filter(|(_, job)| job.ended.is_none());
     let of = |kind| ours().filter(|(_, job)| job.kind == kind).count() as u64;
     let counted = [
         (of(protocol::JobKind::Shell), "shell"),

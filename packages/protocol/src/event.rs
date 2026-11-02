@@ -75,6 +75,14 @@ pub enum Event {
     Context(u8),
     /// The session's jobs, all of them, whenever they change.
     Jobs(Vec<JobRow>),
+    /// What a job printed so far (a background command's output), as [`Command::JobOutput`]
+    /// asked for it.
+    ///
+    /// [`Command::JobOutput`]: crate::Command::JobOutput
+    JobOutput {
+        job: String,
+        text: String,
+    },
     /// What waits in the lane: the person's words for the task running, their entries for after
     /// it, then what came back from the background (as the transcript will show it); `ready`
     /// when the lane waits for its next entry.
@@ -175,4 +183,14 @@ pub struct JobRow {
     pub next: Option<String>,
     /// Batches a monitor gave.
     pub events: usize,
+    /// How a background command ended, while it is still listed after; `None` while it runs.
+    pub ended: Option<JobEnd>,
+}
+
+/// How a background command ended: its report's first line (`Exit code: 1`, `Stopped: by the
+/// person`), and whether that is a failure, a stop among them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JobEnd {
+    pub how: String,
+    pub failed: bool,
 }

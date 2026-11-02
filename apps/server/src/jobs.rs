@@ -7,6 +7,7 @@
 
 mod cron;
 mod monitor;
+pub(crate) mod outputs;
 mod shells;
 pub(crate) mod spec;
 mod tool;
@@ -56,6 +57,8 @@ const LONGEST: Duration = Duration::from_secs(60);
 #[derive(Default)]
 struct State {
     jobs: Vec<Job>,
+    /// Commands in the background that ended, still listed with how (the latest few).
+    ended: Vec<shells::Ended>,
     made: u32,
 }
 
@@ -87,6 +90,8 @@ enum What {
         command: String,
         started: Instant,
         until: Instant,
+        /// What it printed, known to the interface while it runs.
+        _output: outputs::Shown,
     },
 }
 
@@ -153,7 +158,10 @@ impl<'a> Jobs<'a> {
         let Some(ui) = self.kit.output.ui() else {
             return;
         };
-        let rows = self.lock().jobs.iter().map(row).collect();
+        let state = self.lock();
+        let ended = state.ended.iter().map(shells::Ended::row);
+        let rows = state.jobs.iter().map(row).chain(ended).collect();
+        drop(state);
         ui.send(Event::Jobs(rows));
     }
 
@@ -192,6 +200,7 @@ impl<'a> Jobs<'a> {
                 soonest = Some(soonest.map_or(*next, |soonest| soonest.min(*next)));
                 true
             });
+            changed |= shells::let_go(&mut state.ended);
             drop(state);
             changed |= !due.is_empty();
             for prompt in due {
@@ -239,6 +248,7 @@ fn line(job: &Job) -> String {
             command,
             started,
             until,
+            ..
         } => format!(
             "- background command `{}` ({}): `{command}`, running {} s, {} min left",
             job.name,
@@ -284,6 +294,7 @@ fn row(job: &Job) -> JobRow {
             until_at: Some(epoch_ms(*until)),
             next: None,
             events: *events,
+            ended: None,
         },
         What::Schedule {
             prompt, cron, next, ..
@@ -298,6 +309,7 @@ fn row(job: &Job) -> JobRow {
             until_at: None,
             next: Some(cron::clock(*next)),
             events: 0,
+            ended: None,
         },
         What::Shell { command, until, .. } => JobRow {
             id: job.id.clone(),
@@ -307,6 +319,7 @@ fn row(job: &Job) -> JobRow {
             until_at: Some(epoch_ms(*until)),
             next: None,
             events: 0,
+            ended: None,
         },
     }
 }

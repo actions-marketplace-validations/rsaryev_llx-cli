@@ -20,6 +20,9 @@ impl App {
         if !self.questions.is_empty() {
             return self.question_key(key, now);
         }
+        if self.watching.is_some() {
+            return self.watch_key(key);
+        }
         if let Some(row) = self.views.row() {
             return self.list_key(key, row, now);
         }

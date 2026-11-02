@@ -78,6 +78,12 @@ impl App {
                 if let Some(id) = session.map(|view| view.id.clone()) {
                     self.views.focus = None;
                     self.show(&id);
+                } else if let Some((lane, job)) = self.views.jobs.get(row - order.len())
+                    && job.kind == protocol::JobKind::Shell
+                {
+                    let (lane, job) = (lane.clone(), job.id.clone());
+                    self.views.focus = None;
+                    self.watch(lane, job);
                 }
             }
             KeyCode::Left => {

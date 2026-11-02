@@ -20,5 +20,5 @@ pub use bash::BashTool;
 pub use leaders::{Tracked, kill_all, track};
 pub use process::{Quiet, SHELL, kill, scoped, shell};
 pub use query::{Unanswered, query};
-pub use running::Running;
+pub use running::{Running, Watch};
 pub use sandbox::{Held, Scope, permit};

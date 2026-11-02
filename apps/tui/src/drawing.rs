@@ -71,6 +71,8 @@ pub(super) fn draw(mut app: App, inbox: &Receiver<Input>, seat: &Seat) -> Vec<Li
             app.adopt_paths();
         }
         let now = Instant::now();
+        app.poll(now);
+        flush(&mut app, &seat.client);
         if app.take_replay() {
             let _ = screen.reset();
         }

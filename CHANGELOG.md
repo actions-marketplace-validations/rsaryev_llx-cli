@@ -4,7 +4,7 @@
 
 - A resized window draws the session again at its new width: the terminal reflows what it shows, so the live area was erased short and its copies (the composer's rules) stayed on the screen. Each block of the transcript is drawn again at the width, not cut.
 - A command in the background reads as running, not failed: `Running in the background`, or `Moved to the background after 120.0 s` under what it printed so far, never the red lines meant for the model.
-- A job's row in the list says what it does, `x stop · esc back`: Enter opens a session's or an agent's transcript, and a job has none.
+- Enter on a command in the background shows what it prints, as it prints (asked of the server each second while open, `Command::JobOutput`), with how it runs; `x` stops it, Esc goes back. One that ended stays listed with how it ended, red when it failed or was stopped (✗), until `x` removes it; the footer counts only those that run. A monitor's and a schedule's rows offer `x stop` alone.
 
 - A task that something from the background opened (a command's end, a monitor's lines, a schedule) starts in the session's history as where it came from (`$ tests · Exit code: 1`, `≋ ticks · tick 1`, `◷ nightly · …`), as a saved session shows it, not as the tagged message the model reads.
 

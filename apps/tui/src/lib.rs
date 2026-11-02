@@ -46,6 +46,7 @@ mod tool_cell;
 mod trace;
 mod tree;
 mod views;
+mod watch;
 mod within;
 mod wrap;
 

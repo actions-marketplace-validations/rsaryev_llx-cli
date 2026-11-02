@@ -49,3 +49,13 @@ fn a_wait_that_ends_first_leaves_the_command_running_to_be_waited_for_again() {
     assert!(report.starts_with("Exit code: 0\n"), "{report}");
     assert!(report.ends_with("Output:\na\nb"), "{report}");
 }
+
+#[test]
+fn what_it_printed_so_far_is_read_from_a_watch_while_another_holds_it() {
+    let dir = Scratch::new();
+    let mut running = started(&dir, "echo one; sleep 0.3; echo two; sleep 5");
+    let watch = running.watch();
+    let soon = Instant::now() + Duration::from_millis(800);
+    assert!(running.until(soon, &|| false).unwrap().is_none());
+    assert_eq!(watch.so_far(), "one\ntwo");
+}

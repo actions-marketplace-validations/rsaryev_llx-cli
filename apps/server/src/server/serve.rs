@@ -4,7 +4,7 @@
 
 use std::sync::mpsc::{Receiver, Sender};
 
-use protocol::{Command, Done, ToClient, ToServer};
+use protocol::{Command, Done, Event, ToClient, ToServer};
 
 use super::ui::Peer;
 use crate::desk::Request;
@@ -73,6 +73,18 @@ fn done(command: Command, peer: &Peer, desk: &Sender<Request>) -> Done {
         }
         Command::StopJob { lane, job } => {
             crate::interrupt::stop(&crate::interrupt::job_key(&lane, &job));
+            Done::Ok
+        }
+        // A job gone has nothing to show: its row leaves the list as it goes.
+        Command::JobOutput { lane, job } => {
+            let key = crate::interrupt::job_key(&lane, &job);
+            if let Some(text) = crate::jobs::outputs::of(&key) {
+                let event = Event::JobOutput { job, text };
+                peer.send(ToClient::Event {
+                    session: Some(lane),
+                    event,
+                });
+            }
             Done::Ok
         }
         Command::Close { session } if peer.work.busy(&session).is_none() => not_open(&session),

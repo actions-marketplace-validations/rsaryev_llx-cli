@@ -346,6 +346,7 @@ fn a_schedule_under_the_composer_does_not_break_a_chain() {
         until_at: None,
         next: Some("03:00".into()),
         events: 0,
+        ended: None,
     };
     app.event(Event::Jobs(vec![schedule]), now);
     app.event(Event::TaskStarted("inspect".into()), now);

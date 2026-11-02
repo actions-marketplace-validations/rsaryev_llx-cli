@@ -266,6 +266,7 @@ fn the_footer_counts_the_commands_and_monitors_the_session_shown_runs_in_the_bac
         until_at: Some(u64::MAX),
         next: None,
         events: 0,
+        ended: None,
     };
     let footer = |app: &App| {
         let (lines, _) = render(app, now);

@@ -124,3 +124,102 @@ fn a_command_in_the_background_is_listed_and_stopped_as_a_job() {
     });
     assert!(jobs.lock().jobs.is_empty());
 }
+
+/// Waits up to 5 s for `done`.
+fn until(done: impl Fn() -> bool) -> bool {
+    for _ in 0..100 {
+        if done() {
+            return true;
+        }
+        #[expect(clippy::disallowed_methods, reason = "a test waits on another thread")]
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    done()
+}
+
+#[test]
+#[expect(
+    clippy::wildcard_enum_match_arm,
+    reason = "a test picks out the variant it checks"
+)]
+fn a_command_the_person_stops_stays_listed_as_failed_with_its_output_until_let_go() {
+    let scratch = Scratch::new();
+    let workspace = Workspace::new(scratch.path()).unwrap();
+    let (ui, frames) = crate::testing::fake_ui();
+    let output = quiet().in_ui(Some(ui.for_lane("shells-ended")));
+    let queue = queue::Queue::new(16);
+    let kit = Kit {
+        workspace: &workspace,
+        gate: &contracts::gate::Open,
+        hidden: &Vec::new,
+        output: &output,
+        session: true,
+        queue: &queue,
+    };
+    let jobs = Jobs::new("shells-ended", kit);
+    let key = crate::interrupt::job_key("shells-ended", "job-1");
+    std::thread::scope(|scope| {
+        let _closing = Closing(&jobs);
+        let ticking = std::thread::Builder::new().name("llx-test-tick".into());
+        ticking.spawn_scoped(scope, || jobs.tick()).unwrap();
+        let shells = Shells { jobs: &jobs, scope };
+        let bash = BashTool {
+            workspace: &workspace,
+            gate: &contracts::gate::Open,
+            hidden: &Vec::new,
+            stop: &|| false,
+            background: Some(&shells),
+        };
+        let started = (bash.call(&json!({"command": "echo one; sleep 30",
+            "run_in_background": true, "description": "nap"})))
+        .unwrap();
+        assert!(started.report.contains("(job-1)"), "{}", started.report);
+        // The person looks at what it printed while it runs, then stops it from its row.
+        assert!(until(|| outputs::of(&key).as_deref() == Some("one")));
+        crate::interrupt::stop(&key);
+        assert!(until(|| !jobs.lock().ended.is_empty()));
+        // The model hears it was stopped; the row says so, and what it printed stays.
+        let said: Vec<String> = (queue.take_joining().iter())
+            .map(queue::Entry::render)
+            .collect();
+        assert!(
+            said.iter()
+                .any(|said| said.contains("ended=\"Stopped: by the person")),
+            "{said:?}"
+        );
+        let rows = (crate::testing::events(&frames).into_iter().rev())
+            .find_map(|(_, event)| match event {
+                protocol::Event::Jobs(rows) => Some(rows),
+                _ => None,
+            })
+            .unwrap();
+        let end = rows
+            .iter()
+            .find(|row| row.id == "job-1")
+            .and_then(|row| row.ended.clone());
+        assert_eq!(
+            end,
+            Some(JobEnd {
+                how: "Stopped: by the person".into(),
+                failed: true,
+            })
+        );
+        // With where the whole of it is, as the model read it.
+        let kept = outputs::of(&key).unwrap_or_default();
+        assert!(kept.starts_with("one\n... the whole output"), "{kept}");
+        // `x` again lets it go.
+        crate::interrupt::stop(&key);
+        assert!(until(|| jobs.lock().ended.is_empty()));
+        assert_eq!(outputs::of(&key), None);
+    });
+}
+
+/// Closes the jobs when dropped, so a failed assertion does not leave the scheduler running and
+/// the scope waiting for it.
+struct Closing<'a>(&'a Jobs<'a>);
+
+impl Drop for Closing<'_> {
+    fn drop(&mut self) {
+        self.0.close();
+    }
+}

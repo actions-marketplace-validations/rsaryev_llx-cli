@@ -85,6 +85,12 @@ impl App {
                 let mut jobs = std::mem::take(&mut self.views.jobs);
                 jobs.sort_by_key(|(lane, _)| self.views.find(lane));
                 self.views.jobs = jobs;
+                self.jobs_changed();
+            }
+            (Event::JobOutput { job, text }, _) => {
+                let lane = self.views.lane_of(at);
+                let id = self.views.sessions[lane].id.clone();
+                self.job_output(&id, &job, text);
             }
             (Event::LaneStarted { id, name }, _) => {
                 self.views.lane_started(id.clone(), &name);

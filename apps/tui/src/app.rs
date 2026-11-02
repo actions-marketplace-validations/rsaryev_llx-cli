@@ -95,6 +95,8 @@ pub(crate) struct App {
     pub(super) left: bool,
     /// The list of sessions, while it is open.
     pub(super) listing: Option<super::sessions::SessionList>,
+    /// A command in the background, open.
+    pub(super) watching: Option<super::watch::Watching>,
     /// This directory's saved sessions, as the desk last listed them.
     pub(super) saved: Vec<protocol::Saved>,
     /// A lane closed to make room, said in the next lane that opens.
@@ -128,6 +130,7 @@ impl App {
             escaped: None,
             left: false,
             listing: None,
+            watching: None,
             saved: vec![],
             closed: None,
             work: Box::new(Vec::new),

@@ -92,11 +92,13 @@ pub(super) enum Branch {
     Last,
 }
 
-/// How a row's name is drawn: the session on the screen, a closed one, or any other.
+/// How a row's name is drawn: the session on the screen, a closed one, a command that failed or
+/// was stopped, or any other.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Weight {
     Shown,
     Dimmed,
+    Failed,
     Plain,
 }
 
@@ -120,6 +122,7 @@ pub(super) fn row(row: Row, names: usize, width: usize) -> Line<'static> {
     let name_style = match row.weight {
         Weight::Shown => style::bold(),
         Weight::Dimmed => style::dim(),
+        Weight::Failed => style::failed(),
         Weight::Plain => Style::default(),
     };
     let branch = match row.branch {

@@ -12,8 +12,12 @@ pub enum Command {
     Interrupt { session: String },
     /// Stop the task of a lane or an agent, and never quit for it.
     Halt { id: String },
-    /// Stop a lane's job (a monitor, a schedule).
+    /// Stop a lane's job (a monitor, a schedule, a command in the background); one that ended
+    /// leaves the list.
     StopJob { lane: String, job: String },
+    /// What a lane's job printed so far, sent back as `Event::JobOutput` (nothing for a job that
+    /// is gone).
+    JobOutput { lane: String, job: String },
     /// Close an idle lane: its prompt is given nothing, and it ends (to make room for another).
     Close { session: String },
     /// Open a lane, or show it when it is open already.

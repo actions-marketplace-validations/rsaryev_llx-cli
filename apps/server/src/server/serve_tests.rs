@@ -61,9 +61,8 @@ fn work_lists_what_runs_in_the_lanes() {
     let served = served();
     let ui = Ui::new(Arc::clone(&served.peer));
     let (id, name) = ("s1".to_string(), "first".to_string());
-    ui.send(protocol::Event::LaneStarted { id, name });
-    ui.for_lane("s1")
-        .send(protocol::Event::TaskStarted("fix it".into()));
+    ui.send(Event::LaneStarted { id, name });
+    ui.for_lane("s1").send(Event::TaskStarted("fix it".into()));
     served.call(2, Command::Work);
     let running = |kind: &str, name: &str| protocol::Running {
         kind: kind.into(),
@@ -76,7 +75,7 @@ fn work_lists_what_runs_in_the_lanes() {
 /// Lane `id` open, as the desk says it.
 fn open(served: &Served, id: &str) {
     let (id, name) = (id.to_string(), "first".to_string());
-    Ui::new(Arc::clone(&served.peer)).send(protocol::Event::LaneStarted { id, name });
+    Ui::new(Arc::clone(&served.peer)).send(Event::LaneStarted { id, name });
 }
 
 #[test]
@@ -99,7 +98,7 @@ fn words_typed_while_the_lanes_task_runs_are_for_the_task() {
     let served = served();
     open(&served, "s1");
     let lane = Ui::new(Arc::clone(&served.peer)).for_lane("s1");
-    lane.send(protocol::Event::TaskStarted("fix it".into()));
+    lane.send(Event::TaskStarted("fix it".into()));
     let input = Input {
         session: "s1".into(),
         text: "use the cache".into(),
@@ -231,7 +230,7 @@ fn what_is_typed_for_a_lane_that_is_ending_is_refused_and_kept_nowhere() {
         matches!(
             frame,
             ToClient::Event {
-                event: protocol::Event::LaneEnded,
+                event: Event::LaneEnded,
                 ..
             }
         )
@@ -241,7 +240,7 @@ fn what_is_typed_for_a_lane_that_is_ending_is_refused_and_kept_nowhere() {
         matches!(
             frame,
             ToClient::Event {
-                event: protocol::Event::Queue { .. },
+                event: Event::Queue { .. },
                 ..
             }
         )
