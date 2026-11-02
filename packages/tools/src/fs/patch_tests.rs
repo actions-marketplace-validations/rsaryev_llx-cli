@@ -127,6 +127,22 @@ fn a_heredoc_around_the_patch_is_taken_off() {
 }
 
 #[test]
+fn a_wrong_line_is_numbered_as_the_text_has_it_heredoc_and_blank_lines_too() {
+    // `stray` is the text's fifth line each time: the model finds it by the number it is told.
+    for text in [
+        "*** Begin Patch\n*** Add File: a\n+x\n+y\nstray\n*** End Patch",
+        "<<'EOF'\n*** Begin Patch\n*** Add File: a\n+x\nstray\n*** End Patch\nEOF",
+        "\n\n*** Begin Patch\n*** Add File: a\nstray\n*** End Patch",
+    ] {
+        let why = parse(text).unwrap_err();
+        assert!(
+            why.starts_with("invalid patch, line 5: "),
+            "{text:?}: {why}"
+        );
+    }
+}
+
+#[test]
 fn a_patch_that_is_not_one_says_what_is_wrong_and_where() {
     let wrong = |text: &str| parse(text).unwrap_err();
     assert!(wrong("hello").contains("*** Begin Patch"));

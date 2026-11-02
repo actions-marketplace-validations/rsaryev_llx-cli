@@ -64,13 +64,18 @@ const END_OF_FILE: &str = "*** End of File";
 
 /// The hunks of `text`, every line of it read: the markers may have spaces around them, the whole
 /// may sit in a shell heredoc (`<<'EOF'`), and a first hunk needs no `@@`. What is wrong is told
-/// with its line.
+/// with its line, numbered as the text has it: the blank lines and the heredoc before the patch
+/// count.
 fn parse(text: &str) -> Result<Vec<Hunk>, String> {
+    let blank = text
+        .lines()
+        .take_while(|line| line.trim().is_empty())
+        .count();
     let all: Vec<&str> = text.trim().lines().collect();
-    let body = inside(&all)?;
+    let (first, body) = inside(&all)?;
     let mut hunks = vec![];
     for (index, line) in body.iter().enumerate() {
-        let number = index + 2;
+        let number = blank + first + index + 1;
         step(&mut hunks, line).map_err(|why| format!("invalid patch, line {number}: {why}"))?;
     }
     closed(&mut hunks)?;
@@ -80,8 +85,9 @@ fn parse(text: &str) -> Result<Vec<Hunk>, String> {
     Ok(hunks)
 }
 
-/// The lines between the markers, the heredoc taken off when there is one.
-fn inside<'a>(all: &'a [&'a str]) -> Result<&'a [&'a str], String> {
+/// The lines between the markers, the heredoc taken off when there is one, and where in `all`
+/// they start.
+fn inside<'a>(all: &'a [&'a str]) -> Result<(usize, &'a [&'a str]), String> {
     let marked = |lines: &'a [&'a str]| match (lines.first(), lines.last()) {
         (Some(first), _) if first.trim() != BEGIN => {
             Err(format!("invalid patch: the first line must be '{BEGIN}'"))
@@ -95,8 +101,8 @@ fn inside<'a>(all: &'a [&'a str]) -> Result<&'a [&'a str], String> {
         && all.last().is_some_and(|last| last.ends_with("EOF"))
         && all.len() >= 4;
     match (marked(all), heredoc) {
-        (Err(_), true) => marked(all.get(1..all.len() - 1).unwrap_or_default()),
-        (found, _) => found,
+        (Err(_), true) => Ok((2, marked(all.get(1..all.len() - 1).unwrap_or_default())?)),
+        (found, _) => Ok((1, found?)),
     }
 }
 
