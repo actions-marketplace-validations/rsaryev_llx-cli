@@ -4,7 +4,7 @@
 use std::io::Write;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Output, Stdio};
+use std::process::{Child, Command, Output, Stdio};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Value, json};
@@ -85,9 +85,7 @@ impl Home {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        let mut input = child.stdin.take().unwrap();
-        input.write_all(stdin.as_bytes()).unwrap();
-        drop(input);
+        feed(&mut child, stdin);
         child.wait_with_output().unwrap()
     }
 
@@ -129,6 +127,16 @@ impl Drop for Home {
 )]
 pub(crate) fn output(command: &mut Command) -> Output {
     command.output().unwrap()
+}
+
+/// `stdin` written to `child`'s piped stdin, which is then closed. A run may end before it reads
+/// all of it (a usage error, a read that stops at its limit): what it left unread is not the
+/// test's failure, how it ended is.
+pub(crate) fn feed(child: &mut Child, stdin: &str) {
+    let mut input = child.stdin.take().unwrap();
+    if let Err(error) = input.write_all(stdin.as_bytes()) {
+        assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+    }
 }
 
 /// `command`'s child leads a session of its own, with no terminal.

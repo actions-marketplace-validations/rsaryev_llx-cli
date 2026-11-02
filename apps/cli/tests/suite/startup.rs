@@ -4,10 +4,10 @@
 //! large catalog against the same run without one: unlike time, it is the same on a loaded CI
 //! machine as on a laptop, and it is what a daemon keeps for as long as it lives.
 
-use std::io::{Read, Write};
+use std::io::Read;
 use std::process::{Command, Stdio};
 
-use crate::common::home::{Home, detach};
+use crate::common::home::{Home, detach, feed};
 use crate::common::model::{Model, Reply};
 
 /// One model as a refresh keeps it: what llx reads of models.dev's v2 API.
@@ -55,11 +55,8 @@ fn refreshed(catalog: &str) -> Home {
 }
 
 /// `command` run to its end with no terminal (a session of its own), `stdin` piped in: its exit
-/// code, its stdout and stderr, and the most memory it held, in bytes.
-#[expect(
-    clippy::zombie_processes,
-    reason = "wait4 reaps the child, for the usage `Child::wait` does not give"
-)]
+/// code, its stdout and stderr, and the most memory it held, in bytes. `wait4` reaps the child, for
+/// the usage `Child::wait` does not give.
 fn measured(mut command: Command, stdin: &str) -> (Option<i32>, String, String, u64) {
     detach(&mut command);
     let mut child = command
@@ -68,9 +65,7 @@ fn measured(mut command: Command, stdin: &str) -> (Option<i32>, String, String, 
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    let mut input = child.stdin.take().unwrap();
-    input.write_all(stdin.as_bytes()).unwrap();
-    drop(input);
+    feed(&mut child, stdin);
     let pid = libc::pid_t::try_from(child.id()).unwrap();
     let mut status = 0;
     // SAFETY: rusage is plain data that wait4 fills; zeroed is a valid value of it.

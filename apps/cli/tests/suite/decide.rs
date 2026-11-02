@@ -113,6 +113,16 @@ fn a_bad_choice_list_or_no_openrouter_key_is_not_ready() {
 }
 
 #[test]
+fn a_bad_choice_list_is_refused_whatever_is_piped_in() {
+    let (home, model) = (Home::new(), decided("a", &[]));
+    // More than a pipe holds: the run ends with its usage error, the rest of stdin never read.
+    let input = "x".repeat(1 << 20);
+    let out = home.exec(&model, &["decide", "Which?", "--choices", "only"], &input);
+    assert_eq!(out.status.code(), Some(3), "{}", text(&out.stderr));
+    assert!(text(&out.stderr).contains("two"), "{}", text(&out.stderr));
+}
+
+#[test]
 fn a_repeated_choice_keeps_the_commas_of_its_description() {
     let (home, model) = (Home::new(), decided("infra", &[("infra", 0.9)]));
     let args = [
