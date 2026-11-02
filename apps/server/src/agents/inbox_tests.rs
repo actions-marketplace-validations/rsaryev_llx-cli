@@ -51,12 +51,16 @@ fn the_person_comes_first_then_the_queue_in_arrival_order() {
     peer.inputs.input(input, true);
     let output = quiet().in_ui(Some(ui));
     with_inbox(&output, |inbox, registry, jobs| {
-        jobs.queue().post(crate::arrivals::monitor("m", "tick"));
+        jobs.queue().post(crate::arrivals::monitor(
+            "m",
+            "met after 1 check (0 s)",
+            "up",
+        ));
         answer(registry, "found");
         let came = inbox.take();
         assert!(came[0].starts_with("stop, use"), "{came:?}");
         // Then the queue, in the order things came: the monitor first here.
-        assert!(came[1].contains("<monitor job=\"m\">"), "{came:?}");
+        assert!(came[1].contains("<monitor job=\"m\""), "{came:?}");
         assert!(came[2].starts_with("<agent_result"), "{came:?}");
     });
 }

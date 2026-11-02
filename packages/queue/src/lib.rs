@@ -21,6 +21,9 @@ pub enum Idle {
     Opens,
     /// It was for the task that is over (an agent's late answer).
     Drops,
+    /// It waits for the next task, whoever starts it, and never starts one (a job the person
+    /// stopped: the model reads it with what the person asks next).
+    Waits,
 }
 
 /// What a source says of its entries.
@@ -152,7 +155,7 @@ impl Queue {
                     drop(state);
                     return open(entry);
                 }
-                (Idle::Opens, None) => {}
+                (Idle::Opens, None) | (Idle::Waits, _) => {}
             }
         }
         if state.entries.len() >= self.capacity {
@@ -175,11 +178,11 @@ impl Queue {
         state.busy = false;
         state
             .entries
-            .retain(|entry| entry.policy.idle == Idle::Opens);
+            .retain(|entry| entry.policy.idle != Idle::Drops);
         let Some(open) = &self.opener else {
             return;
         };
-        let opening = std::mem::take(&mut state.entries);
+        let opening = take(&mut state.entries, |entry| entry.policy.idle == Idle::Opens);
         drop(state);
         opening.into_iter().for_each(open);
     }

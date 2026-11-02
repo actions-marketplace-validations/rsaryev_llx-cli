@@ -179,7 +179,10 @@ fn words_sent_while_no_task_runs_wait_for_the_prompt() {
 #[test]
 fn the_background_waits_behind_the_person_and_reads_as_where_it_came_from() {
     let (inputs, told) = inputs();
-    inputs.background("s1", "<monitor job=\"ticks\">\ntick 1\n</monitor>");
+    inputs.background(
+        "s1",
+        "<monitor job=\"ready\" ended=\"met after 1 check (0 s)\">\nup\n</monitor>",
+    );
     inputs.input(
         Input {
             later: true,
@@ -187,7 +190,7 @@ fn the_background_waits_behind_the_person_and_reads_as_where_it_came_from() {
         },
         false,
     );
-    assert_eq!(last_queue(&told).3, ["≋ ticks · tick 1"]);
+    assert_eq!(last_queue(&told).3, ["≋ ready · met after 1 check (0 s)"]);
     assert_eq!(inputs.next("s1"), Some(Typed::from("mine first")));
     assert!(
         inputs

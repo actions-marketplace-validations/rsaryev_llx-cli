@@ -105,7 +105,22 @@ fn a_command_in_the_background_is_listed_and_stopped_as_a_job() {
         );
         let stopped = tool.call(&json!({"action": "stop", "job": "nap"})).unwrap();
         assert_eq!(stopped.report, "Stopped `nap`.");
-        // Its end comes back once, saying it was stopped, and it is no longer listed.
+        // The model asked for the stop: nothing more comes of it (B10), and it is listed as
+        // ended, by the agent.
+        assert!(until(|| (jobs.lock().jobs).is_empty()), "still running");
+        assert!(
+            queue.take_joining().is_empty(),
+            "the model knows it stopped it"
+        );
+        let ended: Vec<JobEnd> = (jobs.lock().ended.iter())
+            .filter_map(|ended| ended.row().ended)
+            .collect();
+        assert_eq!(ended[0].how, "Stopped: by the agent");
+        // One the person stops comes back once, for the task they start next.
+        bash.call(&json!({"command": "sleep 30", "run_in_background": true,
+                          "description": "nap2"}))
+            .unwrap();
+        crate::interrupt::stop(&crate::interrupt::job_key("shells-lane", "job-2"));
         let mut came = vec![];
         for _ in 0..50 {
             came.extend(queue.take_joining());
@@ -116,10 +131,12 @@ fn a_command_in_the_background_is_listed_and_stopped_as_a_job() {
         }
         let said: Vec<String> = came.iter().map(queue::Entry::render).collect();
         assert!(
-            said.iter()
-                .any(|said| said.contains("ended=\"Stopped: by the person")),
+            said.iter().any(
+                |said| said.contains("<background job=\"nap2\" ended=\"Stopped: by the person")
+            ),
             "{said:?}"
         );
+        assert_eq!(came[0].policy.idle, queue::Idle::Waits);
         jobs.close();
     });
     assert!(jobs.lock().jobs.is_empty());

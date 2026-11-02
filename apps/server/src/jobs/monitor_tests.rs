@@ -4,92 +4,148 @@ use std::time::{Duration, Instant};
 use super::*;
 use tools::shell::Scope;
 
-fn run(command: &str, seconds: u64, stopped: &dyn Fn() -> bool) -> (Vec<Vec<String>>, String) {
-    with((command, Scope::Open), &here(), &[], seconds, stopped)
-}
-
-fn hiding(
-    command: &str,
-    hidden: &[String],
-    seconds: u64,
-    stopped: &dyn Fn() -> bool,
-) -> (Vec<Vec<String>>, String) {
-    with((command, Scope::Open), &here(), hidden, seconds, stopped)
-}
-
 /// A workspace with the process's environment.
 fn here() -> Workspace {
     Workspace::new(std::env::temp_dir()).unwrap()
 }
 
-fn with(
+/// What a wait of `command` checked every `every`, for `seconds` at most, came to: its end, and
+/// each check as `seen` was given it.
+fn wait_for(
     (command, scope): (&str, Scope),
-    workspace: &Workspace,
-    hidden: &[String],
-    seconds: u64,
+    (workspace, hidden): (&Workspace, &[String]),
+    (every, seconds): (Duration, u64),
     stopped: &dyn Fn() -> bool,
-) -> (Vec<Vec<String>>, String) {
-    let batches = Mutex::new(vec![]);
-    let deadline = Instant::now() + Duration::from_secs(seconds);
-    let ended = watch(
+) -> (Waited, Vec<Check>) {
+    let seen = Mutex::new(vec![]);
+    let watch = Watch {
         command,
         scope,
         workspace,
         hidden,
-        deadline,
-        stopped,
-        &|lines, _| {
-            batches.lock().unwrap().push(lines);
-        },
-    )
-    .unwrap();
-    let ended = match ended {
-        Ended::Exit(how) => how,
-        Ended::Deadline => "deadline".into(),
-        Ended::Stopped => "stopped".into(),
+        every,
+        deadline: Instant::now() + Duration::from_secs(seconds),
     };
-    (batches.into_inner().unwrap(), ended)
+    let waited = wait(&watch, stopped, &|count, check| {
+        let mut seen = seen.lock().unwrap();
+        assert_eq!(count, seen.len() + 1, "each check counted once");
+        seen.push(check.clone());
+    });
+    (waited, seen.into_inner().unwrap())
+}
+
+fn quick(command: &str, seconds: u64, stopped: &dyn Fn() -> bool) -> (Waited, Vec<Check>) {
+    let every = Duration::from_millis(50);
+    wait_for(
+        (command, Scope::Open),
+        (&here(), &[]),
+        (every, seconds),
+        stopped,
+    )
+}
+
+/// What the last check printed.
+fn printed(waited: &Waited) -> &str {
+    waited
+        .last
+        .as_ref()
+        .map_or("", |check| check.output.as_str())
 }
 
 #[test]
-fn lines_that_come_together_are_one_batch_and_the_exit_is_told() {
-    // The first two in one write; the third only once their batch was given, so past the
-    // gather window on any machine, and no later (R9).
+fn a_check_runs_again_until_it_exits_0_and_the_wait_ends_once_with_what_it_printed() {
     let scratch = crate::testing::Scratch::new();
     let workspace = Workspace::new(scratch.path()).unwrap();
-    let go = scratch.path().join("go");
-    let command = "printf 'one\\ntwo\\n'; until [ -e go ]; do sleep 0.02; done; echo three; exit 3";
-    let batches = Mutex::new(vec![]);
-    let deadline = Instant::now() + Duration::from_secs(10);
-    let given = |lines: Vec<String>, _| {
-        batches.lock().unwrap().push(lines);
-        std::fs::write(&go, "").unwrap();
-    };
-    let ended = watch(
+    let ready = scratch.path().join("ready");
+    let command = "if [ -e ready ]; then echo up; else echo 'not yet' >&2; exit 1; fi";
+    let watch = Watch {
         command,
-        Scope::Open,
-        &workspace,
-        &[],
-        deadline,
-        &|| false,
-        &given,
-    )
-    .unwrap();
-    assert!(matches!(&ended, Ended::Exit(how) if how == "exit 3"));
-    let batches = batches.into_inner().unwrap();
-    assert_eq!(batches, [vec!["one", "two"], vec!["three"]]);
+        scope: Scope::Open,
+        workspace: &workspace,
+        hidden: &[],
+        every: Duration::from_millis(50),
+        deadline: Instant::now() + Duration::from_secs(10),
+    };
+    // The condition holds once the second check ran.
+    let waited = wait(&watch, &|| false, &|count, _| {
+        if count == 2 {
+            std::fs::write(&ready, "").unwrap();
+        }
+    });
+    assert_eq!(waited.ended, Ended::Met);
+    assert_eq!(waited.checks, 3);
+    let last = waited.last.unwrap();
+    assert_eq!(
+        (last.how.as_str(), last.output.as_str()),
+        ("Exit code: 0", "up")
+    );
 }
 
 #[test]
-fn the_deadline_and_a_stop_end_the_command_and_what_it_started() {
-    let (_, ended) = run("sleep 30 & sleep 30", 1, &|| false);
-    assert_eq!(ended, "deadline");
+fn a_check_that_fails_is_told_with_its_exit_and_its_errors() {
+    let (waited, seen) = quick("echo 'connection refused' >&2; exit 7", 1, &|| false);
+    assert_eq!(waited.ended, Ended::TimedOut);
+    assert!(
+        seen.len() >= 2,
+        "it ran again until its time was up: {seen:?}"
+    );
+    let last = waited.last.unwrap();
+    assert_eq!(
+        (last.how.as_str(), last.output.as_str()),
+        ("Exit code: 7", "connection refused")
+    );
+}
+
+#[test]
+fn a_check_that_cannot_run_ends_the_wait_at_once() {
     let begun = Instant::now();
-    let (_, ended) = run("sleep 30", 30, &|| {
-        begun.elapsed() > Duration::from_millis(300)
-    });
-    assert_eq!(ended, "stopped");
+    let (waited, seen) = quick("no-such-program-llx", 30, &|| false);
+    assert_eq!(waited.ended, Ended::Unrunnable);
+    assert_eq!(seen.len(), 1);
+    assert!(
+        printed(&waited).contains("not found"),
+        "{}",
+        printed(&waited)
+    );
     assert!(begun.elapsed() < Duration::from_secs(5));
+}
+
+#[test]
+fn a_stop_ends_the_wait_between_checks_and_during_one() {
+    for command in ["exit 1", "sleep 30 & sleep 30"] {
+        let begun = Instant::now();
+        let stopped = || begun.elapsed() > Duration::from_millis(300);
+        let every = Duration::from_secs(20);
+        let (waited, _) = wait_for(
+            (command, Scope::Open),
+            (&here(), &[]),
+            (every, 60),
+            &stopped,
+        );
+        assert_eq!(waited.ended, Ended::Stopped, "{command}");
+        assert!(begun.elapsed() < Duration::from_secs(5), "{command}");
+    }
+}
+
+#[test]
+fn a_check_longer_than_its_interval_is_killed_there_with_what_it_started() {
+    let scratch = crate::testing::Scratch::new();
+    let pid = scratch.path().join("pid");
+    let command = format!("sleep 30 & echo $! > {}; wait", pid.display());
+    let every = Duration::from_millis(300);
+    let (waited, seen) = wait_for((&command, Scope::Open), (&here(), &[]), (every, 1), &|| {
+        false
+    });
+    assert_eq!(waited.ended, Ended::TimedOut);
+    assert!(seen[0].how.starts_with("Timed out after"), "{:?}", seen[0]);
+    let pid: i32 = std::fs::read_to_string(&pid)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap();
+    // SAFETY: signal 0 only asks whether the process exists.
+    let alive = unsafe { libc::kill(pid, 0) } == 0;
+    assert!(!alive, "what the check started outlived it");
 }
 
 #[test]
@@ -104,10 +160,16 @@ fn the_apps_secrets_are_not_in_its_environment() {
         })
         .expect("the test process has an environment variable");
     let command = format!("echo \"[${{{name}+set}}]\"");
-    let (shown, _) = hiding(&command, &[], 10, &|| false);
-    assert_eq!(shown, [vec!["[set]"]], "{name} is passed on unless hidden");
-    let (hidden, _) = hiding(&command, std::slice::from_ref(&name), 10, &|| false);
-    assert_eq!(hidden, [vec!["[]"]], "{name} was hidden");
+    let every = (Duration::from_millis(50), 10);
+    let (shown, _) = wait_for((&command, Scope::Open), (&here(), &[]), every, &|| false);
+    assert_eq!(
+        printed(&shown),
+        "[set]",
+        "{name} is passed on unless hidden"
+    );
+    let hiding = std::slice::from_ref(&name);
+    let (hidden, _) = wait_for((&command, Scope::Open), (&here(), hiding), every, &|| false);
+    assert_eq!(printed(&hidden), "[]", "{name} was hidden");
 }
 
 #[test]
@@ -121,8 +183,9 @@ fn a_monitor_runs_with_the_environment_it_is_given() {
     ];
     let given = here().with_env(vars.to_vec());
     let command = r#"echo "$LLX_GIVEN ${HOME-none}""#;
-    let (lines, _) = with((command, Scope::Open), &given, &[], 10, &|| false);
-    assert_eq!(lines, [vec!["given none"]]);
+    let every = (Duration::from_millis(50), 10);
+    let (waited, _) = wait_for((command, Scope::Open), (&given, &[]), every, &|| false);
+    assert_eq!(printed(&waited), "given none");
 }
 
 /// A confined monitor writes its `$TMPDIR`, as the mode's context tells the model, whatever
@@ -140,17 +203,17 @@ fn a_confined_monitor_has_a_scratch_tmpdir_of_its_own() {
     let given = here().with_env(vars.to_vec());
     let command = r#"echo kept > "$TMPDIR/x" && cat "$TMPDIR/x""#;
     for scope in [Scope::Workspace, Scope::ReadOnly] {
-        let (lines, ended) = with((command, scope), &given, &[], 10, &|| false);
-        assert_eq!(lines, [vec!["kept"]], "{scope:?}");
-        assert_eq!(ended, "exit 0", "{scope:?}");
+        let every = (Duration::from_millis(50), 10);
+        let (waited, _) = wait_for((command, scope), (&given, &[]), every, &|| false);
+        assert_eq!(printed(&waited), "kept", "{scope:?}");
+        assert_eq!(waited.ended, Ended::Met, "{scope:?}");
     }
 }
 
-/// A descriptor this process has open without close-on-exec when a monitor starts (one another
-/// thread is making, before it marks it close-on-exec) never reaches it: a monitor lives long,
-/// and what it holds stays open as long.
+/// A descriptor this process has open without close-on-exec when a check starts (one another
+/// thread is making, before it marks it close-on-exec) never reaches it.
 #[test]
-fn a_monitor_inherits_only_its_output() {
+fn a_check_inherits_only_its_output() {
     use std::os::fd::FromRawFd;
     // SAFETY: F_DUPFD makes a new descriptor for stderr, at 200 or above, without close-on-exec.
     let fd = unsafe { libc::fcntl(2, libc::F_DUPFD, 200) };
@@ -158,20 +221,22 @@ fn a_monitor_inherits_only_its_output() {
     // SAFETY: fcntl just made it, and nothing else owns it.
     let _stray = unsafe { std::os::fd::OwnedFd::from_raw_fd(fd) };
     let probe = format!("[ -e /dev/fd/{fd} ] && echo inherited || echo closed");
-    let (lines, _) = run(&probe, 10, &|| false);
-    assert_eq!(lines, [vec!["closed"]]);
+    let (waited, _) = quick(&probe, 10, &|| false);
+    assert_eq!(printed(&waited), "closed");
 }
 
 #[test]
-fn a_command_that_closes_its_output_still_ends_at_its_deadline_and_its_stop() {
+fn a_check_that_closes_its_output_still_ends_at_its_limit_and_its_stop() {
     let begun = Instant::now();
-    let (_, ended) = run("exec >/dev/null 2>&1; sleep 30", 1, &|| false);
-    assert_eq!(ended, "deadline");
+    let every = Duration::from_millis(300);
+    let quiet = ("exec >/dev/null 2>&1; sleep 30", Scope::Open);
+    let (waited, _) = wait_for(quiet, (&here(), &[]), (every, 1), &|| false);
+    assert_eq!(waited.ended, Ended::TimedOut);
     assert!(begun.elapsed() < Duration::from_secs(5));
     let begun = Instant::now();
-    let (_, ended) = run("exec >/dev/null 2>&1; sleep 30", 30, &|| {
-        begun.elapsed() > Duration::from_millis(300)
-    });
-    assert_eq!(ended, "stopped");
+    let stopped = || begun.elapsed() > Duration::from_millis(300);
+    let every = Duration::from_secs(20);
+    let (waited, _) = wait_for(quiet, (&here(), &[]), (every, 30), &stopped);
+    assert_eq!(waited.ended, Ended::Stopped);
     assert!(begun.elapsed() < Duration::from_secs(5));
 }

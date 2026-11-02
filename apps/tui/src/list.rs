@@ -79,7 +79,7 @@ impl App {
                     self.views.focus = None;
                     self.show(&id);
                 } else if let Some((lane, job)) = self.views.jobs.get(row - order.len())
-                    && job.kind == protocol::JobKind::Shell
+                    && job.kind != protocol::JobKind::Schedule
                 {
                     let (lane, job) = (lane.clone(), job.id.clone());
                     self.views.focus = None;

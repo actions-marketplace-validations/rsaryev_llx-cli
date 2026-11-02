@@ -54,6 +54,25 @@ fn with_no_one_to_open_a_task_what_comes_waits_for_the_next() {
 }
 
 #[test]
+fn what_waits_never_opens_a_task_and_joins_the_next_one_the_person_starts() {
+    const WAITS: Policy = Policy {
+        joins: true,
+        idle: Idle::Waits,
+    };
+    let opened = Arc::new(Mutex::new(vec![]));
+    let seen = Arc::clone(&opened);
+    let queue = Queue::new(16).on_open(move |entry| seen.lock().unwrap().push(entry.body));
+    queue.post(entry(WAITS, "monitor", "m1", "stopped"));
+    queue.begin();
+    queue.post(entry(WAITS, "monitor", "m2", "stopped too"));
+    queue.end();
+    assert!(opened.lock().unwrap().is_empty(), "no task of its own");
+    queue.begin();
+    let bodies: Vec<String> = queue.take_joining().into_iter().map(|e| e.body).collect();
+    assert_eq!(bodies, ["stopped", "stopped too"]);
+}
+
+#[test]
 fn the_end_of_a_task_hands_on_what_it_did_not_read() {
     let opened = Arc::new(Mutex::new(vec![]));
     let seen = Arc::clone(&opened);

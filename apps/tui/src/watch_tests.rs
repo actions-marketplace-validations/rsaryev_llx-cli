@@ -144,3 +144,81 @@ fn how_a_command_runs_or_ended_ends_at_the_right_edge_as_the_footers_spend_does(
     // The command stays beside its name, then the room up to it.
     assert!(row.contains("nap  sleep 30   "), "{screen}");
 }
+
+/// A monitor's row: waiting, its checks so far, or ended with `ended`.
+fn monitor(checks: usize, ended: Option<JobEnd>) -> JobRow {
+    JobRow {
+        name: "ready".into(),
+        kind: JobKind::Monitor,
+        detail: "curl -sf localhost:3000/health".into(),
+        events: checks,
+        ..shell(ended)
+    }
+}
+
+#[test]
+fn a_monitor_waiting_shows_its_checks_and_opens_to_what_its_last_check_printed() {
+    let now = Instant::now();
+    let mut app = with(monitor(3, None), now);
+    let mut term = Term::new(&app);
+    let screen = term.draw(&mut app, now);
+    let row = (screen.lines())
+        .find(|line| line.contains("≋ ready"))
+        .unwrap_or_default();
+    assert!(row.contains("curl -sf localhost:300"), "{screen}");
+    assert!(row.contains("3 checks · "), "{screen}");
+    assert!(screen.contains("· 1 monitor"), "{screen}");
+    press(&mut app, KeyCode::Down, now);
+    let screen = term.draw(&mut app, now);
+    assert!(
+        screen.contains("enter open · x stop · esc back"),
+        "{screen}"
+    );
+    press(&mut app, KeyCode::Enter, now);
+    app.poll(now);
+    let asked = Command::JobOutput {
+        lane: "watch-lane".into(),
+        job: "job-1".into(),
+    };
+    assert_eq!(commands(&mut app), [asked]);
+    let output = Event::JobOutput {
+        job: "job-1".into(),
+        text: "curl: (7) Failed to connect".into(),
+    };
+    app.frame(in_session("watch-lane", output), now);
+    let screen = term.draw(&mut app, now);
+    assert!(screen.contains("≋ ready · 3 checks · "), "{screen}");
+    assert!(screen.contains("  curl: (7) Failed to connect"), "{screen}");
+    assert!(screen.ends_with("x stop · esc back"), "{screen}");
+}
+
+#[test]
+fn a_monitor_that_ended_stays_listed_with_how_red_unless_it_was_met() {
+    let now = Instant::now();
+    let met = JobEnd {
+        how: "met after 4 checks (32 s)".into(),
+        failed: false,
+    };
+    let mut app = with(monitor(4, Some(met)), now);
+    let mut term = Term::new(&app);
+    let screen = term.draw(&mut app, now);
+    assert!(screen.contains("✓ ready"), "{screen}");
+    assert!(screen.contains("met after 4 checks (32 s)"), "{screen}");
+    assert!(
+        !screen.contains("1 monitor"),
+        "nothing of it runs: {screen}"
+    );
+    let timed_out = JobEnd {
+        how: "timed out after 30 checks (5 min)".into(),
+        failed: true,
+    };
+    let mut app = with(monitor(30, Some(timed_out)), now);
+    let screen = term.draw(&mut app, now);
+    assert!(screen.contains("✗ ready"), "{screen}");
+    press(&mut app, KeyCode::Down, now);
+    let screen = term.draw(&mut app, now);
+    assert!(
+        screen.contains("enter open · x remove · esc back"),
+        "{screen}"
+    );
+}

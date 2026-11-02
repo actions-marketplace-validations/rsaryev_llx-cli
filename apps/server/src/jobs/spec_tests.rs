@@ -9,12 +9,13 @@ fn action_of(arguments: &Value) -> Result<Action, String> {
 
 #[test]
 fn each_action_is_read_with_what_it_needs() {
-    let monitor = action_of(&json!({"action": "monitor", "command": "tail -f x", "name": "Logs"}));
+    let monitor = action_of(&json!({"action": "monitor", "command": "test -f x", "name": "Done"}));
     assert_eq!(
         monitor,
         Ok(Action::Monitor {
-            command: "tail -f x".into(),
-            name: Some("logs".into()),
+            command: "test -f x".into(),
+            name: Some("done".into()),
+            every: Duration::from_secs(10),
             timeout: Duration::from_millis(300_000),
             needs: Needs::Sandbox,
         })
@@ -83,4 +84,7 @@ fn only_the_names_the_schema_gives_are_read() {
 fn a_watch_is_bounded() {
     let long = action_of(&json!({"action": "monitor", "command": "x", "timeout_ms": 99_999_999}));
     assert!(matches!(long, Ok(Action::Monitor { timeout, .. }) if timeout.as_secs() == 1800));
+    // A check every second would be a busy loop: five seconds apart at least.
+    let often = action_of(&json!({"action": "monitor", "command": "x", "every": 1}));
+    assert!(matches!(often, Ok(Action::Monitor { every, .. }) if every.as_secs() == 5));
 }

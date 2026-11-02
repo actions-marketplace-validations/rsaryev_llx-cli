@@ -1,16 +1,21 @@
 //! `jobs`: work that goes on in the background and comes back to the conversation later. A
-//! monitor runs a command and gives each batch of lines it prints to the main agent: at its next
-//! step while a task runs, else as a new task. A schedule gives its prompt as a task of its own
-//! when due, between tasks, behind what the person queued. Both live as long as the session (a
-//! monitor until its deadline); in `exec` a task waits for its monitors, and schedules are
-//! refused: the process ends with the task.
+//! monitor waits for one thing (B10): its check, run every few seconds until it exits 0 or its
+//! time is up, gives how it ended to the main agent once: at its next step while a task runs,
+//! else as a new task. A command `bash` handed to the background (B9) comes back so too. A
+//! schedule gives its prompt as a task of its own when due, between tasks, behind what the person
+//! queued. They live as long as the session (a monitor and a command until their deadline); in
+//! `exec` a task waits for its monitors and commands, and schedules are refused: the process ends
+//! with the task.
 
 mod cron;
+mod ended;
 mod monitor;
 pub(crate) mod outputs;
 mod shells;
 pub(crate) mod spec;
+mod stop;
 mod tool;
+mod watched;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
@@ -20,6 +25,7 @@ use contracts::gate::Gate;
 use tools::workspace::Workspace;
 
 pub(crate) use self::shells::Shells;
+use self::stop::{By, Stop};
 pub(crate) use self::tool::JobsTool;
 use crate::output::Output;
 use crate::sync::Bell;
@@ -57,8 +63,8 @@ const LONGEST: Duration = Duration::from_secs(60);
 #[derive(Default)]
 struct State {
     jobs: Vec<Job>,
-    /// Commands in the background that ended, still listed with how (the latest few).
-    ended: Vec<shells::Ended>,
+    /// Jobs that ended, still listed with how (the latest few).
+    ended: Vec<ended::Ended>,
     made: u32,
 }
 
@@ -66,7 +72,7 @@ struct Job {
     id: String,
     name: String,
     what: What,
-    stop: Arc<AtomicBool>,
+    stop: Arc<Stop>,
     /// Its stop, known to the interface's keys while it is listed.
     _known: crate::interrupt::Known,
 }
@@ -75,8 +81,10 @@ enum What {
     Monitor {
         command: String,
         until: Instant,
-        /// Batches it gave.
-        events: usize,
+        /// Checks it ran.
+        checks: Arc<std::sync::atomic::AtomicUsize>,
+        /// What its last check printed, known to the interface while it runs.
+        _output: outputs::Shown,
     },
     Schedule {
         prompt: String,
@@ -113,11 +121,11 @@ impl<'a> Jobs<'a> {
     }
 
     /// Know `stop` as job `id`'s stop, under the session's id.
-    fn known(&self, id: &str, stop: &Arc<AtomicBool>) -> crate::interrupt::Known {
+    fn known(&self, id: &str, stop: &Arc<Stop>) -> crate::interrupt::Known {
         let key = crate::interrupt::job_key(&self.owner, id);
         let (stop, bell) = (Arc::clone(stop), Arc::clone(&self.bell));
         crate::interrupt::register(&key, move || {
-            stop.store(true, Ordering::SeqCst);
+            stop.ask(By::Person);
             bell.ring();
             false
         })
@@ -131,7 +139,7 @@ impl<'a> Jobs<'a> {
     pub(crate) fn end(&self) {
         if !self.kit.session {
             for job in &self.lock().jobs {
-                job.stop.store(true, Ordering::SeqCst);
+                job.stop.ask(By::Run);
             }
         }
     }
@@ -148,7 +156,7 @@ impl<'a> Jobs<'a> {
     pub(crate) fn close(&self) {
         self.over.store(true, Ordering::SeqCst);
         for job in &self.lock().jobs {
-            job.stop.store(true, Ordering::SeqCst);
+            job.stop.ask(By::Run);
         }
         self.bell.ring();
     }
@@ -159,7 +167,7 @@ impl<'a> Jobs<'a> {
             return;
         };
         let state = self.lock();
-        let ended = state.ended.iter().map(shells::Ended::row);
+        let ended = state.ended.iter().map(ended::Ended::row);
         let rows = state.jobs.iter().map(row).chain(ended).collect();
         drop(state);
         ui.send(Event::Jobs(rows));
@@ -186,7 +194,7 @@ impl<'a> Jobs<'a> {
                 else {
                     return true;
                 };
-                if job.stop.load(Ordering::SeqCst) {
+                if job.stop.asked() {
                     changed = true;
                     return false;
                 }
@@ -200,7 +208,7 @@ impl<'a> Jobs<'a> {
                 soonest = Some(soonest.map_or(*next, |soonest| soonest.min(*next)));
                 true
             });
-            changed |= shells::let_go(&mut state.ended);
+            changed |= ended::let_go(&mut state.ended);
             drop(state);
             changed |= !due.is_empty();
             for prompt in due {
@@ -224,11 +232,13 @@ fn line(job: &Job) -> String {
         What::Monitor {
             command,
             until,
-            events,
+            checks,
+            ..
         } => format!(
-            "- monitor `{}` ({}): `{command}`, {events} batches so far, {} min left",
+            "- monitor `{}` ({}): `{command}`, {} checks so far, {} min left",
             job.name,
             job.id,
+            checks.load(Ordering::SeqCst),
             until
                 .saturating_duration_since(Instant::now())
                 .as_secs()
@@ -285,7 +295,8 @@ fn row(job: &Job) -> JobRow {
         What::Monitor {
             command,
             until,
-            events,
+            checks,
+            ..
         } => JobRow {
             id: job.id.clone(),
             name: job.name.clone(),
@@ -293,7 +304,7 @@ fn row(job: &Job) -> JobRow {
             detail: command.clone(),
             until_at: Some(epoch_ms(*until)),
             next: None,
-            events: *events,
+            events: checks.load(Ordering::SeqCst),
             ended: None,
         },
         What::Schedule {

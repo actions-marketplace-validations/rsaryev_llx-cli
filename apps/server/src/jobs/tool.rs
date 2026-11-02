@@ -1,8 +1,7 @@
 //! The `jobs` tool: the model starts a monitor or a schedule, lists them and stops them.
 
-use std::fmt::Write as _;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicUsize;
+use std::sync::{Arc, Mutex};
 use std::thread::Scope;
 use std::time::{Duration, Instant};
 
@@ -10,9 +9,11 @@ use contracts::gate::{Effect, Needs};
 use contracts::tool::{Input, Tool, ToolError, ToolOutput, ToolSpec};
 use serde_json::Value;
 
-use super::monitor::{self, Ended};
 use super::spec::{self, Action, When};
-use super::{Job, Jobs, State, What, cron};
+use super::stop::{By, Stop};
+use super::watched::Watched;
+use super::{Job, Jobs, State, What, cron, outputs};
+use crate::sync::lock;
 
 /// Monitors running at once, at most.
 const MAX_MONITORS: usize = 8;
@@ -20,10 +21,6 @@ const MAX_MONITORS: usize = 8;
 const MAX_SCHEDULES: usize = 50;
 /// How long a recurring schedule lives.
 const WEEK: u64 = 7 * 86_400;
-/// Batches a monitor may give before it is stopped as a firehose.
-const MAX_EVENTS: usize = 100;
-/// What a monitor stopped at `MAX_EVENTS` says to do.
-const RESTART: &str = "start it again with a filter that prints only the lines you act on";
 
 pub(crate) struct JobsTool<'scope, 'env> {
     pub(crate) jobs: &'env Jobs<'env>,
@@ -62,7 +59,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         &self,
         command: &str,
         name: Option<String>,
-        (timeout, needs): (Duration, Needs),
+        (every, timeout, needs): (Duration, Duration, Needs),
     ) -> Result<ToolOutput, ToolError> {
         let dir = self.jobs.kit.workspace.root();
         // Refused before the person is asked about it; looked at again where it is listed (R7).
@@ -72,20 +69,25 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
             true => timeout,
             false => timeout.min(Duration::from_millis(spec::EXEC_WATCH_MS)),
         };
-        let stop = Arc::new(AtomicBool::new(false));
+        let stop = Arc::new(Stop::default());
         // The deadline listed is the one kept.
         let until = Instant::now() + timeout;
+        let checks = Arc::new(AtomicUsize::new(0));
+        let last: Arc<Mutex<String>> = Arc::default();
         let (id, name) = {
             let mut state = self.jobs.lock();
             room_for_a_monitor(&state)?;
             let (id, name) = super::new_job(&mut state, name);
+            let key = crate::interrupt::job_key(&self.jobs.owner, &id);
+            let shown = Arc::clone(&last);
             state.jobs.push(Job {
                 id: id.clone(),
                 name: name.clone(),
                 what: What::Monitor {
                     command: command.to_string(),
                     until,
-                    events: 0,
+                    checks: Arc::clone(&checks),
+                    _output: outputs::register(&key, move || lock(&shown).clone()),
                 },
                 stop: Arc::clone(&stop),
                 _known: self.jobs.known(&id, &stop),
@@ -94,72 +96,31 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         };
         self.jobs.show();
         let jobs = self.jobs;
-        let kit = &jobs.kit;
-        let (command, label, ours) = (command.to_string(), name.clone(), id.clone());
+        let job = Watched {
+            id: id.clone(),
+            name: name.clone(),
+            command: command.to_string(),
+            scope,
+            every,
+            until,
+            stop,
+            checks,
+            last,
+        };
         let thread = std::thread::Builder::new().name("llx-monitor-job".into());
-        let started = thread.spawn_scoped(self.scope, move || {
-            let lines = |lines: Vec<String>, dropped: usize| {
-                let mut text = lines.join("\n");
-                if dropped > 0 {
-                    let _ = write!(text, "\n… {dropped} more lines");
-                }
-                // A job no longer listed (`/new` let it go) says nothing more; a new one may
-                // have its name, never its id.
-                let mut state = jobs.lock();
-                let Some(job) = state.jobs.iter_mut().find(|job| job.id == id) else {
-                    return;
-                };
-                let What::Monitor { events, .. } = &mut job.what else {
-                    return;
-                };
-                *events += 1;
-                if *events >= MAX_EVENTS {
-                    job.stop.store(true, Ordering::SeqCst);
-                    let _ = write!(text, "\n(stopped after {MAX_EVENTS} batches: {RESTART})");
-                }
-                drop(state);
-                kit.queue.post(crate::arrivals::monitor(&label, &text));
-                jobs.show();
-            };
-            let stopped = || stop.load(Ordering::SeqCst);
-            let hidden = (kit.hidden)();
-            let ended = monitor::watch(
-                &command,
-                scope,
-                kit.workspace,
-                &hidden,
-                until,
-                &stopped,
-                &lines,
-            );
-            // Keep it listed until its final arrival is posted: exec waits while it is listed.
-            let listed = jobs.lock().jobs.iter().any(|job| job.id == id);
-            let why = match ended {
-                Ok(Ended::Exit(how)) => format!("its command ended ({how})"),
-                Ok(Ended::Deadline) => {
-                    "its deadline passed; start it again if it is still needed".into()
-                }
-                Ok(Ended::Stopped) => "it was stopped".into(),
-                Err(why) => why,
-            };
-            if listed && !jobs.over.load(Ordering::SeqCst) {
-                let ended = format!("The monitor ended: {why}.");
-                kit.queue.post(crate::arrivals::monitor(&label, &ended));
-            }
-            jobs.lock().jobs.retain(|job| job.id != id);
-            jobs.show();
-        });
         // The OS refused a thread: the monitor is not listed, and the model is told.
-        if let Err(why) = started {
-            self.jobs.lock().jobs.retain(|job| job.id != ours);
+        if let Err(why) = thread.spawn_scoped(self.scope, move || job.run(jobs)) {
+            self.jobs.lock().jobs.retain(|job| job.id != id);
             self.jobs.show();
             let why = format!("the monitor could not start (no thread: {why})");
             return Err(ToolError::Failed(why));
         }
         Ok(ToolOutput::from(format!(
-            "Monitor `{name}` started: each line it prints comes to you as a `<monitor>` message. \
-             Its end is reported within {} min. If idle, respond without a tool call and wait. \
-             Do not poll the same work with `sleep`, `bash` or repeated `list` calls.",
+            "Monitor `{name}` ({id}) started: `{command}` every {} s, for at most {} min. You are \
+             told once, when it exits 0 or its time is up: if there is nothing else to do, respond \
+             without a tool call and wait. Do not check it yourself with `sleep`, `bash` or \
+             `list`.",
+            every.as_secs(),
             timeout.as_secs().div_ceil(60)
         )))
     }
@@ -203,7 +164,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
             let mut state = self.jobs.lock();
             room_for_a_schedule(&state)?;
             let (id, name) = super::new_job(&mut state, name);
-            let stop = Arc::new(AtomicBool::new(false));
+            let stop = Arc::new(Stop::default());
             let known = self.jobs.known(&id, &stop);
             state.jobs.push(Job {
                 id: id.clone(),
@@ -246,7 +207,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
             .position(|job| job.id == wanted || job.name == wanted)
             .ok_or_else(|| ToolError::Failed(format!("there is no job `{wanted}`")))?;
         let job = &state.jobs[at];
-        job.stop.store(true, Ordering::SeqCst);
+        job.stop.ask(By::Run);
         let name = job.name.clone();
         if matches!(job.what, What::Schedule { .. }) {
             state.jobs.remove(at);
@@ -271,9 +232,10 @@ impl Tool for JobsTool<'_, '_> {
             Action::Monitor {
                 command,
                 name,
+                every,
                 timeout,
                 needs,
-            } => self.monitor(&command, name, (timeout, needs)),
+            } => self.monitor(&command, name, (every, timeout, needs)),
             Action::Schedule {
                 prompt,
                 when,

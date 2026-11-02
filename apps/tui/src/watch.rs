@@ -6,7 +6,7 @@
 use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use protocol::{Command, JobRow};
+use protocol::{Command, JobKind, JobRow};
 use ratatui::text::{Line, Span};
 
 use super::app::{Action, App};
@@ -98,17 +98,40 @@ impl App {
     }
 }
 
-/// How a command in the background runs or ended, as its row and its view say it, styled: red
-/// when it failed or was stopped.
+/// How a command in the background or a monitor runs or ended, as its row and its view say it,
+/// styled: red when it failed or was stopped.
 pub(crate) fn state(row: &JobRow) -> Span<'static> {
+    let said = how(row);
     match &row.ended {
-        None => {
-            let left = row.until_at.unwrap_or_default().saturating_sub(now_ms()) / 1000;
-            let said = format!("running · {} left", super::cells::clock(left));
-            Span::styled(said, style::dim())
+        Some(end) if end.failed => Span::styled(said, style::failed()),
+        Some(_) | None => Span::styled(said, style::dim()),
+    }
+}
+
+/// How it runs (`running · 4m 28s left`, a monitor's `3 checks · 4m 28s left`) or ended.
+pub(crate) fn how(row: &JobRow) -> String {
+    if let Some(end) = &row.ended {
+        return printable(&end.how);
+    }
+    let left = row.until_at.unwrap_or_default().saturating_sub(now_ms()) / 1000;
+    let left = super::cells::clock(left);
+    match row.kind {
+        JobKind::Monitor => {
+            let checks = super::cells::count(row.events as u64, "check");
+            format!("{checks} · {left} left")
         }
-        Some(end) if end.failed => Span::styled(printable(&end.how), style::failed()),
-        Some(end) => Span::styled(printable(&end.how), style::dim()),
+        JobKind::Shell | JobKind::Schedule => format!("running · {left} left"),
+    }
+}
+
+/// The glyph a job's row and its view start with: how it ended, else what it is.
+pub(crate) fn glyph(row: &JobRow) -> Span<'static> {
+    match (&row.ended, row.kind) {
+        (Some(end), _) if end.failed => Span::styled("✗", style::failed()),
+        (Some(_), _) => Span::styled("✓", style::dim()),
+        (None, JobKind::Monitor) => Span::styled("≋", style::code()),
+        (None, JobKind::Shell) => Span::styled("$", style::code()),
+        (None, JobKind::Schedule) => Span::styled("◷", style::waiting()),
     }
 }
 
@@ -118,15 +141,11 @@ pub(crate) fn render(app: &App, width: usize) -> Vec<Line<'static>> {
     let (Some(watching), Some(row)) = (&app.watching, app.watched()) else {
         return vec![];
     };
-    let glyph = match &row.ended {
-        Some(end) if end.failed => Span::styled("✗ ", style::failed()),
-        Some(_) => Span::styled("✓ ", style::dim()),
-        None => Span::styled("$ ", style::code()),
-    };
     let name = Span::styled(cut(&printable(&row.name), width / 2), style::bold());
     let mut out = vec![
         Line::from(vec![
-            glyph,
+            glyph(row),
+            Span::raw(" "),
             name,
             Span::styled(" · ", style::dim()),
             state(row),

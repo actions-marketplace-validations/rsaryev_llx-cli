@@ -181,14 +181,15 @@ pub struct JobRow {
     pub until_at: Option<u64>,
     /// A schedule's next run, as a clock shows it (`14:05`).
     pub next: Option<String>,
-    /// Batches a monitor gave.
+    /// Checks a monitor ran.
     pub events: usize,
-    /// How a background command ended, while it is still listed after; `None` while it runs.
+    /// How a background command or a monitor ended, while it is still listed after; `None`
+    /// while it runs.
     pub ended: Option<JobEnd>,
 }
 
-/// How a background command ended: its report's first line (`Exit code: 1`, `Stopped: by the
-/// person`), and whether that is a failure, a stop among them.
+/// How a background command or a monitor ended (`Exit code: 1`, `Stopped: by the person`,
+/// `met after 4 checks (32 s)`), and whether that is a failure, a stop among them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JobEnd {
     pub how: String,

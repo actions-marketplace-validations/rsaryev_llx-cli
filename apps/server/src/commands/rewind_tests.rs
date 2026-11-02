@@ -78,12 +78,15 @@ fn rewinding_to_an_older_task_forgets_those_after_it() {
 fn background_tasks_are_listed_as_the_transcript_shows_them_and_not_put_back_in_the_prompt() {
     composed(crate::modes::built("bypass"), true, answers(2), |rig| {
         rig.task("(scheduled `hello`) say hello");
-        rig.task(&crate::arrivals::monitor("ticks", "tick 1").render());
+        rig.task(&crate::arrivals::monitor("ready", "met after 1 check (0 s)", "up").render());
         let (ui, frames) = crate::testing::fake_ui();
         rig.ui = Some(ui);
         let mut person = picks(&[Some(1)]);
         steps(rig, &mut person);
-        assert_eq!(person.1[0], ["≋ ticks · tick 1", "◷ hello · say hello"]);
+        assert_eq!(
+            person.1[0],
+            ["≋ ready · met after 1 check (0 s)", "◷ hello · say hello"]
+        );
         let prefilled = (crate::testing::events(&frames).into_iter())
             .any(|(_, event)| matches!(event, Event::Prefill(_)));
         assert!(!prefilled);

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- A monitor waits for one thing, as Localix's does: its command is a check run every `every` seconds (10 by default, at least 5) until it exits 0 or its time is up, and the agent is told once how it ended (`met after 4 checks (32 s)`, `timed out after …`, `could not run: Exit code: 127`) with what the last check printed. It no longer hands the agent each line a command prints: a monitor printing every second kept a task going for 22 turns in 32 s. In the list a monitor shows its checks (`≋ ready … 3 checks · 4m 28s left`), opens with Enter to what its last check printed, and stays listed with how it ended, as a command in the background does.
+- A job the agent stops says nothing more of it; one the person stops (`x`) opens no task of its own, and the agent reads it with the person's next task.
 - The list under the composer ends each row's time and tokens, or how a command in the background runs or ended, at the right edge, where the footer's spend ends: the rows read as one table, what a row does cut first when the room runs out.
 
 - A resized window draws the session again at its new width: the terminal reflows what it shows, so the live area was erased short and its copies (the composer's rules) stayed on the screen. Each block of the transcript is drawn again at the width, not cut.
