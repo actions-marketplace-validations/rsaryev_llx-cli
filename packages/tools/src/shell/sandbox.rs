@@ -1,10 +1,11 @@
 //! A confined command (ARCHITECTURE.md B3): the operating system keeps it to what its scope lets
 //! it change, whatever its text says. It reads every file but the app's own (on macOS); it writes
 //! `/dev/null`, a scratch directory of its own (its `TMPDIR`, removed when it ends) and, in the
-//! workspace's scope, the workspace but its `.git`; it opens no network or local socket, so it
-//! reaches no other process to act for it. On macOS Seatbelt (`sandbox-exec`, a profile closed by
-//! default), on Linux Landlock and a seccomp filter. Where neither can be set up, the command is
-//! refused with the reason, never run open.
+//! workspace's scope, the workspace but its `.git` (on macOS any `.git` in it, a nested
+//! repository's too); it opens no network or local socket, so it reaches no other process to act
+//! for it. On macOS Seatbelt (`sandbox-exec`, a profile closed by default), on Linux Landlock and
+//! a seccomp filter. Where neither can be set up, the command is refused with the reason, never
+//! run open.
 
 use std::io;
 use std::path::{Path, PathBuf};

@@ -190,6 +190,39 @@ fn a_workspace_command_changes_the_workspace_alone_and_never_its_git() {
     assert!(!outside.exists());
 }
 
+/// A nested repository's `.git` is kept as the workspace's own is, in any case and made anew: a
+/// hook written there would run unconfined at the person's next commit in it. Names that only
+/// start or end like it (`.gitignore`, `.github`) are the workspace's.
+#[cfg(target_os = "macos")]
+#[test]
+fn a_workspace_command_never_writes_a_nested_repositorys_git() {
+    let dir = Scratch::new();
+    dir.file("sub/.git/config", "[core]\n");
+    let finished = in_workspace(
+        "echo hook > sub/.git/hooks-pre-commit; echo x > sub/.GIT/y; mkdir -p new/.git; \
+         mkdir file && echo x > file/.git; echo x > .gitignore && mkdir .github && \
+         echo x > .github/ci.yml && echo x > repo.git && echo kept",
+        dir.path(),
+    );
+    assert!(finished.output.ends_with("kept"), "{}", finished.output);
+    assert!(refused(&finished.output), "{}", finished.output);
+    for written in [".gitignore", ".github/ci.yml", "repo.git"] {
+        assert!(dir.path().join(written).exists(), "{written}");
+    }
+    for kept in [
+        "sub/.git/hooks-pre-commit",
+        "sub/.git/y",
+        "new/.git",
+        "file/.git",
+    ] {
+        assert!(
+            !dir.path().join(kept).exists(),
+            "{kept}: {}",
+            finished.output
+        );
+    }
+}
+
 /// Landlock cannot take `.git` out of a tree it lets write: a workspace with one only reads.
 #[cfg(target_os = "linux")]
 #[test]

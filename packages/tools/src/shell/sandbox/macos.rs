@@ -25,9 +25,12 @@ const PROFILE: &str = r#"(version 1)
 (allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))
 "#;
 
-/// What a workspace command may write besides: `ROOT` but its `.git` (`GIT`, where it really is),
-/// as a hook written there would run unconfined at the person's next commit.
-const WORKSPACE: &str = r#"(allow file-write* (require-all (subpath (param "ROOT")) (require-not (subpath (param "GIT")))))
+/// What a workspace command may write besides: `ROOT` but its `.git` (`GIT`, where it really is,
+/// a link followed) and a nested repository's (any path with a `.git` name in it, in any case, as
+/// a macOS volume takes `.GIT` as `.git`, one made anew too), as a hook written there would run
+/// unconfined at the person's next commit there. The regex names no path, so no path is ever read
+/// as its syntax; a `.git` above `ROOT` matches too, and leaves a workspace inside one unwritten.
+const WORKSPACE: &str = r#"(allow file-write* (require-all (subpath (param "ROOT")) (require-not (subpath (param "GIT"))) (require-not (regex #"/[.][Gg][Ii][Tt](/|$)"))))
 "#;
 
 pub(super) fn available() -> bool {

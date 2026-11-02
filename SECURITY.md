@@ -20,12 +20,14 @@ commands yourself.
   each), and the mode's rules and your `--allow` and `--deny` rules decide. A denied effect is
   reported back to the model, which can try another way.
 - **The `default` mode** runs commands without asking in the system's sandbox (Seatbelt on macOS,
-  Landlock and seccomp on Linux): it writes only inside the workspace (never its `.git`) and a
-  scratch directory of its own, and opens no network or local socket. On Linux where the
-  workspace has a `.git` of its own, and wherever the workspace is your home directory or holds
-  it, the sandbox lets a command write only its scratch directory. Patches to the workspace's
-  files are made without asking. A command the model escalates (`escalate`: it must leave the
-  sandbox), or a patch inside `.git`, is asked first, and refused where no one can be asked
+  Landlock and seccomp on Linux): it writes only inside the workspace (never its `.git`, nor on
+  macOS a nested repository's) and a scratch directory of its own, and opens no network or local
+  socket. On Linux where the workspace has a `.git` of its own, and wherever the workspace is your
+  home directory or holds it, the sandbox lets a command write only its scratch directory. On
+  Linux a nested repository's `.git` in a workspace with none of its own is not kept: Landlock
+  cannot take a path out of the tree it lets write. Patches to the workspace's files are made
+  without asking. A command the model escalates (`escalate`: it must leave the sandbox), or a
+  patch inside `.git`, is asked first, and refused where no one can be asked
   (`llx exec` with no terminal, as in CI).
 - **The `plan` mode** runs commands without asking in a read-only sandbox, refuses every patch,
   and refuses every escalation.
