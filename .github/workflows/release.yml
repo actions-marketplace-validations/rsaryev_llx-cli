@@ -1,7 +1,8 @@
 name: release
 
-# A pushed tag vX.Y.Z (RELEASING.md) builds the archives on each platform and publishes them as
-# the GitHub release vX.Y.Z, with the CHANGELOG section as its notes. A tag with a suffix
+# A pushed tag vX.Y.Z (RELEASING.md) tests the tagged commit, builds the archives on each platform
+# and publishes them as the GitHub release vX.Y.Z, with the CHANGELOG section as its notes; then
+# the image of the release, and the action's major tag moved to it. A tag with a suffix
 # (v1.0.0-rc.1) becomes a prerelease, so `releases/latest` (install.sh) skips it.
 on:
   push:
