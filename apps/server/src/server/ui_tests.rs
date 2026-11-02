@@ -233,3 +233,26 @@ fn a_stop_by_the_person_withdraws_the_question_at_once() {
     );
     resolved(&frames, id);
 }
+
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a client attached later, as the socket attaches one"
+)]
+fn a_question_withdrawn_as_it_is_asked_is_never_replayed() {
+    // The withdrawal may come between the question's entry and its frame: what a client that
+    // attaches later is given must still say the question is over.
+    for _ in 0..5000 {
+        let (ui, peer, _frames) = crate::testing::fake_peer();
+        let picked = pick(&ui.for_lane("s1"));
+        while picked.try_recv().is_err() {
+            peer.abandon(None);
+        }
+        let (out, later) = mpsc::channel();
+        peer.hub.attach(out);
+        let stale = later
+            .try_iter()
+            .any(|frame| matches!(frame, ToClient::Ask { .. }));
+        assert!(!stale, "a withdrawn question was replayed");
+    }
+}

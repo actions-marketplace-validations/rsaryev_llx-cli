@@ -86,20 +86,11 @@ impl Peer {
     }
 
     /// Nobody will answer what session `lane` (every session, for `None`) waits for: the person
-    /// left, or the lane was closed. Its questions end with nothing, and the clients are told.
+    /// left, or the lane was closed. Its questions end with nothing; each thread that asked one
+    /// tells the clients, after its question (R7: told here, it could come first).
     pub(crate) fn abandon(&self, lane: Option<&str>) {
-        let mut gone = vec![];
-        self.waiting().retain(|id, (session, _)| {
-            let keep = lane.is_some_and(|lane| session.as_deref() != Some(lane));
-            if !keep {
-                gone.push(*id);
-            }
-            keep
-        });
-        gone.sort_unstable();
-        for id in gone {
-            self.send(ToClient::Resolved { id });
-        }
+        self.waiting()
+            .retain(|_, (session, _)| lane.is_some_and(|lane| session.as_deref() != Some(lane)));
         ring();
     }
 
@@ -237,8 +228,10 @@ impl Ui {
         let session = self.session().to_owned();
         self.peer.send(ToClient::Ask { id, session, asked });
         let reply = wait(&answer, until);
-        // Withdrawn by its stop: the clients are told here; by `abandon`, they were already.
-        if reply.is_none() && self.peer.waiting().remove(&id).is_some() {
+        // Withdrawn, by its stop or by `abandon`: the clients are told by the thread that asked,
+        // so it always reaches them after the question.
+        if reply.is_none() {
+            self.peer.waiting().remove(&id);
             self.peer.send(ToClient::Resolved { id });
         }
         reply
