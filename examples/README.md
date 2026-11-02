@@ -1,9 +1,19 @@
 # Examples
 
-GitHub workflows that run llx through its action, `rsaryev/llx@v0`. Each was run for real in a
-test repository before it was published.
+Ready-made uses of llx, by where they run. Each was run for real before it was published.
 
-## Install one
+| Where | Example |
+|---|---|
+| GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
+| Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
+| Claude Code | [claude-code/](claude-code/README.md): a plugin. Its `llx` subagent hands bulk reading to llx on another model, and where an OpenRouter key is set, Claude asks `llx decide` rather than read it all |
+| Codex | [codex/](codex/README.md): the same as lines of `AGENTS.md`, for Codex or any agent that reads it |
+
+## GitHub workflows
+
+Each runs llx through its action, `rsaryev/llx@v0`, and was run in a test repository first.
+
+### Install one
 
 1. Pick a workflow in the table below, and copy its file into your repository's
    `.github/workflows/`.
@@ -35,13 +45,7 @@ git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requ
 | [jira.yml](github/jira.yml) | a Jira automation flow hands it a work item (a manual trigger, or a transition) | makes the change on the branch `llx/KEY` and runs the tests; opens a draft pull request named by the key, or pushes to the open one; comments on the work item | a Jira flow and a fine-grained token, as its header says; for the comment, `JIRA_API`, `JIRA_EMAIL` and the secret `JIRA_API_TOKEN`; "Allow GitHub Actions to create and approve pull requests" |
 | [audit.yml](github/audit.yml) | weekly, or by hand | explores the repository, runs its tests and linters, and keeps one issue labeled `llx-audit` as its latest report: opened or rewritten when it finds something worth a maintainer's time, closed when nothing of it holds | |
 
-## Beyond GitHub workflows
-
-- [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the
-  spec's structure and what no spec diff can see (units, boundaries, the code behind the
-  endpoints), as a script for any CI, with a GitLab job, a GitHub job, a demo and its recorded run.
-
-## How they are built
+### How they are built
 
 The agent works as at a terminal: `bash` and `apply_patch`, with `gh`, `git` and `jq` in its shell. There is no MCP
 server, no GitHub tool and no prompt built into the action: the task's prompt is in the workflow,
@@ -87,7 +91,7 @@ where you can read it, and so is what gets posted.
   request's. The token is read-only, so the worst is a bad answer. Where the author may be anyone,
   `instructions-from: base` reads the base's instead.
 
-## Notes
+### Notes
 
 - When `llx.yml` pushes or opens a pull request with the workflow's token, the workflows its push
   or pull request starts wait for a person to approve them: your tests run on llx's change once

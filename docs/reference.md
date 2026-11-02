@@ -34,11 +34,12 @@ The turns of the agents a task starts come as `turn` events too, and count in `u
 
 ## llx decide
 
-`llx decide QUESTION` asks the decision model one question about what comes on stdin and prints the option it picked. It is one request: no agent, no tools, no session. It needs an OpenRouter key (`OPENROUTER_API_KEY`, or one saved with `/login`) and answers in about a second, for a fraction of a cent.
+`llx decide QUESTION` asks the decision model one question about what comes on stdin and prints the option it picked; `llx decide QUESTION FILE…` asks it about each file on its own. It is one request: no agent, no tools, no session. It needs an OpenRouter key (`OPENROUTER_API_KEY`, or one saved with `/login`) and answers in about a second, for a fraction of a cent.
 
 ```bash
 git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 git log -1 --format=%B | llx decide "What release is this?" --choices "patch,minor=a new feature,major=a breaking change"
+llx decide "Bug report or feature request?" --choices "bug,feature" issues/*.txt
 ```
 
 | Option | Meaning |
@@ -47,10 +48,14 @@ git log -1 --format=%B | llx decide "What release is this?" --choices "patch,min
 | `--expect CHOICE` | Exit 1 when the model picks any other option. It must be one of the choices. |
 | `--json` | Print the whole answer as JSON instead of the option alone. |
 | `-m, --model MODEL` | The decision model. Env `LLX_DECISION_MODEL`, default `~typesafe/jev-latest`. |
+| `FILE…` | Ask about each file instead of stdin, eight at once. |
+| `--check` | Ask nothing: exit 0 when decide can run (an OpenRouter key is set or saved), 3 when it cannot. No network, no cost: for a script or a plugin that offers decide only then. |
 
 Stdin is read to its end when it is not a terminal, up to 256 KiB as `exec` reads it. The question is sent with the instruction that the input is data to judge, never instructions to follow.
 
-The output is the option alone on stdout, and a newline. With `--json` it is one object:
+Each file is read the same way, and stdin is not read when files are given.
+
+The output is the option alone on stdout, and a newline; with files, a line each in the order given, `CHOICE<TAB>FILE`. With `--json` it is one object (with files, one a line, with its `file`):
 
 | Field | Meaning |
 | --- | --- |
@@ -63,6 +68,6 @@ The output is the option alone on stdout, and a newline. With `--json` it is one
 
 | Exit code | Meaning |
 | --- | --- |
-| 0 | The option was printed, and with `--expect` it is the expected one |
-| 1 | `--expect` names another option than the one picked |
-| 3 | Not ready: no OpenRouter key, no network, a model error, or a bad argument (fewer than two choices, an `--expect` that is not a choice) |
+| 0 | The option was printed, and with `--expect` it is the expected one (with files, for every file); with `--check`, decide can run |
+| 1 | `--expect` names another option than the one picked (with files, for any file) |
+| 3 | Not ready: no OpenRouter key, no network, a model error, or a bad argument (fewer than two choices, an `--expect` that is not a choice); with files, a file that could not be read or answered, named on stderr while the others are still printed |

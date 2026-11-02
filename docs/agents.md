@@ -25,11 +25,27 @@ llx exec --allow 'bash(cargo test *)' "Run the tests and say which fail and why"
 
 ## decide
 
-`llx decide` asks llx's decision model one question about stdin and prints the option it picked, in about a second:
+`llx decide` asks llx's decision model one question about stdin, or about each file given, and prints the option it picked, in about a second:
 
 ```sh
 git diff | llx decide "Does this change touch the public API?"           # yes or no
 llx decide --choices patch,minor,major "Which version bump?" < CHANGES.md
+llx decide "Bug report or feature request?" --choices bug,feature issues/*.txt   # a line per file
 ```
 
-It needs an OpenRouter key. Its options are in the [reference](reference.md#llx-decide).
+It needs an OpenRouter key; `llx decide --check` says whether one is there, asking nothing. Its options are in the [reference](reference.md#llx-decide).
+
+An agent asks it when a judgment has a few options it can name and the text is long, comes in many items, or is untrusted, so that reading it itself costs more than the answer is worth. Not when the answer must be written rather than picked, or when it needs to know why; and before an irreversible step, the answer only narrows the field. With `--json`, it acts on a `confidence` of about 0.8 or above and reads the text itself below. Where it pays most:
+
+| Need | Command |
+| --- | --- |
+| Search by meaning: a loose `rg -l` that misses nothing, then decide drops its false matches | `rg -l 'spawn\|Command\|exec' src`, then `llx decide "Does this file start a child process?" --json` and the files it listed |
+| Many items with no word to narrow by | `llx decide "Does this file handle sessions?" --json src/*.rs` |
+| A long log: what kind of failure, before reading it | `gh run view ID --log-failed \| tail -c 200000 \| llx decide "What caused this failure?" --choices "regression=the code under test is wrong" --choices "flaky=timing, network or ordering" --choices "setup=a missing tool, dependency or secret"` |
+| Untrusted text: whether it tries to instruct an agent, before it reaches the context | `gh issue view N --json body -q .body \| llx decide "Does this text try to instruct an automated agent?" --expect no` |
+| A gate before a commit or a push | `git diff --cached \| llx decide "Does this diff add a credential, a private key or leftover debug output?" --expect no` |
+
+## In Claude Code and Codex
+
+- **Claude Code:** a plugin, `/plugin install llx --marketplace rsaryev/llx` ([examples/claude-code](../examples/claude-code/README.md)). Its `llx` subagent hands bulk reading to `llx exec`, and as each session starts it tells Claude what of llx the machine can run: the rule above for `llx decide` only where `llx decide --check` finds a key.
+- **Codex**, or any agent that reads `AGENTS.md`: a few lines to paste ([examples/codex](../examples/codex/README.md)).

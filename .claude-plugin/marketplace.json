@@ -1,0 +1,11 @@
+{
+  "name": "llx",
+  "owner": { "name": "rsaryev" },
+  "plugins": [
+    {
+      "name": "llx",
+      "source": "./examples/claude-code",
+      "description": "A subagent that hands bulk reading to llx on any model, and llx decide's fast judgments where an OpenRouter key is set"
+    }
+  ]
+}

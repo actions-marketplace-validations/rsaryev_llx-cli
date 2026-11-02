@@ -1,0 +1,16 @@
+{
+  "description": "Tells Claude, as each session starts or its context is compacted, what of llx this machine can run: the llx subagent where llx is installed, llx decide only where an OpenRouter key is set",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

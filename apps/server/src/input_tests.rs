@@ -82,7 +82,7 @@ fn reading_stdin_is_said_where_it_could_wait_unseen() {
 
 #[test]
 fn stdin_is_read_up_to_its_limit_and_a_longer_one_says_the_rest_was_not() {
-    let read = |bytes: &[u8]| read_capped(bytes, 2048).unwrap();
+    let read = |bytes: &[u8]| read_capped(bytes, 2048, "stdin").unwrap();
     let full = "a".repeat(2048);
     assert_eq!(read(full.as_bytes()), full, "exactly the limit is whole");
     let over = format!("{full}b");

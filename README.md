@@ -119,33 +119,17 @@ Ready-made GitHub workflows, each run for real: [pull request review](examples/g
 
 ## In other agents
 
-Claude Code, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` answers a yes or no about some text in about a second. See [docs/agents.md](docs/agents.md).
+Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
 
-For example, llx as a subagent of Claude Code: your session keeps thinking on its own model, and the bulk work (reading a large codebase, a long CI log, a first pass over a diff) goes to a cheaper model, or to the ChatGPT plan you already pay for. Put this in `.claude/agents/llx.md`:
+In Claude Code, one command installs both as a plugin ([examples/claude-code](examples/claude-code/README.md)):
 
-```markdown
----
-name: llx
-description: Use proactively for bulk work whose answer is short (reading or searching a large codebase, summarizing a long log, a first pass over a diff). Hands the task to llx on a cheaper model.
-tools: Bash
-model: haiku
-effort: low
-maxTurns: 3
----
-
-You only relay. Run the task you are given with llx, in one command, then reply with what it
-printed, as it is: no commentary, nothing of your own.
-
-    llx exec --mode plan --timeout 600 --budget 0.20 "<the task, with every path and fact it needs>" 2>/dev/null
-
-stdout is the answer alone; the trace goes to stderr. Add `--provider openai -m gpt-6-luna` for a
-ChatGPT sign-in, or `--provider openrouter -m <model>`. If it exits non-zero, run it once more
-without `2>/dev/null` and reply with the error. Never read the files or do the task yourself.
+```text
+/plugin install llx --marketplace rsaryev/llx
 ```
 
-A Claude Code subagent always thinks on a Claude model, so here a small one (`haiku`, three turns at most) only hands the task over, and llx's model does the work. Allow the call once in `.claude/settings.json` (`"permissions": {"allow": ["Bash(llx exec *)"]}`) and start a new session: subagents are read as it starts. Claude delegates by the description alone only now and then; a line in `CLAUDE.md` ("hand bulk reading and searching to the llx subagent") makes it the habit. To skip the relay, a line there ("for bulk reading, run `llx exec --mode plan "…"`") has your session call llx itself.
+Its `llx` subagent hands bulk reading (many files, a long log, a first pass over a diff) to llx on the model you chose with `/login`, a ChatGPT plan you already pay for among them; a small Claude model only relays it. As each session starts, the plugin tells Claude what of llx this machine can run, and where an OpenRouter key is set (`llx decide --check`), one rule for `llx decide`: when a judgment has a few options and the text is long, comes in many items or is untrusted, ask it rather than read it all. Asked to sort 20 issue texts into bugs and features, Claude ran one command, `llx decide "Is this issue a bug report or a feature request?" --choices "bug=…,feature=…" --json issues/*`, and read none of the files: $0.0005 of decisions.
 
-Codex takes the same as a few lines of its `AGENTS.md`: "for a task that is mostly reading or summarizing, run `llx exec --mode plan "…"` and use its stdout as the answer". llx needs the network and sets up its own sandbox, so approve the command outside Codex's.
+For Codex, or any agent that reads `AGENTS.md`, the same is a few lines to paste ([examples/codex](examples/codex/README.md)). Everything else: [docs/agents.md](docs/agents.md).
 
 ## Documentation
 

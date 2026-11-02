@@ -123,12 +123,14 @@ pub(crate) enum Command {
     /// <stdin> block (`</dev/null` skips it); `-` reads the prompt itself from stdin.
     #[command(visible_alias = "e", args_conflicts_with_subcommands = true)]
     Exec(Box<ExecArgs>),
-    /// Ask the decision model one question about stdin; the option it picked alone goes to stdout.
+    /// Ask the decision model one question about stdin, or each file; the option it picked goes to stdout.
     ///
     /// A small, fast model picks one of the choices (yes or no unless --choices says otherwise),
-    /// in about a second, for a fraction of a cent: a gate in a script or CI. It needs an
-    /// OpenRouter key. Stdin is read up to 256 KiB, as `exec` reads it. Example:
-    /// `git diff | llx decide "Does this break the public API?"`.
+    /// in about a second, for a fraction of a cent: a gate in a script or CI, or a judgment an
+    /// agent would otherwise read a lot for. It needs an OpenRouter key (--check says whether one
+    /// is there). Stdin, and each file, is read up to 256 KiB, as `exec` reads it. Examples:
+    /// `git diff | llx decide "Does this break the public API?"`;
+    /// `llx decide "Bug or feature?" --choices bug,feature issues/*.txt`.
     Decide(Box<DecideArgs>),
     /// Go on with a saved session, at the terminal.
     ///
@@ -201,7 +203,13 @@ pub(crate) enum ExecCommand {
 #[derive(Args, Debug)]
 pub(crate) struct DecideArgs {
     /// The question, about what comes on stdin.
-    pub question: String,
+    #[arg(required_unless_present = "check")]
+    pub question: Option<String>,
+    /// Ask about each file instead of stdin, a few at once: a line each, `CHOICE<TAB>FILE` (with
+    /// --json, an object with its `file`), in the order given. With --expect, exit 1 when any
+    /// file's pick differs; exit 3 when a file cannot be read or answered (named on stderr).
+    #[arg(value_name = "FILE")]
+    pub files: Vec<PathBuf>,
     /// The options, comma-separated; `key=what it means` tells the model more. Repeated, each
     /// `key=…` is one option whole, commas and all.
     #[arg(long, value_name = "A,B,…", default_value = "yes,no")]
@@ -212,6 +220,10 @@ pub(crate) struct DecideArgs {
     /// Print the choice with each option's probability, the model and the cost, as JSON.
     #[arg(long)]
     pub json: bool,
+    /// Ask nothing: exit 0 when decide can run (an OpenRouter key is set or saved), 3 when it
+    /// cannot. No network, no cost: for a script or a plugin that offers decide only then.
+    #[arg(long, conflicts_with_all = ["question", "files", "expect", "json"])]
+    pub check: bool,
     /// The decision model.
     #[arg(short = 'm', long, value_name = "MODEL", env = "LLX_DECISION_MODEL", default_value = crate::providers::DECISION_DEFAULT)]
     pub model: String,

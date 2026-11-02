@@ -3,7 +3,7 @@
 
 use serde_json::Value;
 
-use crate::common::home::{Home, text};
+use crate::common::home::{FAKE_KEY, Home, text};
 use crate::common::model::{Model, Reply};
 
 fn decided(choice: &str, odds: &[(&str, f64)]) -> Model {
@@ -149,4 +149,128 @@ fn stdin_is_read_up_to_256_kib_as_exec_reads_it_and_the_model_is_told_it_was_cut
         &state[state.len().saturating_sub(120)..]
     );
     assert!(!state.contains("ZZZZ"), "the tail was not read");
+}
+
+#[test]
+fn check_says_whether_decide_can_run_without_asking_the_model() {
+    let (home, model) = (Home::new(), decided("no", &[("no", 0.9)]));
+    let out = home.exec(&model, &["decide", "--check"], "");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(text(&out.stdout), "");
+    assert!(model.requests().is_empty(), "nothing is asked of the model");
+    let home = Home::new();
+    let config = home.path().join("config/llx");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(config.join("credentials"), FAKE_KEY).unwrap();
+    let out = home.run(&["decide", "--check"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "a key saved by /login: {}",
+        text(&out.stderr)
+    );
+    let out = Home::new().run(&["decide", "--check"]);
+    assert_eq!(out.status.code(), Some(3));
+    assert!(
+        text(&out.stderr).contains("OpenRouter"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert_eq!(text(&out.stdout), "");
+}
+
+/// The choice the model gave for the request whose state holds `marker`: replies go out in the
+/// order requests arrive, and files are asked at once.
+fn picked_for(model: &Model, marker: &str, replies: &[&str]) -> String {
+    let at = (model.requests().iter())
+        .position(|request| request["state"].to_string().contains(marker))
+        .unwrap();
+    replies[at].to_string()
+}
+
+#[test]
+fn files_are_judged_each_on_its_own_a_line_each_in_the_order_given() {
+    let home = Home::new();
+    let dir = home.path().join("issues");
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("a.txt"), "AAA crash on empty cart").unwrap();
+    std::fs::write(dir.join("b.txt"), "BBB please add PDF export").unwrap();
+    let replies = ["bug", "feature"];
+    let model = Model::start(vec![
+        Reply::decided("bug", &[("bug", 0.9), ("feature", 0.1)]),
+        Reply::decided("feature", &[("bug", 0.2), ("feature", 0.8)]),
+    ]);
+    let (a, b) = (dir.join("a.txt"), dir.join("b.txt"));
+    let args = ["decide", "Bug or feature?", "--choices", "bug,feature"];
+    let mut command = home.with_model(&model, &args);
+    command.arg(&a).arg(&b);
+    let out = home.exec_command(command, "STDIN-NOT-READ");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let expected = format!(
+        "{}\t{}\n{}\t{}\n",
+        picked_for(&model, "AAA", &replies),
+        a.display(),
+        picked_for(&model, "BBB", &replies),
+        b.display()
+    );
+    assert_eq!(text(&out.stdout), expected);
+    assert_eq!(model.requests().len(), 2);
+    let states: String = model
+        .requests()
+        .iter()
+        .map(|r| r["state"].to_string())
+        .collect();
+    assert!(
+        !states.contains("STDIN-NOT-READ"),
+        "stdin is not read with files"
+    );
+}
+
+#[test]
+fn with_files_json_is_a_line_each_and_expect_fails_when_any_file_differs() {
+    let home = Home::new();
+    std::fs::write(home.path().join("a.txt"), "AAA").unwrap();
+    std::fs::write(home.path().join("b.txt"), "BBB").unwrap();
+    let model = Model::start(vec![
+        Reply::decided("no", &[("no", 0.9)]),
+        Reply::decided("yes", &[("yes", 0.7)]),
+    ]);
+    let args = ["decide", "Secret in it?", "--expect", "no", "--json"];
+    let mut command = home.with_model(&model, &args);
+    command
+        .arg(home.path().join("a.txt"))
+        .arg(home.path().join("b.txt"));
+    let out = home.exec_command(command, "");
+    assert_eq!(out.status.code(), Some(1), "{}", text(&out.stderr));
+    let lines: Vec<Value> = (text(&out.stdout).lines())
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(lines.len(), 2);
+    assert!(lines[0]["file"].as_str().unwrap().ends_with("a.txt"));
+    assert!(lines[1]["file"].as_str().unwrap().ends_with("b.txt"));
+    assert!(lines.iter().all(|line| line["confidence"].is_number()));
+}
+
+#[test]
+fn a_file_that_cannot_be_read_is_named_and_the_others_are_still_answered() {
+    let home = Home::new();
+    std::fs::write(home.path().join("a.txt"), "AAA").unwrap();
+    let model = decided("no", &[("no", 0.9)]);
+    let mut command = home.with_model(&model, &["decide", "Risky?"]);
+    command
+        .arg(home.path().join("missing.txt"))
+        .arg(home.path().join("a.txt"));
+    let out = home.exec_command(command, "");
+    assert_eq!(out.status.code(), Some(3));
+    assert!(
+        text(&out.stderr).contains("missing.txt"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert!(
+        text(&out.stdout).starts_with("no\t"),
+        "{}",
+        text(&out.stdout)
+    );
+    assert_eq!(text(&out.stdout).lines().count(), 1);
 }

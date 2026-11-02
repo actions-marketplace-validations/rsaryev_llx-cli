@@ -3,6 +3,7 @@
 
 use std::fmt::Write as _;
 use std::io::{IsTerminal, Read};
+use std::path::Path;
 
 use serde_json::Value;
 
@@ -113,23 +114,31 @@ fn assemble(arg: Option<&str>, stdin: Option<&str>) -> Result<Prompt, Failure> {
 
 /// Stdin to its end, up to [`STDIN_LIMIT`]; what `exec` and `decide` both read.
 pub(crate) fn read_stdin() -> Result<String, Failure> {
-    read_capped(std::io::stdin().lock(), STDIN_LIMIT)
+    read_capped(std::io::stdin().lock(), STDIN_LIMIT, "stdin")
 }
 
-/// `reader` up to `limit` bytes; past them, a line says the rest was not read.
-fn read_capped(reader: impl Read, limit: usize) -> Result<String, Failure> {
+/// A file as stdin is read, up to [`STDIN_LIMIT`]: each file `decide` is given.
+pub(crate) fn read_file(path: &Path) -> Result<String, Failure> {
+    let file = std::fs::File::open(path)
+        .map_err(|error| Failure::Environment(format!("could not read the file: {error}")))?;
+    read_capped(file, STDIN_LIMIT, "the file")
+}
+
+/// `reader` (`what` it is, for a message) up to `limit` bytes; past them, a line says the rest
+/// was not read.
+fn read_capped(reader: impl Read, limit: usize, what: &str) -> Result<String, Failure> {
     let mut bytes = vec![];
     reader
         .take(limit as u64 + 1)
         .read_to_end(&mut bytes)
-        .map_err(|error| Failure::Environment(format!("could not read stdin: {error}")))?;
+        .map_err(|error| Failure::Environment(format!("could not read {what}: {error}")))?;
     let cut = bytes.len() > limit;
     bytes.truncate(limit);
     let mut text = String::from_utf8_lossy(&bytes).into_owned();
     if cut {
         let _ = write!(
             text,
-            "\n[stdin cut at {} KiB: the rest was not read]",
+            "\n[{what} cut at {} KiB: the rest was not read]",
             limit / 1024
         );
     }

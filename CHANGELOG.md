@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `llx decide QUESTION FILE…` asks about each file on its own, eight at once, and prints a line each (`CHOICE<TAB>FILE`, or with `--json` an object with its `file`) in the order given: one command for a directory, where a shell loop would not fit an agent's allow rule. With `--expect`, it exits 1 when any file's pick differs; a file that cannot be read or answered is named on stderr and ends the run with 3.
+- `llx decide --check` exits 0 when decide can run (an OpenRouter key is set or saved) and 3 when it cannot, asking no model.
+- A Claude Code plugin, `/plugin install llx --marketplace rsaryev/llx` ([examples/claude-code](examples/claude-code/README.md)): the `llx` subagent hands bulk reading to `llx exec` on another model, and where `llx decide --check` finds a key, Claude is told when `llx decide` pays. The same for Codex as lines of `AGENTS.md` ([examples/codex](examples/codex/README.md)).
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
 
 ## 0.2.0

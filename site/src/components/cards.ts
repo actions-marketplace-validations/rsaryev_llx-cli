@@ -1,4 +1,4 @@
-import { AGENTS_DOCS, CI_DOCS, DOCS, EXAMPLES_DOCS } from '../links';
+import { AGENTS_DOCS, CI_DOCS, DOCS, EXAMPLES_DOCS, GITHUB } from '../links';
 
 /** A word's tone in a panel (the terminal's colours); '' is plain. */
 export type Tone = 'dim' | 'hi' | 'ok' | 'bad' | 'acc' | 'sel' | '';
@@ -140,21 +140,21 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'A subagent for Claude Code and Codex',
-    text: 'Your agent keeps thinking on its own model and hands the bulk work (a large codebase read, a long CI log, a first pass over a diff) to llx on a cheaper one, or on the ChatGPT plan you already have. In Claude Code it is a subagent file: a small Claude model relays, llx\'s model does the work. In Codex, a few lines of AGENTS.md.',
-    link: { href: AGENTS_DOCS, label: 'llx for other agents' },
+    title: 'A plugin for Claude Code, lines for Codex',
+    text: 'Your agent keeps thinking on its own model. The llx subagent hands bulk reading to llx on the model you chose, a ChatGPT plan you already pay for among them; with an OpenRouter key, Claude asks llx decide rather than read every file itself. In Codex, the same is a few lines of AGENTS.md.',
+    link: { href: `${GITHUB}/tree/main/examples/claude-code`, label: 'The plugin' },
     panel: [
-      shell('$ cat .claude/agents/llx.md'),
-      out('---', 'dim'),
-      out('name: llx', ''),
-      out('description: Use proactively for bulk reading.', ''),
-      out('tools: Bash', ''),
-      out('model: haiku', ''),
-      out('maxTurns: 3', ''),
-      out('---', 'dim'),
-      out('You only relay: run the task, reply with its answer.', ''),
-      out('  llx exec --mode plan --budget 0.20 --provider openai \\', 'hi'),
-      out('    -m gpt-6-luna "<the task>" 2>/dev/null', 'hi'),
+      { ui: [[['acc', '> '], ['', '/plugin install llx --marketplace rsaryev/llx']]] },
+      shell('$ llx decide "Bug report or feature request?" \\\n    --choices bug,feature issues/*'),
+      {
+        grid: [
+          [['ok', 'bug'], ['dim', 'issues/01.txt']],
+          [['ok', 'bug'], ['dim', 'issues/02.txt']],
+          [['acc', 'feature'], ['dim', 'issues/05.txt']],
+          [['acc', 'feature'], ['dim', 'issues/06.txt']],
+        ],
+      },
+      out('20 files, one command, none read by Claude: $0.0005', 'dim'),
     ],
   },
   {
