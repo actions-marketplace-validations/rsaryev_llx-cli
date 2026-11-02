@@ -260,7 +260,7 @@ fn a_decision_model_that_refuses_says_why_and_the_words_answer() {
     let home = Home::new();
     project(&home);
     // Out of credit: OpenRouter's 402.
-    let model = Model::start(vec![Reply::Refused(402), Reply::Refused(402)]);
+    let model = Model::start(vec![Reply::Undecided(402), Reply::Undecided(402)]);
     let args = [
         "grep",
         "where is a failed request sent again",

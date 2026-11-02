@@ -25,6 +25,9 @@ pub(crate) enum Reply {
     After(std::path::PathBuf, Box<Reply>),
     /// A decision model's answer to `/systemone`: the key it picked, with each key's probability.
     Decided(String, Vec<(String, f64)>),
+    /// A decision model's refusal with its status (402: out of credit); a chat request never
+    /// takes it.
+    Undecided(u16),
     /// A reply the output limit cut off while it wrote a call to `name`: its arguments as far as
     /// they got (not JSON).
     Cut(String, String),
@@ -180,7 +183,7 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
         held.advised.push(request.clone());
         if !matches!(
             held.script.front(),
-            Some(Reply::Decided(..) | Reply::Refused(_))
+            Some(Reply::Decided(..) | Reply::Undecided(_))
         ) {
             drop(held);
             let none = json!({"model": request["model"], "answers": {}, "usage": {"cost": 0.0}});
@@ -200,7 +203,7 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
                 next = Some(*reply);
                 continue;
             }
-            Some(Reply::Refused(status)) => {
+            Some(Reply::Refused(status) | Reply::Undecided(status)) => {
                 let error = json!({"code": status, "message": "No auth credentials found"});
                 break (status, json!({ "error": error }));
             }
