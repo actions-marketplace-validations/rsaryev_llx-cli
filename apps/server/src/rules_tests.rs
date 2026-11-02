@@ -649,6 +649,38 @@ fn an_edit_rule_is_a_glob_from_the_workspace_root() {
 }
 
 #[test]
+fn an_edit_rule_that_ends_in_a_slash_names_every_file_under_that_directory() {
+    // As `.gitignore` reads it: with no other `/`, a directory of that name at any depth.
+    for (rule, yes, no) in [
+        (
+            "apply_patch(docs/)",
+            &["docs/a.md", "docs/x/y.md", "src/docs/a.md"][..],
+            &["docs", "a.md", "src/docs.md"][..],
+        ),
+        (
+            "apply_patch(src/gen/)",
+            &["src/gen/a.rs", "src/gen/x/b.rs"],
+            &["src/gen", "gen/a.rs", "lib/src/gen/a.rs"],
+        ),
+    ] {
+        let denied = rules(&[], &[rule]);
+        for path in yes {
+            assert!(
+                matches!(denied.judge("apply_patch", path), Ruling::Denied(_)),
+                "{rule} {path}"
+            );
+        }
+        for path in no {
+            assert_eq!(
+                denied.judge("apply_patch", path),
+                Ruling::Unsettled,
+                "{rule} {path}"
+            );
+        }
+    }
+}
+
+#[test]
 fn a_rule_that_cannot_be_read_says_which() {
     for rule in [
         "bash(echo *",

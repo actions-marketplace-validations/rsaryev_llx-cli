@@ -59,6 +59,7 @@ Rules are written as Claude Code writes them:
 | `bash(* --version)` | any program's `--version` |
 | `apply_patch` | every file change |
 | `apply_patch(docs/**)` | a file under `docs/`, from the workspace root |
+| `apply_patch(tests/)` | a file under any directory named `tests`, at any depth (`src/gen/` from the root) |
 | `apply_patch(*.md)` | a Markdown file at any depth |
 | `jobs` | every monitor or schedule |
 

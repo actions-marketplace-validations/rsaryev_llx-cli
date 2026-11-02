@@ -1,7 +1,9 @@
 //! A path as an `apply_patch` rule reads it: a glob from the workspace root, as `.gitignore`
 //! writes one.
 //! A pattern with no `/` names a file at any depth (`*.md`); one with a `/` is anchored at the
-//! root, `*` staying within a directory and `**` crossing any number of them.
+//! root, `*` staying within a directory and `**` crossing any number of them. One that ends in
+//! `/` names a directory, read the same way, and every file under it (`docs/`: any directory
+//! `docs`).
 
 use super::glob::{self, Wild};
 
@@ -25,14 +27,18 @@ pub(super) fn matches(pattern: &str, path: &str) -> bool {
     }
     let pattern = pattern.strip_prefix("./").unwrap_or(pattern);
     let segments: Vec<&str> = path.split('/').collect();
-    match pattern.trim_end_matches('/').contains('/') {
-        true => {
-            let pattern: Vec<&str> = pattern.split('/').collect();
-            within(&pattern, &segments)
-        }
-        false => segments
+    let named = pattern.trim_end_matches('/');
+    let parts: Vec<&str> = named.split('/').collect();
+    let names = |path: &[&str]| match parts[..] {
+        [name] => path
             .last()
-            .is_some_and(|name| segment(pattern.as_bytes(), name.as_bytes())),
+            .is_some_and(|last| segment(name.as_bytes(), last.as_bytes())),
+        _ => within(&parts, path),
+    };
+    match named.len() < pattern.len() {
+        // A directory: the path is under it when one of the directories it is in is named.
+        true => (1..segments.len()).any(|end| names(&segments[..end])),
+        false => names(&segments),
     }
 }
 
