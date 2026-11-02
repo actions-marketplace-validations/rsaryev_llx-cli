@@ -5,6 +5,7 @@ pub(crate) mod decide;
 pub(crate) mod doctor;
 pub(crate) mod entry;
 pub(crate) mod extras;
+pub(crate) mod grep;
 pub(crate) mod login;
 pub(crate) mod model;
 pub(crate) mod repl;
@@ -74,6 +75,7 @@ pub(crate) fn dispatch(cli: Cli, at: At) -> Result<i32, Failure> {
             Some(ExecCommand::Resume(args)) => resumed(args, Kind::Exec, at),
         },
         Some(Command::Decide(args)) => decide::decide(&args),
+        Some(Command::Grep(args)) => grep::grep(&args),
         Some(Command::Resume(args)) => resumed(*args, Kind::Session, at),
         Some(Command::Sessions) => sessions::list(),
         Some(Command::Logout) => signin::logout(),

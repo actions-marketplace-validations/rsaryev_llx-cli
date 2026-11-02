@@ -140,8 +140,33 @@ export const CARDS: Card[] = [
     ],
   },
   {
+    title: 'A search by what a question means',
+    text: 'llx grep ranks the files by the question\'s words, then the decision model reads the best of them and keeps those that answer, so code that does the thing under another name is found and a file that only mentions it is left out. Each comes back with its lines, whole functions where they are short. Without a key, the ranking by words is the answer.',
+    link: { href: `${GITHUB}/tree/main/benchmark/grep`, label: 'The benchmark' },
+    panel: [
+      shell('$ llx grep "where is a failed HTTP request sent again"'),
+      {
+        grid: [
+          [['hi', 'packages/providers/openrouter/src/client.rs'], ['ok', '0.98']],
+          [['hi', 'packages/providers/kit/src/retry.rs'], ['ok', '0.95']],
+          [['hi', 'packages/providers/openai/src/responses.rs'], ['ok', '0.86']],
+        ],
+        align: 'lr',
+      },
+      out('4 of 1,199 files answer, 80 read: 2.4 s, $0.005', 'dim'),
+      {
+        grid: [
+          [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],
+          [['acc', 'llx grep'], ['ok', '97%'], ['ok', '4/4']],
+          [['', 'rg, as an agent types it'], ['bad', '46%'], ['bad', '2/4']],
+        ],
+        align: 'lrr',
+      },
+    ],
+  },
+  {
     title: 'A plugin for Claude Code, lines for Codex',
-    text: 'Your agent keeps thinking on its own model. The llx subagent hands bulk reading to llx on the model you chose, a ChatGPT plan you already pay for among them; with an OpenRouter key, Claude asks llx decide rather than read every file itself. In Codex, the same is a few lines of AGENTS.md.',
+    text: 'Your agent keeps thinking on its own model. The llx subagent hands bulk reading to llx on the model you chose, a ChatGPT plan you already pay for among them; with an OpenRouter key, Claude searches with llx grep and asks llx decide rather than read every file itself. In Codex, the same is a few lines of AGENTS.md.',
     link: { href: `${GITHUB}/tree/main/examples/claude-code`, label: 'The plugin' },
     panel: [
       { ui: [[['acc', '> '], ['', '/plugin install llx --marketplace rsaryev/llx']]] },

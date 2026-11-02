@@ -7,6 +7,7 @@ mod advice;
 mod decide;
 mod doctor;
 mod exec;
+mod grep;
 #[cfg(target_os = "linux")]
 mod hardening;
 mod logs;

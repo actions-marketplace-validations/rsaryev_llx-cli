@@ -4,9 +4,6 @@
 //! fit an agent's allow rule.
 
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, PoisonError};
-use std::thread;
 
 use contracts::model::Decider;
 
@@ -15,7 +12,7 @@ use crate::cli::DecideArgs;
 use crate::error::{self, Failure};
 use crate::exit;
 use crate::input;
-use crate::sync::lock;
+use crate::sync::each_at_once;
 
 /// How many files are asked at once: each answer takes well under a second, so a few in flight
 /// cover a directory quickly without a burst against the provider.
@@ -55,42 +52,18 @@ pub(super) fn each(
     ))
 }
 
-/// Each file read and asked by [`AT_ONCE`] named threads taking the next file in turn; the
-/// answers in the files' order.
+/// Each file read and asked by [`AT_ONCE`] threads; the answers in the files' order.
 fn answered(
     decider: &dyn Decider,
     questions: &Questions,
     files: &[PathBuf],
 ) -> Result<Vec<Answer>, Failure> {
-    let slots: Vec<Mutex<Option<Answer>>> = files.iter().map(|_| Mutex::new(None)).collect();
-    let next = AtomicUsize::new(0);
-    let work = || {
-        loop {
-            let at = next.fetch_add(1, Ordering::Relaxed);
-            let (Some(file), Some(slot)) = (files.get(at), slots.get(at)) else {
-                break;
-            };
-            let answer = input::read_file(file).and_then(|text| ask(decider, questions, &text));
-            *lock(slot) = Some(answer);
-        }
-    };
-    let started = thread::scope(|scope| {
-        (0..AT_ONCE.min(files.len()))
-            .map(|n| {
-                let work = &work;
-                thread::Builder::new()
-                    .name(format!("llx-decide-{n}"))
-                    .spawn_scoped(scope, work)
-                    .map(drop)
-            })
-            .collect::<Result<Vec<()>, _>>()
-    });
-    started.map_err(|error| Failure::Environment(format!("could not start a thread: {error}")))?;
-    Ok(slots
+    let ask =
+        |file: &PathBuf| input::read_file(file).and_then(|text| ask(decider, questions, &text));
+    let answers = each_at_once(files, AT_ONCE, "llx-decide", ask)
+        .map_err(|error| Failure::Environment(format!("could not start a thread: {error}")))?;
+    Ok(answers
         .into_iter()
-        .map(|slot| {
-            (slot.into_inner().unwrap_or_else(PoisonError::into_inner))
-                .unwrap_or_else(|| Err(Failure::Environment("not asked".into())))
-        })
+        .map(|answer| answer.unwrap_or_else(|| Err(Failure::Environment("not asked".into()))))
         .collect())
 }

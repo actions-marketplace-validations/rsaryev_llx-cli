@@ -132,6 +132,18 @@ pub(crate) enum Command {
     /// `git diff | llx decide "Does this break the public API?"`;
     /// `llx decide "Bug or feature?" --choices bug,feature issues/*.txt`.
     Decide(Box<DecideArgs>),
+    /// Search the code by what a question means; the files that answer it, with their lines.
+    ///
+    /// The files are ranked by the question's words (names split as code writes them, rarer
+    /// words counting more, a word in the path or on a definition's line more still); where a
+    /// decision model is there (an OpenRouter key: `llx decide --check`), it then reads the best
+    /// of them and keeps those that answer, so a file that does the thing under another name is
+    /// found and one that only mentions it is left out. Without one, the ranking by words is the
+    /// answer. Each file comes with its parts that matter, whole functions where they are short.
+    /// In git, the files git tracks or would. Exit 1 when no file answers. Examples:
+    /// `llx grep "where is a failed request sent again"`;
+    /// `llx grep "which files start a child process" apps/server/src`.
+    Grep(Box<GrepArgs>),
     /// Go on with a saved session, at the terminal.
     ///
     /// Its conversation is not kept, only each task and how it ended: the agent starts a new
@@ -224,6 +236,38 @@ pub(crate) struct DecideArgs {
     /// cannot. No network, no cost: for a script or a plugin that offers decide only then.
     #[arg(long, conflicts_with_all = ["question", "files", "expect", "json"])]
     pub check: bool,
+    /// The decision model.
+    #[arg(short = 'm', long, value_name = "MODEL", env = "LLX_DECISION_MODEL", default_value = crate::providers::DECISION_DEFAULT)]
+    pub model: String,
+}
+
+#[derive(Args, Debug)]
+pub(crate) struct GrepArgs {
+    /// What to find, in words or names: a question, or the names it is about.
+    pub query: String,
+    /// Where to search: files and directories (the current one when none).
+    #[arg(value_name = "PATH")]
+    pub paths: Vec<PathBuf>,
+    /// The paths alone, best first, a line each.
+    #[arg(short = 'l', long, conflicts_with = "json")]
+    pub files: bool,
+    /// One JSON object: each file with its score and parts, what was unsure, how they were
+    /// picked and the cost.
+    #[arg(long)]
+    pub json: bool,
+    /// At most this many files shown with their lines; the rest are named.
+    #[arg(short = 'n', long, value_name = "N", default_value_t = 10)]
+    pub limit: usize,
+    /// At most this many lines shown in all, the best file given the most.
+    #[arg(long, value_name = "N", default_value_t = 150)]
+    pub lines: usize,
+    /// By the words alone, even where a decision model is there: no network, no cost.
+    #[arg(long)]
+    pub lexical: bool,
+    /// At most this many files read by the decision model, the best by their words first
+    /// (all of them when there are no more).
+    #[arg(long, value_name = "N", default_value_t = 80)]
+    pub judge: usize,
     /// The decision model.
     #[arg(short = 'm', long, value_name = "MODEL", env = "LLX_DECISION_MODEL", default_value = crate::providers::DECISION_DEFAULT)]
     pub model: String,

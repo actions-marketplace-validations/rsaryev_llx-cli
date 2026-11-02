@@ -71,3 +71,50 @@ The output is the option alone on stdout, and a newline; with files, a line each
 | 0 | The option was printed, and with `--expect` it is the expected one (with files, for every file); with `--check`, decide can run |
 | 1 | `--expect` names another option than the one picked (with files, for any file) |
 | 3 | Not ready: no OpenRouter key, no network, a model error, or a bad argument (fewer than two choices, an `--expect` that is not a choice); with files, a file that could not be read or answered, named on stderr while the others are still printed |
+
+## llx grep
+
+`llx grep QUESTION [PATH…]` searches the code by what a question means and prints the files that answer it, best first, each with its parts that matter. It is a search for a person or an agent that does not know the exact name, or for whom a word would match too much; for an exact name or text, `rg` is faster.
+
+```bash
+llx grep "where is a failed HTTP request sent again"
+llx grep "which files start a child process" src/ lib/
+llx grep -l "where the release binary's size limit is checked"     # the paths alone
+```
+
+How it works:
+
+1. **The files.** Under each path (the current directory when none): in git, the files git tracks or would (its ignore rules kept); elsewhere every file but hidden ones, `target`, `node_modules` and `__pycache__`. A file over 1 MiB, one that is not text, a lock file, a minified bundle and a source map are left out.
+2. **The words.** The question's words without those every question has (`where`, `the`, `file`), and each name's parts as code writes them (`parse_rows`, `parseRows` and `ParseRows` are each `parse` and `rows` too); a word finds its inflections (`renames` finds `rename` and `renamed`, `failed` finds `failure`), and a number its spellings (`0600` finds `0o600`).
+3. **The ranking.** BM25 over each file's words, a rarer word counting more; a word in the path counts more, and on a definition's line more still when the question asks where something is defined; a file with more of the question's words comes before one that repeats a few; a test, and a file under `data/`, `vendor/` or the like, counts half.
+4. **The decision model** (where an OpenRouter key is set, unless `--lexical`). It reads the best files by their words, up to `--judge` of them (all of them, but the tests, when there are no more than half again as many), each as its start and its best parts, and says how likely each is to be one the answer names. The files at least 0.5 likely, and within 0.25 of the most likely, are the answer, most likely first; below that, down to 0.2, are named as unsure. Without a decision model, the ranking by words is the answer, `--limit` files of it.
+5. **The parts.** Around each line with the question's words, the largest whole unit that holds it and is no longer than 40 lines (a function, a type, a section of a config), found by indentation with the comments above it, so it works in any language; else the lines around it. The parts with more of the rarer words in fewer lines come first, within `--lines` in all.
+
+| Option | Meaning |
+| --- | --- |
+| `PATH…` | Files and directories to search; the current directory when none. |
+| `-l, --files` | The paths alone, best first, a line each. |
+| `--json` | One JSON object (below). |
+| `-n, --limit N` | At most N files shown with their lines; the rest are named. Default 10. |
+| `--lines N` | At most N lines shown in all, the best file given the most. Default 150. |
+| `--lexical` | By the words alone, even where a decision model is there: no network, no cost. |
+| `--judge N` | At most N files read by the decision model, the best by their words first. Default 80. |
+| `-m, --model MODEL` | The decision model. Env `LLX_DECISION_MODEL`, default `~typesafe/jev-latest`. |
+
+The output is each file's path and score, then its parts, each line with its number; `..` between parts apart; then `also:` the files past `--limit`, and `unsure, read to check:` those the model doubted. On stderr, one line says how many files answer of how many read, how they were picked, the time and the cost. With `--json`:
+
+| Field | Meaning |
+| --- | --- |
+| `files` | Each file that answers: `file`, `score` (the model's probability, or the words' score against the best file's), `blocks` (`start` and `end`, 1-based lines, and `text`) |
+| `unsure` | The files the model doubted, each with its `file` and `score` |
+| `by` | `judged` (the decision model picked them) or `words` |
+| `model`, `cost_usd` | The decision model and what its requests cost |
+| `read`, `millis` | How many files were read, and how long it took |
+
+| Exit code | Meaning |
+| --- | --- |
+| 0 | At least one file answers |
+| 1 | No file answers: with the decision model, it judged none likely; by the words, none has any of them |
+| 3 | A path that is not there, or a question with nothing to look for |
+
+What it costs: one request to the decision model for each file it reads, about $0.0045 and 2.5 s a question on this repository's 1,200 files ([benchmark/grep](../benchmark/grep/README.md)). By the words alone it costs nothing and takes a fraction of a second.

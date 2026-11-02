@@ -40,7 +40,7 @@ llx is a model in a loop over five tools, on any provider: `bash`, `apply_patch`
 | --- | --- | --- |
 | **Your CI and scripts** | `llx exec --json --schema …` | One task, then exit: the answer in the shape you define, JSON events, an exit code to branch on |
 | **You** | `llx` | A minimal agent at your terminal |
-| **Your other agents** | `llx exec` · `llx decide` | Commands they run from their shell: a helper on any model, a quick decision. They extend the agent you use, never replace it |
+| **Your other agents** | `llx exec` · `llx grep` · `llx decide` | Commands they run from their shell: a helper on any model, a search by meaning, a quick decision. They extend the agent you use, never replace it |
 
 By default llx works in your project without asking: commands run in the system's sandbox, which writes only inside the workspace (never its `.git`; on Linux, in a workspace with a `.git` of its own, they only read) and opens no network, and file changes there are made; what must reach further is asked first, and refused where no one is there to ask. `plan` runs read-only in the same sandbox, `bypass` (`-y`) allows everything, and rules or a mode of your own say the rest ([modes](docs/modes.md)). A task is bounded by `--max-turns`, `--timeout` and `--budget`: the first reached ends it.
 
@@ -115,11 +115,17 @@ For a choice among a few options, `llx decide` asks a small decision model about
 $ git diff origin/main... | llx decide "Does this change break the public API?" --expect no
 ```
 
+To search the code by what a question means, `llx grep` ranks the files by the question's words, then has the decision model read the best of them and keep those that answer; each comes back with its lines, whole functions where they are short. On 24 questions about this repository with known answers, its first five files held 97% of the files each answer must name, against 46% for the `rg` pattern an agent would type first, in 2.4 s for $0.0045 a question ([benchmark/grep](benchmark/grep/README.md)). Without a key it ranks by the words alone:
+
+```console
+$ llx grep "where is a failed HTTP request sent again"
+```
+
 Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml) and [a weekly audit](examples/github/audit.yml) and [a Jira work item made a draft pull request](examples/github/jira.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
 
 ## In other agents
 
-Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
+Claude Code, Codex, another agent or a script of yours can call llx from its shell, as its task needs. `llx exec` hands a task to a helper on any provider and model, so the agent's own tokens go where they matter; `llx grep` finds the code that answers a question, with its lines; `llx decide` picks one of a few options about some text, or about each of many files, in about a second.
 
 In Claude Code, one command installs both as a plugin ([examples/claude-code](examples/claude-code/README.md)):
 
@@ -127,7 +133,7 @@ In Claude Code, one command installs both as a plugin ([examples/claude-code](ex
 /plugin install llx --marketplace rsaryev/llx
 ```
 
-Its `llx` subagent hands bulk reading (many files, a long log, a first pass over a diff) to llx on the model you chose with `/login`, a ChatGPT plan you already pay for among them; a small Claude model only relays it. As each session starts, the plugin tells Claude what of llx this machine can run, and where an OpenRouter key is set (`llx decide --check`), one rule for `llx decide`: when a judgment has a few options and the text is long, comes in many items or is untrusted, ask it rather than read it all. Asked to sort 20 issue texts into bugs and features, Claude ran one command, `llx decide "Is this issue a bug report or a feature request?" --choices "bug=…,feature=…" --json issues/*`, and read none of the files: $0.0005 of decisions.
+Its `llx` subagent hands bulk reading (many files, a long log, a first pass over a diff) to llx on the model you chose with `/login`, a ChatGPT plan you already pay for among them; a small Claude model only relays it. As each session starts, the plugin tells Claude what of llx this machine can run, and where an OpenRouter key is set (`llx decide --check`), `llx grep` as its first search where it does not know the exact name, and one rule for `llx decide`: when a judgment has a few options and the text is long, comes in many items or is untrusted, ask it rather than read it all. Asked to sort 20 issue texts into bugs and features, Claude ran one command, `llx decide "Is this issue a bug report or a feature request?" --choices "bug=…,feature=…" --json issues/*`, and read none of the files: $0.0005 of decisions.
 
 For Codex, or any agent that reads `AGENTS.md`, the same is a few lines to paste ([examples/codex](examples/codex/README.md)). Everything else: [docs/agents.md](docs/agents.md).
 

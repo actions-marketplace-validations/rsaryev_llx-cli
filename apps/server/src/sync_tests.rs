@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -26,7 +27,7 @@ fn a_ring_from_another_thread_wakes_a_sleeper() {
     let bell = Arc::new(Bell::new());
     let seen = bell.rung();
     let ringer = Arc::clone(&bell);
-    let thread = std::thread::Builder::new()
+    let thread = thread::Builder::new()
         .name("ringer".into())
         .spawn(move || ringer.ring())
         .unwrap();
@@ -38,7 +39,7 @@ fn a_ring_from_another_thread_wakes_a_sleeper() {
 fn a_lock_survives_a_panicked_holder() {
     let mutex = Arc::new(Mutex::new(7));
     let held = Arc::clone(&mutex);
-    let holder = std::thread::Builder::new().name("holder".into());
+    let holder = thread::Builder::new().name("holder".into());
     let _ = holder
         .spawn(move || {
             let _guard = held.lock().unwrap();
@@ -47,4 +48,31 @@ fn a_lock_survives_a_panicked_holder() {
         .unwrap()
         .join();
     assert_eq!(*lock(&mutex), 7);
+}
+
+#[test]
+fn work_spread_over_threads_comes_back_in_the_items_order() {
+    let items: Vec<u64> = (0..50).collect();
+    let names = Mutex::new(BTreeSet::new());
+    let done = each_at_once(&items, 4, "llx-test", |n| {
+        names
+            .lock()
+            .unwrap()
+            .insert(thread::current().name().unwrap().to_string());
+        n * 2
+    })
+    .unwrap();
+    assert_eq!(done, items.iter().map(|n| Some(n * 2)).collect::<Vec<_>>());
+    assert!(
+        names
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|name| name.starts_with("llx-test-"))
+    );
+    assert!(
+        each_at_once(&Vec::<u8>::new(), 4, "llx-test", |_| ())
+            .unwrap()
+            .is_empty()
+    );
 }

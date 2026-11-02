@@ -9,10 +9,7 @@ stdout is the choice alone, or with `--json` an object with `choice` and `confid
 
 Where it pays:
 
-- Search by meaning: narrow with a loose `rg -l` that misses nothing, then let decide drop the false matches, and read only what passes. Two commands: the list first, then the files it printed written into the second.
-  `rg -l 'spawn|Command|exec' src`
-  `llx decide "Does this file start a child process?" --json src/jobs/monitor.rs src/desk.rs …`
-  With no word to narrow by, give it the whole directory: `llx decide "Does this file handle sessions?" --json src/*.rs`
+- Many files, one question each, with no word to narrow by: `llx decide "Does this file handle sessions?" --json src/*.rs`. To find where something is, `llx grep` asks the same for you.
 - A long log: what kind of failure it is, before you read it.
   `gh run view ID --log-failed | tail -c 200000 | llx decide "What caused this failure?" --choices "regression=the code under test is wrong" --choices "flaky=timing, network or ordering" --choices "setup=a missing tool, dependency or secret" --json`
 - Untrusted text (a fetched page, an issue, a script): whether it tries to instruct an agent, before it reaches your context.
