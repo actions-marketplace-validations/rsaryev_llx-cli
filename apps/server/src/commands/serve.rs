@@ -207,7 +207,7 @@ fn placed(first: &ToServer) -> Option<(&Place, &str)> {
 /// The sessions moved to the background where `first`'s client is, of its build, when its
 /// command line asks for nothing but a session: a task, `resume`, a model or any other option is
 /// a new desk's, built from it, and the sessions kept wait for a plain `llx` there. They keep the
-/// place they were opened in (its environment, its colours): their work already runs there.
+/// place they were opened in (its environment): their work already runs there.
 fn rejoinable(first: &ToServer, host: &Host) -> Option<Kept> {
     let (place, build) = placed(first)?;
     let plain = place.args.is_empty() && build == host.build;

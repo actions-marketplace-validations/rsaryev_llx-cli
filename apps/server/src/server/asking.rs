@@ -7,7 +7,6 @@ use std::time::{Duration, Instant};
 
 use contracts::gate::Effect;
 use contracts::person::{Person, Question, Reply};
-
 use protocol::Approval;
 
 use super::Ui;
