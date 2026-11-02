@@ -247,13 +247,15 @@ fn elide(conversation: &mut Conversation, frame: &Frame, owns: impl Fn(&Message)
     elided
 }
 
-/// Where the tail of `budget` tokens starts: at least `MIN_TAIL` messages from the end.
+/// Where the tail of `budget` tokens starts: at least `MIN_TAIL` messages from the end. The
+/// sizes are those kept with the messages: worked out again, every call's arguments in the tail
+/// would be written out once more.
 fn tail(conversation: &Conversation, budget: u64) -> usize {
-    let messages = conversation.messages();
-    let (mut size, mut start) = (0, messages.len());
+    let len = conversation.messages().len();
+    let (mut size, mut start) = (0, len);
     while start > 0 {
-        size += tokens(&messages[start - 1]);
-        if size > budget && messages.len() - start >= MIN_TAIL {
+        size += conversation.size_at(start - 1);
+        if size > budget && len - start >= MIN_TAIL {
             break;
         }
         start -= 1;
