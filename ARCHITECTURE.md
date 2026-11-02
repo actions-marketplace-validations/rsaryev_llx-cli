@@ -231,10 +231,12 @@ command is cut.
   writes is the verdict's: a read-only command (a `read-only` mode's, K5; `Verdict::ReadOnly`)
   writes only `/dev/null` and a temporary directory of its own; a workspace command (a
   `workspace` mode's; `Verdict::Workspace`) writes there and inside the workspace too, but never
-  its `.git` (a hook written there would run unconfined at the person's next commit) nor the
-  app's own paths. Where the sandbox cannot keep `.git` (Landlock cannot take a path out of what
+  its `.git`, nor on macOS any `.git` below it, a nested repository's or a new one (a hook
+  written there would run unconfined at the person's next commit there), nor the app's own paths. Where the sandbox cannot keep `.git` (Landlock cannot take a path out of what
   it lets write), or the workspace is the home directory or holds it, a workspace command is
-  confined to reading. Where no sandbox can be set up, a read-only command is refused with the
+  confined to reading. On Linux, in a workspace with no `.git` of its own, a nested repository's
+  `.git`, or a new one (at the workspace's root too), stays writable: no tree is walked to find
+  one (SECURITY.md). Where no sandbox can be set up, a read-only command is refused with the
   reason, never run open; a workspace command is asked of the gate as one that must run as it is
   (B6).
 - **B6**: a command or a patch that must reach beyond its sandbox says so in its `Effect`
