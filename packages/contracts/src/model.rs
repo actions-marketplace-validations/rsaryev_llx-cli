@@ -21,7 +21,7 @@ pub enum Question {
 /// The answer to one question, of its kind.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Answer {
-    /// The key picked, and how likely each key was.
+    /// The key picked, how likely each key was, and the model's own confidence in its pick.
     Choice {
         choice: String,
         probabilities: BTreeMap<String, f64>,

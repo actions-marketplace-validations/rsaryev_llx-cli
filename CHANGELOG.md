@@ -19,6 +19,7 @@
 - A `bash` deny rule refuses a monitor that runs the command too: `--deny 'bash(rm *)'` no longer lets `jobs` run `rm` under a mode or a rule that allows `jobs`.
 - A patch to a file inside a nested repository's `.git` (`sub/.git/hooks/pre-commit`) is asked as one that must leave the sandbox, as one inside the workspace's own `.git` is: a hook written there would run at the next commit there.
 - A browser sign-in (`/login`) no longer waits for the browser to close where `xdg-open` keeps it in the foreground (Linux with no desktop it knows): the opener is left in the background, and its output never reaches the terminal.
+- With `--schema`, a field the schema's `required` names is checked where it lists no `properties` beside it: `{"type": "object", "required": ["price"]}` no longer takes `{}` as matching data.
 
 ## 0.2.0
 

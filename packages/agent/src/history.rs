@@ -26,8 +26,8 @@ use crate::conversation::Conversation;
 const FALLBACK: u64 = 128_000;
 /// The most a request holds, whatever the window: quality and cost fall well before a million.
 const AUTO: u64 = 272_000;
-/// Messages of the recent tail left alone, however few tokens they take; past the ceiling, all
-/// but these give way.
+/// Messages at the end the tail always holds, however many tokens they take; past the ceiling,
+/// all but these give way.
 const MIN_TAIL: usize = 4;
 /// Tokens of the recent tail llx leaves alone.
 const TAIL: u64 = 16_384;
@@ -292,7 +292,7 @@ pub(crate) fn whole(tokens: f64) -> u64 {
 
 /// A message's tokens, estimated: four bytes of its text to a token.
 pub(crate) fn tokens(message: &Message) -> u64 {
-    let chars = match message {
+    let bytes = match message {
         Message::System(text) | Message::User(text) => text.len(),
         Message::Assistant {
             text,
@@ -306,7 +306,7 @@ pub(crate) fn tokens(message: &Message) -> u64 {
         Message::ToolResult { content, .. } => content.len(),
         Message::Image { .. } => return IMAGE,
     };
-    chars as u64 / 4 + 1
+    bytes as u64 / 4 + 1
 }
 
 /// The tool specs' tokens, estimated as a message's are.
