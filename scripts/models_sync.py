@@ -16,10 +16,6 @@ import pathlib
 import re
 import shutil
 import sys
-try:
-    import tomllib
-except ModuleNotFoundError:  # Python before 3.11
-    import tomli as tomllib
 
 PER_PROVIDER = 24
 CRATE = pathlib.Path(__file__).resolve().parent.parent / "packages/providers/models"
@@ -74,8 +70,35 @@ def decides(model):
     return model.get("type") == "decision" and model.get("status") != "deprecated"
 
 
-def main():
+def clone_given():
+    """The clone the command line names. Anything else is a usage error, said before TOML is read
+    (so on any Python) and before data/ is removed: a path that is not a clone would leave it
+    empty."""
+    usage = "usage: python3 scripts/models_sync.py MODELS_DEV_CLONE (a clone of models.dev's dev)"
+    if len(sys.argv) != 2:
+        print(usage, file=sys.stderr)
+        sys.exit(2)
     clone = pathlib.Path(sys.argv[1])
+    if not (clone / "providers").is_dir() or not (clone / "models").is_dir():
+        print(f"models_sync: {clone} is not a models.dev clone (no providers/ or models/ in it)",
+              file=sys.stderr)
+        print(usage, file=sys.stderr)
+        sys.exit(2)
+    return clone
+
+
+def toml():
+    """tomllib, Python's own from 3.11, else tomli (`pip install tomli`)."""
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python before 3.11
+        import tomli as tomllib
+    return tomllib
+
+
+def main():
+    clone = clone_given()
+    tomllib = toml()
     shutil.rmtree(DATA, ignore_errors=True)
     labs = set()
     for provider in popular():
