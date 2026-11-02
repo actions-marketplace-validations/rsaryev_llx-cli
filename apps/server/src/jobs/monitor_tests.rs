@@ -53,14 +53,31 @@ fn with(
 
 #[test]
 fn lines_that_come_together_are_one_batch_and_the_exit_is_told() {
-    // The first two in one write; the third long past the gather window.
-    let (batches, ended) = run(
-        "printf 'one\\ntwo\\n'; sleep 2; echo three; exit 3",
-        10,
+    // The first two in one write; the third only once their batch was given, so past the
+    // gather window on any machine, and no later (R9).
+    let scratch = crate::testing::Scratch::new();
+    let workspace = Workspace::new(scratch.path()).unwrap();
+    let go = scratch.path().join("go");
+    let command = "printf 'one\\ntwo\\n'; until [ -e go ]; do sleep 0.02; done; echo three; exit 3";
+    let batches = Mutex::new(vec![]);
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let given = |lines: Vec<String>, _| {
+        batches.lock().unwrap().push(lines);
+        std::fs::write(&go, "").unwrap();
+    };
+    let ended = watch(
+        command,
+        Scope::Open,
+        &workspace,
+        &[],
+        deadline,
         &|| false,
-    );
+        &given,
+    )
+    .unwrap();
+    assert!(matches!(&ended, Ended::Exit(how) if how == "exit 3"));
+    let batches = batches.into_inner().unwrap();
     assert_eq!(batches, [vec!["one", "two"], vec!["three"]]);
-    assert_eq!(ended, "exit 3");
 }
 
 #[test]
