@@ -118,3 +118,27 @@ fn a_daemon_that_ends_before_it_answers_its_stop_is_stopped() {
     quick_daemon(&path);
     assert!(stop(&path), "a daemon gone is a daemon stopped");
 }
+
+#[test]
+#[expect(
+    clippy::disallowed_methods,
+    reason = "a test's `ps`, which ends at once, asked whether the process is still listed"
+)]
+fn a_daemon_given_up_on_is_killed_and_leaves_no_zombie_behind() {
+    let mut child = std::process::Command::new("sleep")
+        .arg("30")
+        .spawn()
+        .unwrap();
+    let pid = child.id().to_string();
+    given_up(&mut child);
+    // A zombie is still a process `ps` lists, until its parent waits for it.
+    let listed = std::process::Command::new("ps")
+        .args(["-p", &pid])
+        .output()
+        .unwrap();
+    assert!(
+        !listed.status.success(),
+        "{}",
+        String::from_utf8_lossy(&listed.stdout)
+    );
+}

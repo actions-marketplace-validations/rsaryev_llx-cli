@@ -103,17 +103,28 @@ fn spawn(config: &Path) -> Result<(), String> {
         .map_err(why)?;
     match line.recv_timeout(READY) {
         Ok(first) if first.starts_with(READY_LINE) => Ok(()),
-        // Another client's daemon took the lock first: that one serves.
-        Ok(_) if status(&socket_path(config), ASK).is_some() => Ok(()),
+        // Another client's daemon took the lock first: that one serves, and this one, which
+        // could not take it, ends: waited for, so it leaves no zombie.
+        Ok(_) if status(&socket_path(config), ASK).is_some() => {
+            let _ = child.wait();
+            Ok(())
+        }
         Ok(_) => {
             let _ = child.wait();
             Err("the daemon did not start: see daemon.log in llx's config directory".into())
         }
         Err(_late) => {
-            let _ = child.kill();
+            given_up(&mut child);
             Err("the daemon did not start in time".into())
         }
     }
+}
+
+/// A daemon that did not start in time, killed and waited for: a client that goes on (an
+/// interface for hours) keeps no zombie of it.
+fn given_up(child: &mut std::process::Child) {
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 #[cfg(test)]
