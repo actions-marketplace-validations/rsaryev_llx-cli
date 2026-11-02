@@ -60,6 +60,9 @@ const { values: opts } = parseArgs({
     // Passed to `llx grep` as they are, to compare its settings: `--grep-arg=--judge --grep-arg=40`.
     "grep-arg": { type: "string", multiple: true },
     record: { type: "boolean", default: false },
+    // No model asked: where each file an answer must name stands in the ranking by words, the
+    // order the decision model reads files in. `--judge` deeper than the deepest reads for nothing.
+    ranks: { type: "boolean", default: false },
   },
 });
 const MODES = opts.mode?.length ? opts.mode : ["words", "judged", "rg"];
@@ -176,6 +179,20 @@ function table(results: Scored[]): string {
 }
 
 const repo = snapshot(spec.commit);
+if (opts.ranks) {
+  let deepest = 0;
+  for (const q of queries.filter((q) => q.must.length)) {
+    const run = sh([opts.llx!, "grep", "--lexical", "-l", "-n", "5000", q.query, ...(q.paths ?? [])], repo);
+    // As the model's reading leaves tests out.
+    const listed = run.out.split("\n").filter((f) => f && !/(_tests\.|\/tests?\/)/.test(f));
+    const ranks = q.must.map((m) => listed.indexOf(m) + 1 || null);
+    const found = ranks.filter((r): r is number => r !== null);
+    if (found.length) deepest = Math.max(deepest, ...found);
+    console.log(`${q.id}\t${listed.length} files\t${ranks.map((r) => r ?? "none").join(" ")}`);
+  }
+  console.log(`deepest: ${deepest} (none: no word of the question, reached only through links)`);
+  process.exit(0);
+}
 const results: Scored[] = [];
 for (const q of queries)
   for (const mode of MODES) {
