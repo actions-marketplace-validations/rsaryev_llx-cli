@@ -120,7 +120,11 @@ impl Spill {
         if self.left > 0 {
             // A line kept only in part is ended first: the note is a line of its own.
             let start = if self.mid_line { "\n" } else { "" };
-            let note = format!("{start}... {} more lines were not kept ...\n", self.left);
+            let lines = match self.left {
+                1 => "1 more line was".to_string(),
+                n => format!("{n} more lines were"),
+            };
+            let note = format!("{start}... {lines} not kept ...\n");
             let _ = self.file.write_all(note.as_bytes());
         }
         let _ = self.file.flush();

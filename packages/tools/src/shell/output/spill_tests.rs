@@ -92,5 +92,5 @@ fn a_spill_past_its_size_keeps_nothing_after_the_first_line_it_cannot() {
     spill.write("ab", Ends::Later);
     spill.write("cdefgh", Ends::Line);
     let text = fs::read_to_string(spill.finish()).unwrap();
-    assert_eq!(text, "12345\nab\n... 1 more lines were not kept ...\n");
+    assert_eq!(text, "12345\nab\n... 1 more line was not kept ...\n");
 }
