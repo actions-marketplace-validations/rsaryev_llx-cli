@@ -41,7 +41,7 @@ impl Inbox for MainInbox<'_> {
     fn wait(&self) -> Vec<String> {
         let working = self.registry.working();
         let said = match working {
-            0 => "✻ Waiting for the monitors to report\n".to_string(),
+            0 => "✻ Waiting for the jobs in the background to report\n".to_string(),
             n => format!(
                 "✻ Waiting for {} to finish\n",
                 crate::output::count(n, "background agent")

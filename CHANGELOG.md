@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The advice that reviews an answer reads what came in during the task (a background command's end, a monitor's lines, an agent's answer, the person's words) in its place among the calls: an answer that reported a command's exit code from its `<background>` message was sent back twice as unfinished, the review seeing only that the command was started.
+
 - **A long command goes on in the background**, as Claude Code's do: `bash` waits for a command 120 s at most (or its `timeout_ms`, if less), and one still running then becomes a job of `jobs` instead of being killed: the model reads what it printed so far and the file its whole output goes to, and its end comes back once as a `<background>` message (a task of its own when none runs). `run_in_background: true` starts one there at once, named by `description`. It is listed and stopped as a job (`jobs list`, `jobs stop`, `x` on its row; the footer counts `2 shells, 1 monitor`), runs at most 30 minutes (10 in `exec`, whose task waits for it), and ends with the session; a `sleep` is killed at its wait. Before, a test run that hung held the task until its `timeout_ms` (a benchmark lost 12 minutes to two), and the timeout's message asked the model to raise it. An agent's commands are still killed at their `timeout_ms`.
 
 - What the session could not do with something sent from the terminal (words typed for a session that had just ended, closing one already gone) is shown as an error: it was dropped without a word.

@@ -26,9 +26,16 @@ pub(super) struct Seen {
 pub(super) fn review(task: &Task, answer: &str) -> Seen {
     let own = task.conversation.get(task.from..).unwrap_or_default();
     let mut steps: Vec<(&ToolCall, Option<(&str, bool)>)> = vec![];
+    // The steps in the order they came: each call, and what came in between (K4's arrivals, the
+    // person's words), which the answer may report.
+    let mut order: Vec<Shown<'_>> = vec![];
+    let mut goal = true;
     for message in own {
         match message {
-            Message::Assistant { calls, .. } => steps.extend(calls.iter().map(|call| (call, None))),
+            Message::Assistant { calls, .. } => {
+                order.extend((steps.len()..steps.len() + calls.len()).map(Shown::Call));
+                steps.extend(calls.iter().map(|call| (call, None)));
+            }
             Message::ToolResult {
                 id,
                 content,
@@ -38,7 +45,14 @@ pub(super) fn review(task: &Task, answer: &str) -> Seen {
                     step.1 = Some((content.as_str(), *failed));
                 }
             }
-            Message::System(_) | Message::User(_) | Message::Image { .. } => {}
+            // The task's own first message is its goal; a note on the mode is no step.
+            Message::User(text) => {
+                let note = text.starts_with("<mode_change>") || text.starts_with("<context>");
+                if !std::mem::take(&mut goal) && !note {
+                    order.push(Shown::Came(text));
+                }
+            }
+            Message::System(_) | Message::Image { .. } => {}
         }
     }
     let worked = |(call, outcome): &(&ToolCall, Option<(&str, bool)>)| {
@@ -46,9 +60,11 @@ pub(super) fn review(task: &Task, answer: &str) -> Seen {
     };
     let last_change = steps.iter().rposition(worked);
     let checked = last_change.is_some_and(|at| steps[at..].iter().any(|(c, _)| c.name == SHELL));
-    let mut shown: Vec<Value> = steps
-        .iter()
-        .map(|(call, outcome)| step(call, *outcome))
+    let mut shown: Vec<Value> = (order.iter())
+        .map(|shown| match shown {
+            Shown::Call(at) => step(steps[*at].0, steps[*at].1),
+            Shown::Came(text) => json!({"came_in": head(text, CAME)}),
+        })
         .collect();
     let mut state = json!({
         "goal": head(task.goal, TEXT),
@@ -75,6 +91,17 @@ pub(super) fn review(task: &Task, answer: &str) -> Seen {
         changed: last_change.is_some(),
     }
 }
+
+/// A step as the state lists it.
+enum Shown<'a> {
+    /// The call at this index of the steps.
+    Call(usize),
+    /// What came in between the calls.
+    Came(&'a str),
+}
+
+/// What of a message that came in during the task the state keeps.
+const CAME: usize = 1_500;
 
 /// The mode the task works in, as the context or a later note states it: what is done in it
 /// differs (in a read-only mode, a plan of a change is the answer).

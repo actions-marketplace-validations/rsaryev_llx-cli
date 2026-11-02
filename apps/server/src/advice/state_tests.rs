@@ -113,3 +113,27 @@ fn the_state_names_the_mode_the_task_works_in_the_latest_note_first() {
     let seen = review(&task(&conversation, 3), "Done.");
     assert_eq!(seen.state["mode"], "default: Works in the workspace.");
 }
+
+#[test]
+fn what_came_in_during_the_task_reads_in_its_place_among_the_steps() {
+    // A command's end, a monitor's lines or an agent's answer reach the task as a message, not as
+    // a call's result: the answer that reports it is judged knowing it.
+    let came = "<background job=\"ticks\" ended=\"Exit code: 0\">\nExit code: 0\nOutput:\ntick 1\n\
+                </background>";
+    let conversation = [
+        Message::User("Goal: Make it fast".into()),
+        call(
+            "b",
+            "bash",
+            json!({"command": "for i in 1; do echo tick $i; done"}),
+        ),
+        result("b", "Running in the background: job `ticks` (job-1)", false),
+        Message::User("<mode_change>The mode is now plan</mode_change>".into()),
+        Message::User(came.into()),
+    ];
+    let seen = review(&task(&conversation, 0), "Exit code 0: tick 1.");
+    let steps = seen.state["steps"].as_array().unwrap();
+    assert_eq!(steps.len(), 2, "{steps:?}");
+    assert_eq!(steps[0]["call"], "bash");
+    assert_eq!(steps[1]["came_in"], came);
+}
