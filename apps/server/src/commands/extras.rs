@@ -1,6 +1,6 @@
-//! The small commands: `/diff` (the working tree's changes, new
-//! files too), `/init` (an AGENTS.md written for the project), `/copy` (the last answer, for the
-//! client's clipboard) and `/usage` (what the session spent).
+//! The small commands: `/diff` (the working tree's changes, new files too), `/init` (an
+//! AGENTS.md written for the project), `/copy` (the last answer, for the client's clipboard) and
+//! `/usage` (what the session spent).
 
 use std::path::Path;
 use std::time::Duration;

@@ -1,6 +1,7 @@
-//! Text from the model or a tool, made safe and flat where the server shows it itself (an approval at the
-//! terminal, a session's title and list): control characters and reordering marks are escaped.
-//! The interface keeps its own (`tui::printable`): it knows nothing of the server (L7).
+//! Text from the model or a tool, made safe and flat where the server shows it itself (an
+//! approval at the terminal, a session's title and list): control characters and reordering
+//! marks are escaped, text put on one line, clipped and cut to columns. The interface keeps its
+//! own (`tui::printable`): it knows nothing of the server (L7).
 
 use unicode_width::UnicodeWidthChar;
 

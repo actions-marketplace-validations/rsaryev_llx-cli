@@ -105,7 +105,6 @@ fn command(rig: &mut Rig, ui: &Ui, entry: Entry) -> Option<String> {
             note(&mode::switched(&mode));
             rig.switch(mode);
         }
-
         Entry::Unknown(command) => {
             note(&format!("unknown command /{command}: /help lists them\n"));
         }

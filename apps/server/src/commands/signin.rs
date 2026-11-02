@@ -53,8 +53,8 @@ pub(super) fn sign_in(
 
 /// Wait for the browser to come back, or for the address it ended on to be pasted (when it is
 /// on another machine); the authorization code. The line for the address closes by itself once
-/// the browser is back: nothing to press. It is read on this thread only, so
-/// nothing is left reading stdin once the sign-in ends. `None` when the person cancelled.
+/// the browser is back: nothing to press. It is read on this thread only, so nothing is left
+/// reading stdin once the sign-in ends. `None` when the person cancelled.
 fn come_back(
     terminal: &mut dyn Terminal,
     path: &str,

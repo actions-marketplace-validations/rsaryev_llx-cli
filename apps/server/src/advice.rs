@@ -50,42 +50,41 @@ const LEVELS: [(Effort, &str); 4] = [
 const VERDICTS: [(&str, &str, Option<&str>); 5] = [
     (
         "done",
-        "The answer meets the goal as the mode allows (where the mode is read-only, a plan of \
-        a change meets a goal to change something), done and checked as the goal needs.",
+        "The answer meets the goal as the mode allows (where the mode is read-only, a plan of a \
+         change meets a goal to change something), done and checked as the goal needs.",
         None,
     ),
     (
         "blocked",
-        "The answer says exactly what blocks the goal, and it truly cannot be done from \
-        here (it needs the person, an access or a fact that is not available).",
+        "The answer says exactly what blocks the goal, and it truly cannot be done from here (it \
+         needs the person, an access or a fact that is not available).",
         None,
     ),
     (
         "unfinished",
-        "Work the goal asks for and the mode allows is left: the answer lists steps still to \
-        do, asks leave for what the goal already allows, or stops partway.",
+        "Work the goal asks for and the mode allows is left: the answer lists steps still to do, \
+         asks leave for what the goal already allows, or stops partway.",
         Some(
-            "Your answer leaves \
-        part of the goal undone. Go on with what is left, and end only when the goal is met or \
-        what remains truly cannot be done from here.",
+            "Your answer leaves part of the goal undone. Go on with what is left, and end only \
+             when the goal is met or what remains truly cannot be done from here.",
         ),
     ),
     (
         UNCHECKED,
-        "Files changed after the project's checks last ran, though the goal and the \
-        project need them run.",
+        "Files changed after the project's checks last ran, though the goal and the project need \
+         them run.",
         Some(
-            "Files changed since the project's checks last ran. Run \
-        the checks the change needs, fix what fails, then end.",
+            "Files changed since the project's checks last ran. Run the checks the change needs, \
+             fix what fails, then end.",
         ),
     ),
     (
         "failing",
-        "The last checks failed, or an error is left unresolved, and the answer neither \
-        fixes it nor shows it is outside the goal.",
+        "The last checks failed, or an error is left unresolved, and the answer neither fixes it \
+         nor shows it is outside the goal.",
         Some(
-            "The last checks failed or an error is \
-        left unresolved. Fix it, or say exactly why it is outside the goal.",
+            "The last checks failed or an error is left unresolved. Fix it, or say exactly why it \
+             is outside the goal.",
         ),
     ),
 ];

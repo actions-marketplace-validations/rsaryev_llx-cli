@@ -119,7 +119,8 @@ pub(super) fn linked(
             let mut shared: Vec<(&str, f64)> = (named.get(doc)?.iter())
                 .filter_map(|module| Some((module.as_str(), *wanted.get(module.as_str())?)))
                 .collect();
-            // The rarest first, and of those as rare, the most precise: `tools::shell`, not `tools`.
+            // The rarest first, and of those as rare, the most precise: `tools::shell`, not
+            // `tools`.
             shared.sort_by(|a, b| b.1.total_cmp(&a.1).then(b.0.len().cmp(&a.0.len())));
             let score: f64 = shared.iter().map(|(_, weight)| weight).sum();
             let shared = shared.into_iter().map(|(m, _)| m.to_string()).collect();

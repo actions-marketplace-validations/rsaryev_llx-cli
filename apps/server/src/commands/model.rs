@@ -1,9 +1,9 @@
 //! `/model` and the reasoning level: one list, each provider's models a group of their own (a
-//! tab in the interface), with Left/Right choosing the level inline.
-//! Shift+Up and Shift+Down also step the level. A switch to another model starts at `auto`
-//! (before its own levels, when it has any), and only its own levels are offered. The choice is
-//! put in at once (the chat model, and its key's variables kept from commands) and saved as the
-//! default for later sessions. `/login` ends with the same model step.
+//! tab in the interface), with Left/Right choosing the level inline. Shift+Up and Shift+Down
+//! also step the level. A switch to another model starts at `auto` (before its own levels, when
+//! it has any), and only its own levels are offered. The choice is put in at once (the chat
+//! model, and its key's variables kept from commands) and saved as the default for later
+//! sessions. `/login` ends with the same model step.
 
 use std::path::PathBuf;
 
@@ -129,6 +129,7 @@ pub(super) fn run_model(rig: &mut Rig, ui: &Ui) {
         None => rig.output.note("Nothing changed.\n"),
     }
 }
+
 /// Shift+Up or Shift+Down: the model's next level up or down, put in and saved.
 pub(super) fn step_reasoning(rig: &mut Rig, up: bool) -> String {
     let selection = match stepped(&rig.choice.selection, up) {

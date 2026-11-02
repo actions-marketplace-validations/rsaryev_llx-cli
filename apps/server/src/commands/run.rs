@@ -9,7 +9,6 @@ mod front;
 mod interface;
 mod task;
 
-use crate::rules::Rules;
 use std::any::Any;
 use std::io::IsTerminal;
 use std::path::Path;
@@ -32,6 +31,7 @@ use crate::input::{self, Prompt};
 use crate::interrupt;
 use crate::mode;
 use crate::modes::Modes;
+use crate::rules::Rules;
 use crate::server::{Ui, place};
 
 pub(crate) use self::ended::Ended;
@@ -270,8 +270,7 @@ impl Ready {
                 let start = |shared: &Shared, seat, work: desk::Work| lane(shared, seat, work);
                 // Lanes that do not stop in time: the terminal goes back, and the process ends;
                 // in the daemon, which serves other terminals, the client is told the session is
-                // over: its lanes end as they can,
-                // with nobody waiting on them.
+                // over: its lanes end as they can, with nobody waiting on them.
                 let in_process = held.is_some();
                 let told = ui.clone();
                 let quit = move || match in_process {
