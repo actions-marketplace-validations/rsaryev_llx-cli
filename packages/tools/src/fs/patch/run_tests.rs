@@ -538,8 +538,8 @@ impl Gate for Questions {
     }
 }
 
-/// As `mv` and Codex take it: the link goes, what it points at stays as it was, and the new name
-/// is a file of its own, with what the hunks make of the content read through the link.
+/// As Codex takes it: the link goes and what it points at stays as it was, as with `mv`, but the
+/// new name is a file of its own, with what the hunks make of the content read through the link.
 #[test]
 fn moving_a_symbolic_link_moves_the_link_and_keeps_what_it_points_at() {
     let dir = Scratch::new();
