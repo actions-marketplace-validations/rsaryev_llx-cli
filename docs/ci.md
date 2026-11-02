@@ -1,6 +1,6 @@
 # llx in CI and scripts
 
-In CI llx is the same agent as at your terminal, given one task: `llx exec`, with its shell (`bash`), its patches (`apply_patch`), agents and jobs; `ask` is left out, as no one is there to answer. The task ends with the model's final message (and, with `schema`, data matching it), and the exit code says how. It reaches GitHub, GitLab or anything else the way you would, with `gh`, `git`, `jq` and your project's own commands in its shell. There is no MCP server, no GitHub tool and no built-in review prompt. The prompt is yours, in your workflow, where you can read it, and so is what gets posted.
+In CI llx is the same agent as at your terminal, given one task: `llx exec`, with its shell (`bash`), its patches (`apply_patch`), its search (`grep`), agents and jobs; `ask` is left out, as no one is there to answer. The task ends with the model's final message (and, with `schema`, data matching it), and the exit code says how. It reaches GitHub, GitLab or anything else the way you would, with `gh`, `git`, `jq` and your project's own commands in its shell. There is no MCP server, no GitHub tool and no built-in review prompt. The prompt is yours, in your workflow, where you can read it, and so is what gets posted.
 
 That is why it is flexible and why it is safer:
 
@@ -244,7 +244,7 @@ Rules come from the workflow and your settings, never from the repository: a pul
 - **The key** is the provider's variable from the model catalog: `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `DEEPSEEK_API_KEY`, and so on, each the one models.dev names. Keep it in the CI's secrets and pass it in the step's `env:`.
 - **Which provider.** With no `provider`, llx uses the first one it finds a key for: OpenRouter, then OpenAI, then the rest of the catalog. A job with two keys set uses OpenRouter, so set `provider` where that matters.
 - **Pin the model.** Set `model` so a new default does not change what a pipeline does or costs. Without it the provider's default is used (`anthropic/claude-haiku-5.5` on OpenRouter, `gpt-6-luna` on OpenAI). `reasoning` sets how much it thinks, as far as the model takes it.
-- **The decision model** runs on OpenRouter. `llx decide` needs `OPENROUTER_API_KEY` whichever provider the agent uses. With that key set, it also advises `exec`: it picks the reasoning level when `reasoning` is unset (`auto`), and takes a second look at whether an answer ends the task; its cost counts toward `budget`. Set `reasoning` to keep the level fixed, and `args: --no-advice` (or `LLX_NO_ADVICE=1` in `env:`) to turn the advice off.
+- **The decision model** runs on OpenRouter. `llx decide` needs `OPENROUTER_API_KEY` whichever provider the agent uses. With that key set, it also advises `exec`: it picks the reasoning level when `reasoning` is unset (`auto`), and takes a second look at whether an answer ends the task; its cost counts toward `budget`. Set `reasoning` to keep the level fixed, and `args: --no-advice` (or `LLX_NO_ADVICE=1` in `env:`) to turn the advice off. The agent's `grep` tool reads the files it finds with it too, at the task's cost (`--no-advice` leaves that on); without the key it ranks them by their words alone.
 - **Spend.** Use a key made for CI, with a spend limit set at the provider (an OpenRouter key can carry one). A run's cost is in the step summary, the `cost-usd` output and the `run.completed` event.
 
 ## Limits
@@ -331,7 +331,7 @@ Two details matter on a runner:
 
 ## GitLab
 
-The same two jobs. From the next release, the image `ghcr.io/rsaryev/llx:<version>` (Linux x86_64 and arm64) has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/llx:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
+The same two jobs. The release's image, `ghcr.io/rsaryev/llx:<version>` (Linux x86_64 and arm64), has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/llx:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
 
 ```yaml
 stages: [think, post]

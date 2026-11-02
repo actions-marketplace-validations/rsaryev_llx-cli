@@ -1,6 +1,6 @@
 # Reference
 
-How a task ends, the exit codes, the `--json` events and `llx decide`. Both the exit codes and the events are a public contract.
+How a task ends, the exit codes, the `--json` events, `llx decide` and `llx grep`. Both the exit codes and the events are a public contract.
 
 ## Exit codes
 
@@ -121,6 +121,6 @@ The output is each file's path and score, then its parts, each line with its num
 | --- | --- |
 | 0 | At least one file answers |
 | 1 | No file answers: with the decision model, it judged none likely; by the words, none has any of them |
-| 3 | A path that is not there, or a question with nothing to look for |
+| 3 | A path that is not there, or a pattern it cannot take |
 
 What it costs: one request to the decision model for each file it reads, about $0.005 and 2 to 3 s a question on this repository's 1,200 files, 24 files read at once ([benchmark/grep](../benchmark/grep/README.md)). By the words alone it costs nothing and takes a fraction of a second.

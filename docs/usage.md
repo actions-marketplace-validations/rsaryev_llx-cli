@@ -11,7 +11,7 @@ models, and how sessions are kept. For the short version see the [README](../REA
 
 ## Command line
 
-`llx` opens a session at the terminal, and `llx exec` (or `-p`) runs one task and exits. `llx decide` asks one question about stdin and prints the option the decision model picked.
+`llx` opens a session at the terminal, and `llx exec` (or `-p`) runs one task and exits. `llx grep` searches the code by what a question means, and `llx decide` asks one question about stdin and prints the option the decision model picked.
 
 ```bash
 llx                                                        # a session at the terminal
@@ -28,6 +28,7 @@ llx exec --json -y "update the changelog" | jq -c 'select(.type == "tool.call")'
 llx exec --schema '{"type":"object","properties":{"version":{"type":"string"}},"required":["version"]}' \
     "which version is this crate?"                        # the data alone on stdout
 llx exec resume --last now update the README               # one more task in the newest session
+llx grep "where is a failed request sent again"            # the files that answer it, with their lines
 git diff | llx decide "Does this break the public API?"    # yes or no, in about a second
 ```
 
@@ -66,12 +67,13 @@ model must escalate it, which an `exec` with no terminal refuses (there is no on
 
 ### Commands
 
-- `logout`: forget every saved sign-in: the ChatGPT tokens and every provider's saved key. A key still set in the environment is named, to unset. (Signing in is `/login` in a session.)
-- `sessions`: list the saved sessions, newest first, with the directory each ran in.
 - `exec [PROMPT | -]` (alias `e`): run one task without a session and exit, with the answer alone on stdout. `exec resume [ID | --last] [PROMPT]` runs one more task in a saved session. In CI, the [GitHub Action](ci.md#the-github-action) runs it.
-- `decide QUESTION`: ask the decision model one question about stdin (`--choices a,b,…` instead of yes or no, `--expect CHOICE` to exit 1 on any other, `--json` for the probabilities and the cost) and print the option it picked. No agent, no tools; it needs an OpenRouter key. The [reference](reference.md#llx-decide) has its options and exit codes.
+- `decide QUESTION [FILE…]`: ask the decision model one question about stdin, or about each file on its own (`--choices a,b,…` instead of yes or no, `--expect CHOICE` to exit 1 on any other, `--json` for the probabilities and the cost), and print the option it picked. No agent, no tools; it needs an OpenRouter key. The [reference](reference.md#llx-decide) has its options and exit codes.
+- `grep QUESTION [PATH…]`: search the code by what a question means and print the files that answer it, best first, with their lines (`-e PATTERN` keeps only the files a regex matches, `-l` prints the paths alone, `--json` one object). Where an OpenRouter key is set the decision model reads the best files; without one, or with `--lexical`, the question's words rank them alone. The [reference](reference.md#llx-grep) has how it works, its options and exit codes.
 - `resume [ID | --last] [PROMPT]`: go on with a session at the terminal. `--last` is the newest session that ran in this workspace (else the newest of all, with a note).
-- `doctor`: check that everything a run needs is in place.
+- `sessions`: list the saved sessions, newest first, with the directory each ran in.
+- `logout`: forget every saved sign-in: the ChatGPT tokens and every provider's saved key. A key still set in the environment is named, to unset. (Signing in is `/login` in a session.)
+- `doctor`: check the sign-ins, both models (the agent's and the decision model, `--decision-model`) and the shell.
 - `serve`: the daemon the sessions run in. `serve status` says whether it runs (its pid, its build, the terminals attached, the sessions open and working, those moved to the background, the jobs; exit 1 when none runs), `serve stop` ends it, stopping every session's task first.
 
 ## In a session

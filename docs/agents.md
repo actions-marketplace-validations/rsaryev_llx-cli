@@ -13,7 +13,7 @@ llx extends the agent you already use (Claude Code, another agent, a script of y
 
 `llx exec` runs one task to its end and prints the answer alone on stdout. It thinks with any provider and model of the catalog, so your agent can hand bulk work to a cheaper one and keep its own tokens for what needs it:
 
-```sh
+```bash
 llx exec --provider openrouter -m deepseek/deepseek-chat "List the public functions in src/ that have no test"
 llx exec --schema @schema.json "Summarize the failing CI log in ci.log"
 llx exec --allow 'bash(cargo test *)' "Run the tests and say which fail and why"
@@ -28,7 +28,7 @@ llx exec --allow 'bash(cargo test *)' "Run the tests and say which fail and why"
 
 `llx decide` asks llx's decision model one question about stdin, or about each file given, and prints the option it picked, in about a second:
 
-```sh
+```bash
 git diff | llx decide "Does this change touch the public API?"           # yes or no
 llx decide --choices patch,minor,major "Which version bump?" < CHANGES.md
 llx decide "Bug report or feature request?" --choices bug,feature issues/*.txt   # a line per file
@@ -49,7 +49,7 @@ An agent asks it when a judgment has a few options it can name and the text is l
 
 `llx grep` searches the code by what a question means. It ranks the files by the question's words, then, where an OpenRouter key is set, the decision model reads the best of them and keeps those that answer: a file that does the thing under another name is found, and one that only mentions the words is left out. Each file comes with its parts that matter, whole functions where they are short, line-numbered:
 
-```sh
+```bash
 llx grep "where is a failed HTTP request sent again"
 llx grep "which files start a child process" src/
 llx grep -e 'spawn|shell::query' "which files start a child process" src/
@@ -65,7 +65,7 @@ The simplest way is to tell your agent to use it: `Use llx grep to find where X 
 
 [skills/llx](../skills/llx/SKILL.md) is a skill for any agent that takes them (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
-```sh
+```bash
 npx skills add rsaryev/llx
 ```
 
@@ -79,7 +79,7 @@ The same skill, as a plugin:
 /plugin install llx --marketplace rsaryev/llx
 ```
 
-On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs `llx grep`, `llx decide` and `llx exec --mode plan` without asking.
+On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs the commands that change nothing without asking: `llx grep`, `llx decide`, `llx exec --mode plan`, `llx doctor` and `llx --help`.
 
 ### AGENTS.md / CLAUDE.md
 

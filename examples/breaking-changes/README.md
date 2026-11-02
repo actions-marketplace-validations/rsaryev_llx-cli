@@ -24,7 +24,7 @@ working tree. Run it on a checkout you can throw away, as CI's is.
 ## Files
 
 | File | What it is |
-|---|---|
+| --- | --- |
 | [check.sh](check.sh) | The check: `check.sh [SPEC] [BASE]` in the repository. Writes `breaking-changes.json` (`LLX_OUT` names another file), prints a line per change, exits 0 (nothing breaks), 1 (something breaks) or 2 (llx could not finish). |
 | [prompt.md](prompt.md) | The prompt, with `{SPEC}` and `{BASE}` filled in by `check.sh`. Add what your API's clients rely on. |
 | [schema.json](schema.json) | The answer's shape. |
@@ -115,7 +115,7 @@ field (`limit`: a string now, at most 3 characters) came back as one entry. 38 s
 with `anthropic/claude-haiku-5.5`.
 
 | Edit | Kind | llx |
-|---|---|---|
+| --- | --- | --- |
 | `POST /orders` answers 200 instead of 201 | structural | breaking |
 | `PUT /orders/{orderId}` removed | structural | breaking |
 | a required `currency` in the create request | structural | breaking |
@@ -137,7 +137,7 @@ spec (about 1,400 lines in 40 files joined by `$ref`), next to that team's own r
 (six rules over a structural diff):
 
 | | Rule-based checker | llx |
-|---|---|---|
+| --- | --- | --- |
 | A real commit that renamed two endpoints' paths | 2 of 2 | 2 of 2, with the new paths and the SDK methods renamed |
 | 9 planted breaking edits | 6 of 9: missed a query parameter made required, one renamed, and a new `maxLength` | 9 of 9 |
 | 3 planted safe edits | no false alarm | no false alarm |

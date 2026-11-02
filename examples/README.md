@@ -3,7 +3,7 @@
 Ready-made uses of llx, by where they run. Each was run for real before it was published.
 
 | Where | Example |
-|---|---|
+| --- | --- |
 | GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
 | Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
 
@@ -32,7 +32,7 @@ git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requ
 ```
 
 | Workflow | When | What llx does | Also needs |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | [review.yml](github/review.yml) | a pull request opens or changes | explores the merged tree, runs what it needs to confirm a problem; posts one review of inline comments (never a verdict) and one summary it updates, skipping what it said before | |
 | [llx.yml](github/llx.yml) | someone with write access writes `@llx` in a comment, a review thread or a new issue, or labels an issue `llx` | answers in the thread; asked for a change, edits the code and runs the tests, then pushes it to the pull request's branch, or opens a draft pull request for an issue | the label `llx`; for an issue's draft pull request, "Allow GitHub Actions to create and approve pull requests" |
 | [triage.yml](github/triage.yml) | an issue opens | picks a kind and a priority among the repository's own labels with `llx decide`, and adds them | two labels of each: GitHub's default labels give the kinds; create `P1`, `P2`, `P3` |
@@ -45,9 +45,9 @@ git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requ
 
 ### How they are built
 
-The agent works as at a terminal: `bash` and `apply_patch`, with `gh`, `git` and `jq` in its shell. There is no MCP
-server, no GitHub tool and no prompt built into the action: the task's prompt is in the workflow,
-where you can read it, and so is what gets posted.
+The agent works as at a terminal: `bash`, `apply_patch` and `grep`, with `gh`, `git` and `jq` in
+its shell. There is no MCP server, no GitHub tool and no prompt built into the action: the task's
+prompt is in the workflow, where you can read it, and so is what gets posted.
 
 - **Two jobs.** The job that runs the model has a read-only token (`read` on what it looks at,
   among `contents`, `issues`, `pull-requests` and `actions`). The jobs with write access hold no
@@ -57,8 +57,8 @@ where you can read it, and so is what gets posted.
   boundary, not the rules.
 - **Answers are data.** `schema:` makes the agent answer with JSON that matches it; the posting
   job reads it with `jq`. `review.yml` puts a finding inline only on a line the diff shows, lists
-  the rest in its summary, and drops one within 3 lines of an earlier comment of its own or of a
-  finding it already keeps (the more severe first).
+  the rest in its summary, and drops one on the line of an earlier comment of its own or within 3
+  lines of a finding it already keeps (the more severe first).
 - **What the agent may run.** In the default mode, a command no rule names runs in a sandbox with
   no network that writes nothing outside the checkout, and never its `.git` (on Linux, in a
   workspace with a `.git` of its own, it only reads); `apply_patch` changes the checkout's files;

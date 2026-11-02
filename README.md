@@ -122,7 +122,7 @@ $ llx grep "where is a failed HTTP request sent again"
 $ llx grep -e 'spawn|shell::query' "which files start a child process" src
 ```
 
-Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml) and [a weekly audit](examples/github/audit.yml) and [a Jira work item made a draft pull request](examples/github/jira.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
+Ready-made GitHub workflows, each run for real: [pull request review](examples/github/review.yml) with inline comments, [`@llx` in any comment, issue or review thread](examples/github/llx.yml), [issue triage](examples/github/triage.yml), [a failed run explained](examples/github/ci-failure.yml), [a described pull request](examples/github/describe.yml), [a draft release](examples/github/release.yml), [a daily gate on a rule you state](examples/github/gate.yml), [a weekly audit](examples/github/audit.yml) and [a Jira work item made a draft pull request](examples/github/jira.yml); and [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
 
 ## In other agents
 
@@ -130,7 +130,7 @@ Claude Code, Codex, another agent or a script of yours can call llx from its she
 
 A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, `llx grep` and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
-```sh
+```bash
 npx skills add rsaryev/llx
 ```
 
