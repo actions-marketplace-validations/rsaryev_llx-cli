@@ -60,6 +60,7 @@ impl std::fmt::Display for ApiError {
     }
 }
 
+/// A client of OpenRouter's API, or of another host's chat completions, with its key.
 pub struct OpenRouter {
     http: Box<dyn Http>,
     key: String,

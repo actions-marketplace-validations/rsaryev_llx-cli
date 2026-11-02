@@ -47,6 +47,7 @@ struct Held {
     refreshing: bool,
 }
 
+/// OpenAI's models over the ChatGPT backend, billed to the plan signed in with.
 pub struct ChatModel {
     http: Box<dyn Http>,
     /// The token endpoint, on a client of its own: a refresh is short.

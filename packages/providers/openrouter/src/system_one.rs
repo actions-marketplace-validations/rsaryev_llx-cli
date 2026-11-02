@@ -8,6 +8,7 @@ use serde_json::{Map, Value, json};
 
 use crate::client::{ApiError, OpenRouter};
 
+/// Decision model `model`, asked through `client`.
 pub struct SystemOne {
     pub client: OpenRouter,
     pub model: String,

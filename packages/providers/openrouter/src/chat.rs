@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 use crate::client::{ApiError, OpenRouter, Wire};
 
+/// A model `selection` names, over the chat completions `client` reaches.
 pub struct ChatModel {
     pub client: OpenRouter,
     pub selection: Selection,

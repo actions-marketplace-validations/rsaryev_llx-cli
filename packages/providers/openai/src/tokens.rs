@@ -144,6 +144,7 @@ pub fn load(app: App) -> Option<Tokens> {
     Tokens::from_json(&serde_json::from_str(&text).ok()?)
 }
 
+/// Keep `tokens` for `app`, readable by the person alone; where.
 pub fn save(app: App, tokens: &Tokens) -> std::io::Result<PathBuf> {
     let path = path(app).ok_or_else(|| std::io::Error::other("no home directory"))?;
     store::save(&path, &tokens.to_json().to_string())?;

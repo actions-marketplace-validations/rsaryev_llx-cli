@@ -45,7 +45,10 @@ pub(super) fn body(selection: &Selection, request: Request, offer: &Offer, sessi
 /// A message as the Responses API's input items, for `model`: a reasoning another model sealed
 /// (before `/model` switched) is left out, as that model alone can open it.
 pub(super) fn items(message: &Message, model: &str, offer: &Offer) -> Vec<Value> {
-    let text = |role: &str, kind: &str, text: &str| json!({"type": "message", "role": role, "content": [{"type": kind, "text": text}]});
+    let text = |role: &str, kind: &str, text: &str| {
+        json!({"type": "message", "role": role,
+            "content": [{"type": kind, "text": text}]})
+    };
     match message {
         Message::System(rules) => vec![text("developer", "input_text", rules)],
         Message::User(said) => vec![text("user", "input_text", said)],

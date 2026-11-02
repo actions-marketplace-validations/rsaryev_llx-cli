@@ -24,6 +24,7 @@ impl Reply {
     }
 }
 
+/// How a provider's requests go out: [`Web`], or a test's fake.
 pub trait Http: Send + Sync {
     /// POST `body` to `address` with `headers`; `Err` when no whole answer came. Not waited for
     /// past `deadline`, when there is one.
