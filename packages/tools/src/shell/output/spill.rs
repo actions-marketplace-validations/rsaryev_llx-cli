@@ -29,10 +29,23 @@ pub(super) struct Spill {
     written: u64,
     /// The most this file keeps ([`MOST`]; less in a test).
     most: u64,
-    /// Pieces past [`Spill::most`], not written.
+    /// Lines not written, from the first that did not fit on.
     left: usize,
-    /// A write failed: the file holds what came before, and nothing more is tried.
-    broken: bool,
+    /// Whether it still takes what comes.
+    taking: Taking,
+    /// The last piece written did not end its line.
+    mid_line: bool,
+}
+
+/// Whether a spill still takes what comes: once a piece is not written, nothing after it is, so
+/// its lines stay numbered as the output's (the cut is read from it by number).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Taking {
+    Yes,
+    /// A piece did not fit in [`Spill::most`].
+    Full,
+    /// A write failed: the file holds what came before.
+    Broken,
 }
 
 impl Spill {
@@ -69,7 +82,8 @@ impl Spill {
             written: 0,
             most: MOST,
             left: 0,
-            broken: false,
+            taking: Taking::Yes,
+            mid_line: false,
         })
     }
 
@@ -80,22 +94,33 @@ impl Spill {
             Ends::Later => b"",
         };
         let bytes = u64::try_from(text.len() + end.len()).unwrap_or(u64::MAX);
-        if self.broken || self.written + bytes > self.most {
-            self.left += 1;
-            return;
+        if self.taking == Taking::Yes && self.written + bytes > self.most {
+            self.taking = Taking::Full;
+        }
+        match self.taking {
+            Taking::Yes => {}
+            Taking::Full | Taking::Broken => {
+                self.left += usize::from(ends == Ends::Line);
+                return;
+            }
         }
         self.written += bytes;
+        self.mid_line = ends == Ends::Later;
         let wrote = self
             .file
             .write_all(text.as_bytes())
             .and_then(|()| self.file.write_all(end));
-        self.broken = wrote.is_err();
+        if wrote.is_err() {
+            self.taking = Taking::Broken;
+        }
     }
 
     /// Written to its end; where it is.
     pub(super) fn finish(&mut self) -> PathBuf {
         if self.left > 0 {
-            let note = format!("... {} more lines were not kept ...\n", self.left);
+            // A line kept only in part is ended first: the note is a line of its own.
+            let start = if self.mid_line { "\n" } else { "" };
+            let note = format!("{start}... {} more lines were not kept ...\n", self.left);
             let _ = self.file.write_all(note.as_bytes());
         }
         let _ = self.file.flush();

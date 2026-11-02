@@ -71,3 +71,26 @@ fn a_spill_past_its_size_says_how_much_it_did_not_keep() {
     let text = fs::read_to_string(spill.finish()).unwrap();
     assert_eq!(text, "12345\n6789\n... 2 more lines were not kept ...\n");
 }
+
+/// The file's lines are numbered as the output's: the cut is read from it by line numbers, so no
+/// line comes after one it could not keep, and a line it kept only the start of is ended first.
+#[test]
+fn a_spill_past_its_size_keeps_nothing_after_the_first_line_it_cannot() {
+    let root = Scratch::new();
+    let mut spill = Spill::open(root.path()).unwrap();
+    spill.most = 11;
+    spill.write("12345", Ends::Line);
+    spill.write("abcdefgh", Ends::Later);
+    spill.write("x", Ends::Line);
+    spill.write("y", Ends::Line);
+    let text = fs::read_to_string(spill.finish()).unwrap();
+    assert_eq!(text, "12345\n... 2 more lines were not kept ...\n");
+
+    let mut spill = Spill::open(root.path()).unwrap();
+    spill.most = 11;
+    spill.write("12345", Ends::Line);
+    spill.write("ab", Ends::Later);
+    spill.write("cdefgh", Ends::Line);
+    let text = fs::read_to_string(spill.finish()).unwrap();
+    assert_eq!(text, "12345\nab\n... 1 more lines were not kept ...\n");
+}
