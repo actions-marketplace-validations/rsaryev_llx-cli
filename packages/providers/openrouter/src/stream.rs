@@ -7,14 +7,18 @@ use serde_json::{Map, Value, json};
 use crate::chat::THOUGHT;
 
 /// The completion `body`'s events make, as one sent whole; `None` when it holds no event (it is
-/// not a stream). An error the host reports midway is the answer: `{"error": …}`.
+/// not a stream). An error the host reports midway is the answer: `{"error": …}`, with
+/// `"written": true` when words or calls came before it (they were billed).
 pub(crate) fn assembled(body: &str) -> Option<Value> {
     let mut events = provider_kit::sse::events(body).peekable();
     events.peek()?;
     let mut whole = Whole::default();
     for mut event in events {
         if let Some(error) = event.get_mut("error") {
-            return Some(json!({ "error": error.take() }));
+            return Some(match whole.written() {
+                true => json!({ "error": error.take(), "written": true }),
+                false => json!({ "error": error.take() }),
+            });
         }
         whole.take(&event);
     }
@@ -34,6 +38,16 @@ struct Whole {
     calls: Vec<Call>,
     finish: Option<Value>,
     usage: Option<Value>,
+}
+
+impl Whole {
+    /// Whether the model wrote anything yet: words, reasoning or a call.
+    fn written(&self) -> bool {
+        !self.content.is_empty()
+            || self.thought.iter().any(|(_, text)| !text.is_empty())
+            || !self.details.is_empty()
+            || !self.calls.is_empty()
+    }
 }
 
 /// One call as its deltas built it, at its index.

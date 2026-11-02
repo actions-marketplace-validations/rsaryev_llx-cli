@@ -88,8 +88,14 @@ fn an_error_midway_through_a_stream_is_the_answer() {
         json!({"error": {"code": 502, "message": "upstream died"},
             "choices": [{"index": 0, "delta": {}, "finish_reason": "error"}]}),
     ]);
+    // "Half" was written before it: said, so the client does not send it again.
     assert_eq!(
         assembled(&body),
+        Some(json!({"error": {"code": 502, "message": "upstream died"}, "written": true}))
+    );
+    let before = streamed(&[json!({"error": {"code": 502, "message": "upstream died"}})]);
+    assert_eq!(
+        assembled(&before),
         Some(json!({"error": {"code": 502, "message": "upstream died"}}))
     );
 }

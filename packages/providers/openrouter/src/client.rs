@@ -177,6 +177,12 @@ impl OpenRouter {
                         .and_then(Value::as_u64)
                         .and_then(|code| u16::try_from(code).ok())
                         .unwrap_or(502);
+                    // A stream that failed after its first words was billed for them: sent again
+                    // only as `Resend` says, as one that went out unanswered.
+                    let written = parsed.as_ref().and_then(|value| value.get("written"));
+                    if written == Some(&Value::Bool(true)) && transient(code) {
+                        return Attempt::Unanswered(ApiError::Http(code, message_of(error)));
+                    }
                     return failed(code, message_of(error));
                 }
                 let millis = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);

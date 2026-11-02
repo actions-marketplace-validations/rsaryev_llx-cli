@@ -11,6 +11,7 @@
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
 - The cursor no longer lands a row too low when rows wider than the terminal sit both above and below it in the live area.
 - Ctrl+G's draft for `$EDITOR` is made as a new file only the person can read: a link planted at its name in a shared `/tmp` is no longer written through.
+- A streamed reply that fails after its first words (an error OpenRouter reports inside the stream) is no longer sent again at once: those words were billed. It is sent again only as a request that went out unanswered is, and an error before any word is still retried.
 - A daemon that did not start in time, or lost the lock to another, is waited for once it ends: a client that goes on keeps no zombie process of it.
 - A `bash` deny rule refuses a monitor that runs the command too: `--deny 'bash(rm *)'` no longer lets `jobs` run `rm` under a mode or a rule that allows `jobs`.
 - A patch to a file inside a nested repository's `.git` (`sub/.git/hooks/pre-commit`) is asked as one that must leave the sandbox, as one inside the workspace's own `.git` is: a hook written there would run at the next commit there.
