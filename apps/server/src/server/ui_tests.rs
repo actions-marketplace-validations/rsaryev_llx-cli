@@ -256,3 +256,86 @@ fn a_question_withdrawn_as_it_is_asked_is_never_replayed() {
         assert!(!stale, "a withdrawn question was replayed");
     }
 }
+
+/// The note the lane says once a client of a desk served through the protocol's frames answers
+/// the list `typed` shows with `reply`; `None` when the lane ended first.
+#[expect(
+    clippy::wildcard_enum_match_arm,
+    reason = "a test picks out the variants it reads"
+)]
+fn answered(typed: &str, reply: Reply) -> Option<String> {
+    let (_replies, model) = crate::test_support::gated();
+    let mut said = None;
+    let quit = || panic!("the desk quit hard");
+    crate::test_support::served(&[&model], None, &quit, |link, _| {
+        let lane = loop {
+            if let ToClient::Event {
+                event: Event::LaneStarted { id, .. },
+                ..
+            } = link.frames.recv_timeout(WAIT).unwrap()
+            {
+                break id;
+            }
+        };
+        let input = protocol::Input {
+            session: lane,
+            text: typed.into(),
+            ..protocol::Input::default()
+        };
+        let command = Command::Input(input);
+        link.to_server
+            .send(ToServer::Call { id: 1, command })
+            .unwrap();
+        let id = asked(&link.frames);
+        link.to_server.send(ToServer::Reply { id, reply }).unwrap();
+        said = loop {
+            match link.frames.recv_timeout(WAIT).unwrap() {
+                ToClient::Event {
+                    event: Event::Note(note),
+                    ..
+                } => break Some(note),
+                ToClient::Event {
+                    event: Event::LaneEnded,
+                    ..
+                } => break None,
+                _ => {}
+            }
+        };
+    });
+    said
+}
+
+#[test]
+fn a_choice_past_the_list_is_read_as_a_cancel() {
+    // An interface of another build, or one gone wrong, may send any index: `/login` takes its
+    // provider out of the list by it.
+    let said = answered("/login", Reply::Choice(Some(10_000)));
+    assert_eq!(said.as_deref(), Some("Nothing changed.\n"));
+}
+
+#[test]
+fn a_row_past_the_list_is_read_as_a_cancel() {
+    let said = answered("/model", Reply::Adjusted(Some((10_000, 0))));
+    assert_eq!(said.as_deref(), Some("Nothing changed.\n"));
+}
+
+#[test]
+fn a_value_past_its_rows_values_is_read_as_a_cancel() {
+    let (ui, peer, frames) = crate::testing::fake_peer();
+    let to_server = serving(&peer);
+    let levels = Adjustment {
+        values: vec!["auto".into(), "high".into()],
+        at: 0,
+    };
+    for (sent, picked) in [((0, 2), None), ((0, 1), Some((0, 1)))] {
+        let (mut lane, levels) = (ui.for_lane("s1"), levels.clone());
+        let adjusted = asking(move || {
+            let rows = [Item::new("a", "", true)];
+            lane.pick_adjustable("Model", &rows, &[levels], &[])
+        });
+        let id = asked(&frames);
+        let reply = Reply::Adjusted(Some(sent));
+        to_server.send(ToServer::Reply { id, reply }).unwrap();
+        assert_eq!(adjusted.recv_timeout(WAIT).unwrap(), picked, "{sent:?}");
+    }
+}

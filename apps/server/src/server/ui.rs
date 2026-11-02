@@ -239,7 +239,8 @@ impl Ui {
 }
 
 /// `/login`'s steps (and `/model`'s, `/rewind`'s) in the interface: each list a choice, each line
-/// typed in place (a key as dots); `None` when cancelled.
+/// typed in place (a key as dots); `None` when cancelled, or answered with what the list does not
+/// offer.
 impl Picker for Ui {
     fn pick(&mut self, title: &str, items: &[Item]) -> Option<usize> {
         let (options, marked) = rows(items);
@@ -250,7 +251,9 @@ impl Picker for Ui {
             marked,
         };
         match self.ask(asked, None) {
-            Some(Reply::Choice(picked)) => picked,
+            // An index past the list (a client of another build, or one gone wrong) is no
+            // choice, as a reply of another kind is none.
+            Some(Reply::Choice(picked)) => picked.filter(|&at| at < items.len()),
             _ => None,
         }
     }
@@ -270,8 +273,16 @@ impl Picker for Ui {
             adjustments: adjustments.to_vec(),
             groups: groups.to_vec(),
         };
+        // A row past the list, or a value past its row's, is no choice, as in `pick`; a row with
+        // nothing to adjust keeps its first.
+        let offered = |&(at, value): &(usize, usize)| {
+            at < items.len()
+                && adjustments
+                    .get(at)
+                    .map_or(value == 0, |adjustment| value < adjustment.values.len())
+        };
         match self.ask(asked, None) {
-            Some(Reply::Adjusted(picked)) => picked,
+            Some(Reply::Adjusted(picked)) => picked.filter(offered),
             _ => None,
         }
     }
