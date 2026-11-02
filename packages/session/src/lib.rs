@@ -2,6 +2,8 @@
 //! temporary file and renamed, so a crash never leaves half a session.
 
 use std::path::PathBuf;
+use std::sync::OnceLock;
+use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use contracts::history::{History, HistoryError, Session};
@@ -13,6 +15,19 @@ fn now() -> u64 {
         .map_or(0, |d| d.as_secs())
 }
 
+/// The last part of the ids this process gives: drawn at random once, then counted up, so no two
+/// sessions it starts in one second share an id (agents spawned together), and another process's,
+/// drawn apart, seldom meet them.
+fn serial() -> u16 {
+    static NEXT: OnceLock<AtomicU16> = OnceLock::new();
+    let next = NEXT.get_or_init(|| {
+        let mut random = [0u8; 2];
+        let _ = getrandom::fill(&mut random);
+        AtomicU16::new(u16::from_be_bytes(random))
+    });
+    next.fetch_add(1, Ordering::Relaxed)
+}
+
 /// Sessions as files in `dir`.
 pub struct Sessions {
     pub dir: PathBuf,
@@ -20,11 +35,9 @@ pub struct Sessions {
 
 impl History for Sessions {
     fn start(&self) -> Session {
-        let mut random = [0u8; 2];
-        let _ = getrandom::fill(&mut random);
         let created = now();
         Session {
-            id: format!("{created}-{:02x}{:02x}", random[0], random[1]),
+            id: format!("{created}-{:04x}", serial()),
             created,
             updated: created,
             ..Session::default()

@@ -16,6 +16,13 @@ impl Scratch {
         let _ = std::fs::remove_dir_all(&dir);
         Self(dir)
     }
+
+    /// A store of its sessions, as the app makes one wherever it needs one.
+    fn sessions(&self) -> Sessions {
+        Sessions {
+            dir: self.0.clone(),
+        }
+    }
 }
 
 impl Drop for Scratch {
@@ -27,9 +34,7 @@ impl Drop for Scratch {
 #[test]
 fn a_session_round_trips_and_the_newest_comes_first() {
     let scratch = Scratch::new("round-trip");
-    let sessions = Sessions {
-        dir: scratch.0.clone(),
-    };
+    let sessions = scratch.sessions();
     let mut old = sessions.start();
     old.id = "1-old".into();
     old.updated = 1;
@@ -54,11 +59,19 @@ fn a_session_round_trips_and_the_newest_comes_first() {
 }
 
 #[test]
+fn sessions_started_in_the_same_second_never_share_an_id() {
+    // Agents spawned in one turn start together, and their ids key their files, their stops
+    // and their answers.
+    let scratch = Scratch::new("ids");
+    let ids: std::collections::HashSet<String> =
+        (0..2_000).map(|_| scratch.sessions().start().id).collect();
+    assert_eq!(ids.len(), 2_000);
+}
+
+#[test]
 fn a_list_of_hundreds_has_every_session_newest_first_and_skips_what_is_not_one() {
     let scratch = Scratch::new("hundreds");
-    let sessions = Sessions {
-        dir: scratch.0.clone(),
-    };
+    let sessions = scratch.sessions();
     for n in 0..300 {
         let mut session = sessions.start();
         session.id = format!("{n}-s");
@@ -73,9 +86,7 @@ fn a_list_of_hundreds_has_every_session_newest_first_and_skips_what_is_not_one()
 #[test]
 fn the_newest_session_is_never_an_agent() {
     let scratch = Scratch::new("agent");
-    let sessions = Sessions {
-        dir: scratch.0.clone(),
-    };
+    let sessions = scratch.sessions();
     let mut parent = sessions.start();
     parent.id = "1-parent".into();
     parent.updated = 1;
@@ -97,9 +108,7 @@ fn the_newest_session_is_never_an_agent() {
 #[test]
 fn a_file_that_is_not_a_session_is_called_so_when_loaded() {
     let scratch = Scratch::new("not-a-session");
-    let sessions = Sessions {
-        dir: scratch.0.clone(),
-    };
+    let sessions = scratch.sessions();
     std::fs::create_dir_all(&scratch.0).unwrap();
     std::fs::write(scratch.0.join("1-odd.json"), "not json").unwrap();
     let error = sessions.load(Some("1-odd")).unwrap_err().to_string();
@@ -112,9 +121,7 @@ fn a_file_that_is_not_a_session_is_called_so_when_loaded() {
 #[test]
 fn what_a_task_spent_is_kept_and_an_older_session_without_it_still_loads() {
     let scratch = Scratch::new("spent");
-    let sessions = Sessions {
-        dir: scratch.0.clone(),
-    };
+    let sessions = scratch.sessions();
     let mut session = sessions.start();
     let turn = contracts::history::Step {
         what: "model".into(),
