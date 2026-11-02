@@ -63,9 +63,12 @@ impl Rules {
     }
 
     /// What the rules say of `tool` acting on `subject` (its command, or its path; empty when
-    /// the call has none a pattern could judge). Deny first, then allow.
+    /// the call has none a pattern could judge). Deny first, then allow. A command `jobs` runs
+    /// (a monitor's) is a command: `bash`'s denies refuse it too, as they would at the shell.
     pub(crate) fn judge(&self, tool: &str, subject: &str) -> Ruling {
-        let mut deny = self.deny.iter().filter(|rule| rule.tool == tool);
+        let runs_a_command = tool == "jobs" && !subject.is_empty();
+        let mut deny = (self.deny.iter())
+            .filter(|rule| rule.tool == tool || (runs_a_command && rule.tool == "bash"));
         if let Some(rule) = deny.find(|rule| denies(rule, subject)) {
             return Ruling::Denied(format!("refused by the rule `{}`", rule.text));
         }

@@ -40,11 +40,17 @@ fn watched(command: &str, dir: &std::path::Path, needs: Needs) -> String {
 }
 
 impl<'scope, 'env> JobsTool<'scope, 'env> {
-    /// Ask the gate: what a monitor's command may do, or the refusal.
-    fn ask(&self, summary: &str, needs: Needs) -> Result<tools::shell::Scope, ToolError> {
+    /// Ask the gate: what a monitor's `command` (none for a schedule) may do, or the refusal. It is its
+    /// subject: a deny on a command refuses a monitor that runs it (K5).
+    fn ask(
+        &self,
+        command: &str,
+        summary: &str,
+        needs: Needs,
+    ) -> Result<tools::shell::Scope, ToolError> {
         let effect = Effect {
             tool: spec::NAME,
-            subject: "",
+            subject: command,
             summary,
             needs,
         };
@@ -58,7 +64,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
         (timeout, needs): (Duration, Needs),
     ) -> Result<ToolOutput, ToolError> {
         let dir = self.jobs.kit.workspace.root();
-        let scope = self.ask(&watched(command, dir, needs), needs)?;
+        let scope = self.ask(command, &watched(command, dir, needs), needs)?;
         let timeout = match self.jobs.kit.session {
             true => timeout,
             false => timeout.min(Duration::from_millis(spec::EXEC_WATCH_MS)),
@@ -191,7 +197,7 @@ impl<'scope, 'env> JobsTool<'scope, 'env> {
             }
             When::In(seconds) => (None, now + seconds, format!("in {} min", seconds / 60)),
         };
-        self.ask(&format!("schedule {said}: {prompt}"), Needs::Sandbox)?;
+        self.ask("", &format!("schedule {said}: {prompt}"), Needs::Sandbox)?;
         let (id, name) = {
             let mut state = self.jobs.lock();
             let kept = state.jobs.len();

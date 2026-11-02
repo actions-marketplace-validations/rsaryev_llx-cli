@@ -693,3 +693,19 @@ fn a_tool_allowed_whole_is_not_held_to_a_pattern() {
     assert!(rules(&["bash", "apply_patch", "jobs"], &[]).allows_every_tool());
     assert!(!rules(&["bash(cargo *)", "apply_patch", "jobs"], &[]).allows_every_tool());
 }
+
+#[test]
+fn a_command_a_monitor_runs_is_refused_by_bashs_denies_and_allowed_only_by_jobs() {
+    let set = rules(&["jobs"], &["bash(rm *)"]);
+    assert!(
+        matches!(set.judge("jobs", "rm -rf build"), Ruling::Denied(why) if why.contains("bash(rm *)"))
+    );
+    assert_eq!(set.judge("jobs", "tail -f log"), Ruling::Allowed);
+    // A schedule names no command: no pattern judges it.
+    assert_eq!(set.judge("jobs", ""), Ruling::Allowed);
+    // A bash allow does not allow a monitor.
+    assert_eq!(
+        rules(&["bash(tail *)"], &[]).judge("jobs", "tail -f log"),
+        Ruling::Unsettled
+    );
+}

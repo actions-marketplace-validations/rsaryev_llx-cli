@@ -500,3 +500,26 @@ fn the_trace_is_coloured_where_colour_is_forced() {
     ␛[31m■ ␛[0m␛[31mthe␛[0m␛[31m ␛[0m␛[31mbudget␛[0m␛[31m ␛[0m␛[31mran␛[0m␛[31m ␛[0m␛[31mout␛[0m␛[31m ␛[0m␛[31m($0.00025;␛[0m␛[31m ␛[0m␛[31mraise␛[0m␛[31m ␛[0m␛[31mit␛[0m␛[31m ␛[0m␛[31mwith␛[0m␛[31m ␛[0m␛[31m--budget)␛[0m
     ");
 }
+
+#[test]
+fn a_deny_on_a_command_refuses_a_monitor_that_runs_it_too() {
+    let home = Home::new();
+    let marker = home.path().join("marker");
+    let command = format!("touch {}", marker.display());
+    let model = Model::start(vec![
+        Reply::call(
+            "jobs",
+            json!({"action": "monitor", "name": "touching", "command": command}),
+        ),
+        Reply::done("Done."),
+    ]);
+    let args = ["exec", "-y", "--deny", "bash(touch *)", "x"];
+    let out = home.exec(&model, &args, "");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(!marker.exists(), "the monitor ran a denied command");
+    let answered = said(&model, 1);
+    assert!(
+        answered.contains("refused by the rule `bash(touch *)`"),
+        "{answered}"
+    );
+}
