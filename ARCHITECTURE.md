@@ -18,7 +18,7 @@ and Localix (rule ids, ratchets, poke-then-pull sync).
 
 ## Bird's-eye view
 
-llx is a model in a loop over six tools: `bash`, through which it reads, searches and runs the checks, `apply_patch`, through which it changes files (B1-B5), `grep`, which searches the code by what a question means (B8), `ask`, `agents` and `jobs`. The loop decides; it knows no technology. Tools, stores and providers are technology behind ports. One composition root wires
+llx is a model in a loop over five tools: `bash`, through which it reads, searches and runs the checks, `apply_patch`, through which it changes files (B1-B5), `ask`, `agents` and `jobs`. The loop decides; it knows no technology. Tools, stores and providers are technology behind ports. One composition root wires
 them for a session. A session runs in a server, and an interface shows it through a protocol,
 in the same process, or over the daemon's socket (`docs/daemon.md`). Nothing a
 person sees is known below the interface; nothing a model or a tool does is known above the
@@ -217,8 +217,8 @@ command is cut.
 
 - **B1**: the model's tools for files and commands are `bash` (`tools/src/shell/`), for reading,
   searching and running, and `apply_patch` (`tools/src/fs/patch/`), for every file it adds,
-  changes, deletes or moves. No other tool reads or writes a file for it but `grep`, which only
-  reads (B8); a capability is a command, or a program the shell has.
+  changes, deletes or moves. No other tool reads or writes a file for it; a capability is a
+  command, or a program the shell has.
 - **B2**: what the shell offers is the app's context to say, found on the session's `PATH` (the
   client's, in the daemon) without running anything: the runtimes a script can be written in
   (`python3`, `node`, `bun`), named only when present. How to change a file well is the tools'
@@ -259,14 +259,8 @@ command is cut.
   answered unrun, with why. Replies are streamed where the host allows it (OpenRouter), so a cut
   call arrives with what was written of it; sent whole, it arrives empty.
 
-- **B8**: `grep` (the server's `grep/tool.rs`) is the one tool beside `bash` that reads files:
-  the search `llx grep` runs, its core shared and never copied, run in the app's process, where
-  the decision model's key and the network are (a confined command has neither, B3, so the
-  model never runs `llx` through `bash` for it). Every path it is given goes through `Workspace`
-  (A3) and every file it lists is one `Workspace::readable` lets through, so the app's own
-  paths are never read; it changes nothing and asks no gate, as a read in the sandbox does not.
-  The decision model reads the files it judges, as it reads the conversation it advises on (C9);
-  its cost is the task's, under `--budget`. Without a decision model it ranks by the words alone.
+- **B8**: (retired with `grep`: a search the model builds from the shell, `llx decide` and its
+  helpers, as any other agent does.)
 
 ## Concurrency and errors
 
@@ -289,7 +283,7 @@ command is cut.
 - **R9**: wait on events, not on time: a `Condvar`, `recv_timeout`, a deadline. A `sleep` is a
   backoff, and says so where it is (_checked_).
 - **R10** _checked_: a child process always has a deadline and a way to be stopped. The
-  server's short local queries (`/diff`'s `git`, `llx grep`'s `git ls-files`, `doctor`'s shell) go through
+  server's short local queries (`/diff`'s `git`, `doctor`'s shell) go through
   `tools::shell::query`, which kills one at its deadline with all it started; the interface's
   (the clipboard's tool, the pasted picture's, `@`'s `git`) through `apps/tui/src/within.rs`, as it may
   not reach `tools` (L7). (Debt: the provider kit's browser opener, which may not reach `tools`
@@ -353,7 +347,7 @@ command is cut.
   provider package if none fits, one arm in `providers.rs`.
 - **A model:** nothing in llx: it arrives with the catalog's refresh.
 - **A tool capability:** an `action` of an existing tool, or the shell (B1). A new tool is a
-  decision recorded here (as `grep` is, B8).
+  decision recorded here.
 - **Something that reaches a run:** a kind in `arrivals.rs` and a post to the lane's queue (K4).
 - **A CI integration:** the GitHub Action is `action.yml` at the repository's root, composite
   shell steps only (no Node, no MCP server, no GitHub tool): it installs the release its own tag
