@@ -208,11 +208,17 @@ impl Views {
             return None;
         }
         let shown = self.home() == at;
+        self.remove_lane(id);
+        let next = self.sessions.iter().find(|view| view.parent.is_none());
+        next.filter(|_| shown).map(|view| view.id.clone())
+    }
+
+    /// Lane `id` goes, and all the interface keeps of it: its agents and its jobs. The server's
+    /// events for it reach no view after, so nothing of it would ever be taken down.
+    pub(crate) fn remove_lane(&mut self, id: &str) {
         let theirs = |view: &SessionView| view.id == id || view.parent.as_deref() == Some(id);
         self.sessions.retain(|view| !theirs(view));
         self.jobs.retain(|(lane, _)| lane != id);
-        let next = self.sessions.iter().find(|view| view.parent.is_none());
-        next.filter(|_| shown).map(|view| view.id.clone())
     }
 
     /// The lane of the session at `at`: itself, or the agent's parent.

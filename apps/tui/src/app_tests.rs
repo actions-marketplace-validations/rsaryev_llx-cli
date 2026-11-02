@@ -759,6 +759,39 @@ fn at_the_most_lanes_an_idle_lane_closes_past_an_older_one_waiting_for_the_perso
 }
 
 #[test]
+fn a_lane_closed_for_a_new_one_takes_its_jobs_with_it() {
+    let now = Instant::now();
+    let mut app = lanes(now);
+    let (id, name) = ("C".into(), "write docs".into());
+    app.event(Event::LaneStarted { id, name }, now);
+    app.max_lanes = 3;
+    for id in ["A", "B", "C"] {
+        app.frame(from(id, queue(true, &[], &[], &[])), now);
+    }
+    let schedule = protocol::JobRow {
+        id: "job-1".into(),
+        name: "nightly".into(),
+        detail: "run the suite".into(),
+        until_at: None,
+        next: Some("02:00".into()),
+        events: 0,
+    };
+    app.frame(from("A", Event::Jobs(vec![schedule])), now);
+    app.show("C");
+    assert!(live_area(&app, now).contains("◷ nightly"));
+    typed(&mut app, "/new", now);
+    app.input(key(KeyCode::Enter), now);
+    let (session, target) = ("A".into(), protocol::Target::New);
+    assert_eq!(
+        commands(&mut app),
+        [Command::Close { session }, Command::Open { target }]
+    );
+    // The server's events for A no longer reach a view: its row would stay until a gap.
+    let shown = live_area(&app, now);
+    assert!(!shown.contains("nightly"), "{shown}");
+}
+
+#[test]
 fn a_background_question_with_tabs_keeps_its_text_once_its_lane_is_shown() {
     let now = Instant::now();
     let mut app = lanes(now);

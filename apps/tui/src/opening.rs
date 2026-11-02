@@ -38,13 +38,12 @@ impl App {
             self.push(shown, super::cells::note(&full, self.width));
             return;
         };
-        let view = self.views.sessions.remove(at);
+        let view = &self.views.sessions[at];
         let said = format!("closed the oldest idle session \"{}\"", view.title());
         let session = view.id.clone();
+        // With its agents and its jobs: its events for them reach no view once it is gone.
+        self.views.remove_lane(&session);
         self.outbox.push(Out::Call(Command::Close { session }));
-        self.views
-            .sessions
-            .retain(|agent| agent.parent.as_ref() != Some(&view.id));
         // Said in the lane that opens, which is shown next.
         self.closed = Some(said);
         self.outbox.push(Out::Call(Command::Open { target }));
