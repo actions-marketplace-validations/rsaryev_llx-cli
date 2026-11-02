@@ -304,7 +304,8 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
 #[test]
 fn a_stream_that_failed_after_its_first_words_is_not_sent_again_and_one_before_them_is() {
     // Its words were written, and billed: sending it again would pay for them twice.
-    let midway = "data: {\"choices\":[{\"delta\":{\"content\":\"Half\"}}]}\n\ndata: {\"error\":{\"code\":502,\"message\":\"upstream died\"}}\n\n";
+    let midway = "data: {\"choices\":[{\"delta\":{\"content\":\"Half\"}}]}\n\n\
+        data: {\"error\":{\"code\":502,\"message\":\"upstream died\"}}\n\n";
     let (client, sent) = scripted(lab(), vec![Ok((200, midway)), Ok((200, "{}"))]);
     let error = client.post("/x", &json!({}), None).unwrap_err();
     assert_eq!(error, ApiError::Http(502, "upstream died".into()));

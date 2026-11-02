@@ -7,8 +7,8 @@ use contracts::tool::Input;
 fn a_conversation_goes_out_in_the_wire_format_with_cache_marks() {
     let call = ToolCall {
         id: "c1".into(),
-        name: "browser".into(),
-        arguments: json!({"url": "https://example.com"}),
+        name: "bash".into(),
+        arguments: json!({"command": "ls"}),
     };
     let messages = cached(
         [
@@ -21,7 +21,7 @@ fn a_conversation_goes_out_in_the_wire_format_with_cache_marks() {
             },
             Message::ToolResult {
                 id: "c1".into(),
-                content: "page".into(),
+                content: "a.rs".into(),
                 failed: false,
             },
         ]
@@ -39,20 +39,20 @@ fn a_conversation_goes_out_in_the_wire_format_with_cache_marks() {
     );
     assert_eq!(
         messages[2]["tool_calls"][0]["function"]["arguments"],
-        r#"{"url":"https://example.com"}"#
+        r#"{"command":"ls"}"#
     );
     assert_eq!(messages[3]["tool_call_id"], "c1");
-    assert_eq!(messages[3]["content"][0]["text"], "page");
+    assert_eq!(messages[3]["content"][0]["text"], "a.rs");
 }
 
 #[test]
 fn a_tool_call_with_unreadable_arguments_arrives_as_their_text() {
-    // A reply cut short leaves `{"path": "a.html", "new_string": "<h` behind: it must not
-    // become an empty call that fails as "missing field path".
+    // A reply cut short leaves `{"command": "cargo te` behind: it must not become an empty call
+    // that fails as "missing field command".
     let call = read_call(
-        &json!({"id": "c2", "function": {"name": "edit", "arguments": "{\"path\": \"a"}}),
+        &json!({"id": "c2", "function": {"name": "bash", "arguments": "{\"command\": \"a"}}),
     );
-    assert_eq!(call.map(|c| c.arguments), Some(json!("{\"path\": \"a")));
+    assert_eq!(call.map(|c| c.arguments), Some(json!("{\"command\": \"a")));
 }
 
 #[test]
@@ -292,18 +292,19 @@ fn cache_marks_go_only_to_the_models_that_take_explicit_breakpoints() {
     );
 }
 
-fn script() -> ToolSpec {
+/// A tool of free text, as `apply_patch` is.
+fn patch() -> ToolSpec {
     ToolSpec {
-        name: "exec".into(),
-        description: "Run a script.".into(),
+        name: "apply_patch".into(),
+        description: "Change files.".into(),
         input: Input::Text("start: /.+/".into()),
     }
 }
 
 #[test]
-fn a_script_is_offered_as_a_function_with_one_string_argument() {
+fn a_patch_is_offered_as_a_function_with_one_string_argument() {
     let conversation = [Message::User("goal".into())];
-    let tools = [script()];
+    let tools = [patch()];
     let request = Request {
         conversation: &conversation,
         tools: &tools,
@@ -314,7 +315,7 @@ fn a_script_is_offered_as_a_function_with_one_string_argument() {
     };
     let body = body(Wire::OpenRouter, &selection(vec![], Effort::Off), &request);
     let function = &body["tools"][0]["function"];
-    assert_eq!(function["name"], "exec");
+    assert_eq!(function["name"], "apply_patch");
     assert_eq!(function["parameters"]["required"], json!(["source"]));
     assert_eq!(
         function["parameters"]["properties"]["source"]["type"],
@@ -323,14 +324,14 @@ fn a_script_is_offered_as_a_function_with_one_string_argument() {
 }
 
 #[test]
-fn a_scripts_call_is_its_text_coming_in_and_its_one_argument_going_back() {
-    let wired = json!({"id": "c1", "function": {"name": "exec",
-        "arguments": "{\"source\":\"return 1\"}"}});
+fn a_patch_call_is_its_text_coming_in_and_its_one_argument_going_back() {
+    let wired = json!({"id": "c1", "function": {"name": "apply_patch",
+        "arguments": "{\"source\":\"*** Begin Patch\"}"}});
     let call = read_call(&wired).unwrap();
     // The reader keeps what the model wrote; the port takes the text out for the agent.
-    let tools = [script()];
+    let tools = [patch()];
     let call = incoming(call, &tools);
-    assert_eq!(call.arguments, json!("return 1"));
+    assert_eq!(call.arguments, json!("*** Begin Patch"));
 
     let sent = wire(
         &Message::Assistant {
@@ -346,7 +347,7 @@ fn a_scripts_call_is_its_text_coming_in_and_its_one_argument_going_back() {
         .unwrap();
     assert_eq!(
         serde_json::from_str::<Value>(arguments).unwrap(),
-        json!({"source": "return 1"})
+        json!({"source": "*** Begin Patch"})
     );
 }
 
@@ -483,7 +484,7 @@ fn openrouter_is_asked_to_stream_and_another_host_is_not() {
 }
 
 #[test]
-fn a_cut_scripts_call_keeps_the_text_it_wrote_and_another_cut_call_its_raw_arguments() {
+fn a_cut_patch_call_keeps_the_text_it_wrote_and_another_cut_call_its_raw_arguments() {
     let reply = |name: &str, arguments: &str| {
         json!({"model": "m", "choices": [{"finish_reason": "length", "message": {"content": null,
             "tool_calls": [{"id": "c1", "function": {"name": name, "arguments": arguments}}]}}]})
@@ -493,12 +494,17 @@ fn a_cut_scripts_call_keeps_the_text_it_wrote_and_another_cut_call_its_raw_argum
         description: "Run.".into(),
         input: Input::Json(json!({"type": "object"})),
     };
-    let tools = [script(), bash];
+    let tools = [patch(), bash];
     let cut = arrived(
-        read(&reply("exec", r#"{"source": "line one\nline"#), "m", 0).unwrap(),
+        read(
+            &reply("apply_patch", r#"{"source": "*** Begin Patch\n*** Add"#),
+            "m",
+            0,
+        )
+        .unwrap(),
         &tools,
     );
-    assert_eq!(cut.calls[0].arguments, json!("line one\nline"));
+    assert_eq!(cut.calls[0].arguments, json!("*** Begin Patch\n*** Add"));
     // A command cut off midway is not made to look whole.
     let raw = r#"{"command": "rm -r build/ca"#;
     let cut = arrived(read(&reply("bash", raw), "m", 0).unwrap(), &tools);
