@@ -105,6 +105,7 @@ fn armed(command: &str) -> bool {
 /// or one of these, `sudo` or a shell has a glob where an option may be, or in its program: the
 /// shell fills it with the workspace's file names, and one may be `--pre=sh`, `-delete` or `-s`.
 /// What the rule names is not what runs.
+///
 /// The program is read unquoted and by its name, wherever it is (`'/bin/sh' -c` is `sh -c`), past
 /// `sudo`; a wrapper that could not be looked through (`xargs -0`, `time -p`) runs another too.
 fn runs_another(part: &str) -> bool {

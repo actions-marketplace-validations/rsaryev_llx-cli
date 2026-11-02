@@ -1,9 +1,10 @@
 //! What a run shows as it goes and how it ends. For a person: a trace on stderr (each call once
 //! done, an agent's steps under it), which the interface's code draws from the protocol's events
-//! ([`Drawn`]), and the answer alone on stdout, so a pipe gets the answer and nothing else. With `--json`: one JSON event per line on stdout
-//! ([`json`]). A closed stdout is noticed when something is
-//! written to it, never with a panic: with `--json` that is every event, so the run stops at its
-//! next turn; otherwise only the answer is written, at the end, and the process then ends quietly.
+//! ([`Drawn`]), and the answer alone on stdout, so a pipe gets the answer and nothing else. With
+//! `--json`: one JSON event per line on stdout ([`json`]). A closed stdout is noticed when
+//! something is written to it, never with a panic: with `--json` that is every event, so the run
+//! stops at its next turn; otherwise only the answer is written, at the end, and the process then
+//! ends quietly.
 
 pub(crate) mod human;
 mod json;
@@ -98,8 +99,9 @@ pub(crate) enum Runner {
     Plain,
     /// GitHub Actions takes a line that begins `::` or `##[` as a workflow command, on either
     /// stream. Only the trace on stderr is guarded: a file or an answer quoted in it must not be
-    /// one, as a runner reads such a line as a command. Stdout is the answer and the `--json` data, byte-exact for
-    /// pipes: a caller that lets it reach the runner's log writes it to a file instead.
+    /// one, as a runner reads such a line as a command. Stdout is the answer and the `--json`
+    /// data, byte-exact for pipes: a caller that lets it reach the runner's log writes it to a
+    /// file instead.
     GitHub,
 }
 

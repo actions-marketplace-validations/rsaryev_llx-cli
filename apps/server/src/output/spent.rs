@@ -1,6 +1,5 @@
 //! What the session spent in all: the saved session's steps to begin with, then each model turn
-//! (its agents' too). The interface is told the whole of it
-//! each time it grows.
+//! (its agents' too). The interface is told the whole of it each time it grows.
 
 use contracts::history::{Session, Spent};
 

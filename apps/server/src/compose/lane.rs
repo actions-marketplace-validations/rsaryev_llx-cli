@@ -10,7 +10,8 @@ use crate::interrupt::{self, Interrupt};
 use crate::live::LiveChat;
 use crate::output::Output;
 
-/// The model a session thinks with.
+/// The models a lane works with: the one it thinks with and, where one is reachable, a decision
+/// model.
 #[derive(Clone, Copy)]
 pub(crate) struct Models<'a> {
     pub chat: &'a dyn Chat,

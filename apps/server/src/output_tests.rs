@@ -134,7 +134,7 @@ fn a_person_reads_the_trace_on_stderr_and_the_answer_alone_on_stdout() {
     let output = Output::with(false, false, Box::new(out.clone()), Box::new(err.clone()));
     run(&output.drawn(Some(trace)));
     assert_eq!(out.text(), "All tests pass.\n");
-    // The trace is told what the interface is (`tui::trace` draws it), how the task ended last.
+    // The trace is told what an interface is (`tui::Trace` draws it), how the task ended last.
     let [call, result] = told_call();
     let end = Event::TaskEnded {
         status: "done".into(),
@@ -263,8 +263,8 @@ fn a_task_keeps_what_it_did_each_call_and_turn_with_its_time() {
 #[test]
 fn on_a_github_runner_the_trace_cannot_issue_workflow_commands() {
     // A file or a model's answer can hold `::add-mask::` or `##[add-matcher]`: the runner reads
-    // such a line on either stream as a command. The trace on stderr
-    // is what is guarded here; stdout is pinned below to stay as it is.
+    // such a line on either stream as a command. The trace on stderr is what is guarded here;
+    // stdout is pinned below to stay as it is.
     let err = Captured::default();
     let mut output = Output::with(
         false,

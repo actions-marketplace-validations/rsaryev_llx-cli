@@ -1,10 +1,10 @@
-//! The person stopping a task: Ctrl-C (SIGINT), SIGTERM or SIGHUP (the terminal gone) during it. The task ends the way the
-//! time limit ends it: the command running is killed with everything it started (commands run in
-//! their own session, so the terminal's signal never reaches them); the gate approves nothing more,
-//! and the task ends at its next model turn as `interrupted` (exit 130), with its `run.completed`
-//! event and its session saved. A second signal, or one while no task runs (at the prompt line),
-//! quits at once. A signal stops every
-//! session's task; the interface's keys stop one session's, by its id.
+//! The person stopping a task: Ctrl-C (SIGINT), SIGTERM or SIGHUP (the terminal gone) during it.
+//! The task ends the way the time limit ends it: the command running is killed with everything it
+//! started (commands run in their own session, so the terminal's signal never reaches them); the
+//! gate approves nothing more, and the task ends at its next model turn as `interrupted` (exit
+//! 130), with its `run.completed` event and its session saved. A second signal, or one while no
+//! task runs (at the prompt line), quits at once. A signal stops every session's task; the
+//! interface's keys stop one session's, by its id.
 
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
@@ -234,7 +234,7 @@ pub(crate) fn install() {
     // SAFETY: sigemptyset writes only the mask, which lives here.
     unsafe { libc::sigemptyset(&mut action.sa_mask) };
     // The action is fully initialized before it is installed, and the handler does only what a
-    // signal handler may (atomics, kill, write, _exit).
+    // signal handler may (atomics, write, pause, _exit).
     for signal in [libc::SIGINT, libc::SIGTERM, libc::SIGHUP] {
         // SAFETY: as said above; the action outlives the call, which copies it.
         unsafe { libc::sigaction(signal, &action, std::ptr::null_mut()) };

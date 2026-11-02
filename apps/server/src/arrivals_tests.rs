@@ -30,8 +30,8 @@ fn a_monitors_batch_says_it_is_data() {
 
 #[test]
 fn each_kind_says_what_becomes_of_it() {
-    // A running task takes an answer, a monitor's lines and what the person did; a schedule waits
-    // to be a task of its own.
+    // A running task takes an answer and a monitor's lines; a schedule waits to be a task of its
+    // own. While none runs, a late answer is dropped, and the rest open a task.
     let kinds = [
         report("a", "s1", "done", ""),
         monitor("m", ""),

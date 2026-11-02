@@ -2,10 +2,10 @@
 //! reach (ARCHITECTURE.md K5). The gate judges each effect by the mode's rules and the command
 //! line's; then the reach lets the rest run in its sandbox (B3): the workspace's, which changes
 //! the workspace alone, or the read-only one; what must leave the sandbox (B6), or what a mode
-//! that reaches anything does, it asks the person, or refuses with no one to ask. The context says the same rules, from
-//! the same values, so the two cannot drift apart; a mode never filters the tools (the list stays
-//! the same, and so does the prompt cache). A change in a session reaches the model as a
-//! `<mode_change>` note.
+//! that reaches anything does, it asks the person, or refuses with no one to ask. The context
+//! says the same rules, from the same values, so the two cannot drift apart; a mode never filters
+//! the tools (the list stays the same, and so does the prompt cache). A change in a session
+//! reaches the model as a `<mode_change>` note.
 
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
@@ -181,8 +181,8 @@ pub(crate) fn notice(mode: &Mode, terminal: bool, asks: bool) -> String {
 }
 
 /// The gate as the current mode answers it: its rules (the command line's among them) first,
-/// then the person. Each mode keeps its own "always" answers, so one given in a mode that asks little does
-/// not carry into one meant to ask more.
+/// then the person. Each mode keeps its own "always" answers, so one given in a mode that asks
+/// little does not carry into one meant to ask more.
 pub(crate) struct ModeGate<'a> {
     mode: &'a ModeCell,
     /// `None`: nobody to ask.

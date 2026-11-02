@@ -49,7 +49,8 @@ impl Bell {
 }
 
 /// `work` done on each of `items` by at most `threads` threads named `name-N`, each taking the
-/// next item in turn; the results in the items' order, `None` for one a panicked thread left.
+/// next item in turn; the results in the items' order. A panic in `work` is not a `None`: it
+/// comes back here once every thread has ended, as `thread::scope` gives it.
 pub(crate) fn each_at_once<T: Sync, R: Send>(
     items: &[T],
     threads: usize,

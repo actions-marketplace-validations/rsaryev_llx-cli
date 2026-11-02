@@ -1,7 +1,8 @@
 //! What the agent knows of where it runs before its first call: the working directory, the
-//! system, the date, the mode it works in, and the instructions it follows (see
-//! [`crate::instructions`]). It is the same for every task and session in a workspace on a day,
-//! so the prompt cache keeps it: nothing in it changes by the minute.
+//! system, the runtimes its shell has, the date, the mode it works in, and the instructions it
+//! follows (see [`crate::instructions`]); for a resumed session, what it did before. It is the
+//! same for every task and session in a workspace on a day, so the prompt cache keeps it: nothing
+//! in it changes by the minute.
 
 use std::path::{Path, PathBuf};
 
@@ -50,7 +51,8 @@ pub(crate) fn resumed(fresh: &str, session: &Session, root: &Path) -> String {
     }
 }
 
-/// The shell is not said here: the `bash` tool's own description names it.
+/// The `<environment>` block. The shell is not said here: the `bash` tool's own description
+/// names it.
 fn describe(environment: &Environment) -> String {
     let runtimes = match environment.runtimes {
         [] => String::new(),

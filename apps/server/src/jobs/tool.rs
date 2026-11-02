@@ -14,7 +14,7 @@ use super::monitor::{self, Ended};
 use super::spec::{self, Action, When};
 use super::{Job, Jobs, State, What, cron};
 
-/// Monitors running at once, and schedules kept, at most.
+/// Monitors running at once at most, and jobs of either kind kept once a schedule is added.
 const MAX_MONITORS: usize = 8;
 const MAX_SCHEDULES: usize = 50;
 /// How long a recurring schedule lives.
@@ -40,8 +40,8 @@ fn watched(command: &str, dir: &std::path::Path, needs: Needs) -> String {
 }
 
 impl<'scope, 'env> JobsTool<'scope, 'env> {
-    /// Ask the gate: what a monitor's `command` (none for a schedule) may do, or the refusal. It is its
-    /// subject: a deny on a command refuses a monitor that runs it (K5).
+    /// Ask the gate: what a monitor's `command` (none for a schedule) may do, or the refusal. It
+    /// is its subject: a deny on a command refuses a monitor that runs it (K5).
     fn ask(
         &self,
         command: &str,

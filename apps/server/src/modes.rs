@@ -56,7 +56,7 @@ impl Modes {
         Self(modes.collect())
     }
 
-    /// The built-in modes and the person's, from the settings file's text (`where` names the file
+    /// The built-in modes and the person's, from the settings file's text (`place` names the file
     /// in an error). Settings that are not JSON, or hold no `modes`, add none.
     fn with_settings(text: Option<&str>, place: &str) -> Result<Self, String> {
         let mut modes = Self::built_in();

@@ -3,12 +3,11 @@
 //! - `run.started`: `schema`, `goal`, `session`, `model`, `workspace`
 //! - `tool.call`: `id`, `name`, `arguments`
 //! - `tool.result`: `id`, `name`, `failed`, `fatal`, `output`
-//! - `turn`: one model turn: `model`, tokens, `cost_usd`
+//! - `turn`: one model turn: `model`, tokens, `cost_usd`, `model_ms`
 //! - `run.completed`: `status`, `exit_code`, `answer`, `data` or `data_error`, `error`,
 //!   `session`, `usage` {`agent`, `cost_usd`}, `duration_ms`
 
-use contracts::chat::Spend;
-use contracts::chat::{ToolCall, Usage};
+use contracts::chat::{Spend, ToolCall, Usage};
 use contracts::tool::{ToolError, ToolOutput};
 use serde_json::{Value, json};
 

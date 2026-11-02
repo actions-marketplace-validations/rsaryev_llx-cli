@@ -1,10 +1,10 @@
 //! `agents`: the main session starts other agents and works with them. An agent is a session of
 //! its own with a parent, run on a thread of its own: `spawn` returns at once, and its answer
 //! reaches the main agent at its next step, or through `wait`. Its conversation is the main one
-//! (a fork, `fork.rs`) or opens with the same context, it works with tools of its own (neither `agents`, `ask` nor `jobs`: one level,
-//! and nobody to answer it) behind the same gate, and it stops with the task or with `x` on its row. Its
-//! tasks are recorded in its own session, which names its parent. A task does not end while its
-//! agents work, and what they spend is the task's.
+//! (a fork, `fork.rs`) or opens with the same context; it works with tools of its own (neither
+//! `agents`, `ask` nor `jobs`: one level, and nobody to answer it) behind the same gate, and it
+//! stops with the task or with `x` on its row. Its tasks are recorded in its own session, which
+//! names its parent. A task does not end while its agents work, and what they spend is the task's.
 
 mod child;
 pub(crate) mod fork;

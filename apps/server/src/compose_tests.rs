@@ -140,8 +140,6 @@ fn each_modes_commands_change_what_its_reach_lets_them() {
     }
 }
 
-/// `exec`'s calls are the main session's own: a subtree's instructions come once, as for a
-/// direct call (ARCHITECTURE.md X2). Files change through `apply_patch` alone, never a script.
 /// A provider chosen with `/login` after the session began has its key kept from commands too:
 /// the variables are read at each command, not fixed when the session starts.
 #[test]

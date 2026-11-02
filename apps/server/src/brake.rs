@@ -1,9 +1,9 @@
-//! Stopping a task between model turns: when its time is up, when its budget is spent, when the person stopped it (Ctrl-C),
-//! or when no one reads its output any more (noticed on a write: with
-//! `--json`, every event). The chat model is
-//! wrapped, so the agent's loop ends the way it ends on any unreachable model, after the tool call
-//! in flight has finished; nothing exits the process from another thread. (A stopped task's
-//! running command is killed by the shell tool itself, and the gate approves nothing more.)
+//! Stopping a task between model turns: when its time is up, when its budget is spent, when the
+//! person stopped it (Ctrl-C), or when no one reads its output any more (noticed on a write: with
+//! `--json`, every event). The chat model is wrapped, so the agent's loop ends the way it ends on
+//! any unreachable model, after the tool call in flight has finished; nothing exits the process
+//! from another thread. (A stopped task's running command is killed by the shell tool itself, and
+//! the gate approves nothing more.)
 
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
@@ -26,7 +26,7 @@ pub(crate) enum Halt {
     Interrupted,
 }
 
-/// What bounds a task here: its time, and the most it may spend. Children's requests go through
+/// What bounds a task here: its time, and the most it may spend. Its agents' requests go through
 /// the same brake, so their spend counts.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Limits {
@@ -43,7 +43,8 @@ impl Limits {
     }
 }
 
-/// The chat model, stopped once the task's time is up or its output is closed.
+/// The chat model, stopped once the task's time is up, its budget spent, the person stopped it or
+/// its output is closed.
 pub(crate) struct Brake<'a> {
     chat: &'a dyn Chat,
     /// Whether the output's reader has gone.

@@ -25,7 +25,7 @@ use crate::server::Ui;
 use crate::sync::lock;
 use protocol::Event;
 
-/// The built agent and what a task needs around it; one per process, for every task it runs.
+/// The built agent and what a task needs around it; one per lane, for every task it runs.
 pub(crate) struct Rig<'a> {
     pub agent: Agent<'a>,
     /// What the session's lanes share: the options, the workspace, the session store, the modes

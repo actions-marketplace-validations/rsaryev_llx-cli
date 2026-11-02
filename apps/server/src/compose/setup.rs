@@ -48,7 +48,7 @@ pub(crate) struct Shared {
     pub history: Sessions,
     /// The context with no earlier session: what a new lane starts with.
     pub fresh: String,
-    /// The mode, models and terminal a new lane starts with.
+    /// The mode a new lane starts in.
     pub started: Mode,
     pub modes: Modes,
     pub choice: Choice,
