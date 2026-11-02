@@ -98,16 +98,11 @@ fn mode_stays_visible_while_typing_and_updates_for_every_mode() {
 fn working_shows_the_call_its_steps_the_time_and_the_queue() {
     let start = Instant::now();
     let mut app = app();
-    app.event(Event::TaskStarted("check the shop".into()), start);
-    app.event(
-        call(
-            "c1",
-            "window",
-            &label("Working in", "Worked in", "w1: Buy one"),
-        ),
-        start,
-    );
-    app.event(Event::Step("click \"Buy\" [e12]".into()), start);
+    app.event(Event::TaskStarted("fix the parser".into()), start);
+    let wait = label("Waiting for", "Waited for", "agent scout");
+    app.event(call("c1", "agents", &wait), start);
+    // What the agent it waits for does, as the server says it under the call.
+    app.event(Event::Step("scout: Running cargo test".into()), start);
     // Tab while it works keeps the entry for after the task; the session says the mode.
     typed(&mut app, "then update the changelog", start);
     press(&mut app, KeyCode::Tab, start);
@@ -116,9 +111,9 @@ fn working_shows_the_call_its_steps_the_time_and_the_queue() {
     // The server keeps it, and says so.
     app.event(queue(false, &[], &[&later[0].text], &[]), start);
     app.event(Event::Mode("plan".into()), start);
-    insta::assert_snapshot!(shown(&app, start + Duration::from_millis(12_300)), @r#"
-    ⠸ Working in w1: Buy one
-      └ click "Buy" [e12]
+    insta::assert_snapshot!(shown(&app, start + Duration::from_millis(12_300)), @"
+    ⠸ Waiting for agent scout
+      └ scout: Running cargo test
 
     ⠸ Working (12s · esc stop)
       ⏎ then update the changelog
@@ -127,7 +122,7 @@ fn working_shows_the_call_its_steps_the_time_and_the_queue() {
     ❯ Type a task, / for commands
     ────────────────────────────────────────────────────────────
       plan mode · shift+tab to cycle
-    "#);
+    ");
 }
 
 #[test]
