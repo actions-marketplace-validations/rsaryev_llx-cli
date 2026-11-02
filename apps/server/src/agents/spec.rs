@@ -7,7 +7,7 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
-pub(crate) const NAME: &str = "agents";
+pub(super) const NAME: &str = "agents";
 /// How long `wait` waits by default, and at most.
 const WAIT_MS: u64 = 30_000;
 const MAX_WAIT_MS: u64 = 600_000;
@@ -40,7 +40,7 @@ default): wait until one of them answers, and get the answers that came.
 
 /// What a call asks.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Action {
+pub(super) enum Action {
     Spawn {
         task: String,
         name: Option<String>,
@@ -62,7 +62,7 @@ pub(crate) enum Action {
 
 /// What a spawned agent starts with.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Context {
+pub(super) enum Context {
     /// This conversation, as the last request sent it: everything read and done so far.
     Fork,
     /// Nothing but the context and its task.
@@ -74,7 +74,7 @@ pub(crate) fn text(what: &str) -> Value {
     json!({"type": "string", "description": what})
 }
 
-pub(crate) fn parameters() -> Value {
+pub(super) fn parameters() -> Value {
     json!({
         "type": "object",
         "required": ["action"],
@@ -122,7 +122,7 @@ pub(crate) fn given(arguments: &Value, key: &str) -> Option<String> {
 }
 
 /// The action `arguments` ask for, or what is missing from them.
-pub(crate) fn action(arguments: &Value) -> Result<Action, String> {
+pub(super) fn action(arguments: &Value) -> Result<Action, String> {
     let text = |key: &str| given(arguments, key);
     let named = arguments
         .get("action")

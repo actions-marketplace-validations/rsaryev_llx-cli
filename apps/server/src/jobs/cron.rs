@@ -19,12 +19,12 @@ pub(crate) struct Cron {
 /// A moment in local time, as cron reads it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Local {
-    pub minute: u32,
-    pub hour: u32,
-    pub day: u32,
-    pub month: u32,
+    minute: u32,
+    hour: u32,
+    day: u32,
+    month: u32,
     /// 0 is Sunday.
-    pub weekday: u32,
+    weekday: u32,
 }
 
 impl Cron {

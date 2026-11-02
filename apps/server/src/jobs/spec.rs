@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 
 use super::cron::{self, Cron};
 
-pub(crate) const NAME: &str = "jobs";
+pub(super) const NAME: &str = "jobs";
 /// A watch's deadline by default, and at most, in a session.
 const WATCH_MS: u64 = 300_000;
 const MAX_WATCH_MS: u64 = 1_800_000;
@@ -59,7 +59,7 @@ pub(super) fn description(session: bool) -> String {
 
 /// What a call asks.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) enum Action {
+pub(super) enum Action {
     Monitor {
         command: String,
         name: Option<String>,
@@ -81,13 +81,13 @@ pub(crate) enum Action {
 
 /// When a schedule runs.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum When {
+pub(super) enum When {
     Cron(Cron),
     /// This many seconds from now.
     In(u64),
 }
 
-pub(crate) fn parameters(session: bool) -> Value {
+pub(super) fn parameters(session: bool) -> Value {
     use crate::agents::spec::text;
     let mut properties = json!({
         "action": {"type": "string", "enum": ["monitor", "list", "stop"]},
@@ -118,7 +118,7 @@ pub(crate) fn parameters(session: bool) -> Value {
 
 /// The action `arguments` ask for, or what is wrong with them, naming the actions offered where a
 /// session is (`session`) or is not.
-pub(crate) fn action(arguments: &Value, session: bool) -> Result<Action, String> {
+pub(super) fn action(arguments: &Value, session: bool) -> Result<Action, String> {
     let text = |key: &str| crate::agents::spec::given(arguments, key);
     let name = text("name").and_then(|name| crate::agents::spec::tidy(&name));
     // Only the schema's names, in any case: another is told the ones there are.
