@@ -307,8 +307,8 @@ fn answered(typed: &str, reply: Reply) -> Option<String> {
 
 #[test]
 fn a_choice_past_the_list_is_read_as_a_cancel() {
-    // An interface of another build, or one gone wrong, may send any index: `/login` takes its
-    // provider out of the list by it.
+    // A client may send any index (the daemon refuses another build only by what the client
+    // says it is): `/login` takes its provider out of the list by it.
     let said = answered("/login", Reply::Choice(Some(10_000)));
     assert_eq!(said.as_deref(), Some("Nothing changed.\n"));
 }
@@ -332,6 +332,24 @@ fn a_value_past_its_rows_values_is_read_as_a_cancel() {
         let adjusted = asking(move || {
             let rows = [Item::new("a", "", true)];
             lane.pick_adjustable("Model", &rows, &[levels], &[])
+        });
+        let id = asked(&frames);
+        let reply = Reply::Adjusted(Some(sent));
+        to_server.send(ToServer::Reply { id, reply }).unwrap();
+        assert_eq!(adjusted.recv_timeout(WAIT).unwrap(), picked, "{sent:?}");
+    }
+}
+
+#[test]
+fn a_row_with_no_value_to_adjust_keeps_its_first() {
+    // The interface gives a row whose adjustment offers no value its first, and sends that.
+    let (ui, peer, frames) = crate::testing::fake_peer();
+    let to_server = serving(&peer);
+    for (sent, picked) in [((0, 1), None), ((0, 0), Some((0, 0)))] {
+        let mut lane = ui.for_lane("s1");
+        let adjusted = asking(move || {
+            let rows = [Item::new("a", "", true)];
+            lane.pick_adjustable("Model", &rows, &[Adjustment::default()], &[])
         });
         let id = asked(&frames);
         let reply = Reply::Adjusted(Some(sent));

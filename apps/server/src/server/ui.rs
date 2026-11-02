@@ -251,8 +251,8 @@ impl Picker for Ui {
             marked,
         };
         match self.ask(asked, None) {
-            // An index past the list (a client of another build, or one gone wrong) is no
-            // choice, as a reply of another kind is none.
+            // An index past the list is no choice, as a reply of another kind is none: what a
+            // client replies is its word, never trusted.
             Some(Reply::Choice(picked)) => picked.filter(|&at| at < items.len()),
             _ => None,
         }
@@ -274,12 +274,13 @@ impl Picker for Ui {
             groups: groups.to_vec(),
         };
         // A row past the list, or a value past its row's, is no choice, as in `pick`; a row with
-        // nothing to adjust keeps its first.
+        // nothing to adjust (no adjustment, or one of no value, as the interface pads it) keeps
+        // its first.
         let offered = |&(at, value): &(usize, usize)| {
-            at < items.len()
-                && adjustments
-                    .get(at)
-                    .map_or(value == 0, |adjustment| value < adjustment.values.len())
+            let values = adjustments
+                .get(at)
+                .map_or(0, |adjustment| adjustment.values.len());
+            at < items.len() && value < values.max(1)
         };
         match self.ask(asked, None) {
             Some(Reply::Adjusted(picked)) => picked.filter(offered),
