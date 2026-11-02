@@ -205,10 +205,9 @@ pub(super) fn suspend() {
     reason = "the person's own editor, with no deadline by design: it ends when they leave it"
 )]
 pub(super) fn editor(text: &str) -> String {
-    let path = std::env::temp_dir().join(format!("llx-prompt-{}.md", std::process::id()));
-    if std::fs::write(&path, text).is_err() {
+    let Ok(path) = draft(&std::env::temp_dir(), text) else {
         return text.to_string();
-    }
+    };
     let ran = handed_over(|| {
         let command = std::env::var("VISUAL")
             .or_else(|_| std::env::var("EDITOR"))
@@ -225,6 +224,31 @@ pub(super) fn editor(text: &str) -> String {
         .and_then(|_| std::fs::read_to_string(&path).ok());
     let _ = std::fs::remove_file(&path);
     edited.unwrap_or_else(|| text.to_string())
+}
+
+/// The name of the editor's draft, at its `attempt`.
+fn draft_name(attempt: u32) -> String {
+    format!("llx-prompt-{}-{attempt}.md", std::process::id())
+}
+
+/// `text` in a draft file in `dir`, for the editor; its path. The file is made new (`O_EXCL`,
+/// which follows no link) and 0600: in a shared `/tmp` a name the pid gives away may already be
+/// taken, by a link to the person's own file; then the next name is tried.
+fn draft(dir: &std::path::Path, text: &str) -> io::Result<std::path::PathBuf> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut taken = io::Error::from(io::ErrorKind::AlreadyExists);
+    for attempt in 1..=8 {
+        let path = dir.join(draft_name(attempt));
+        let made = (std::fs::OpenOptions::new().write(true).create_new(true))
+            .mode(0o600)
+            .open(&path);
+        match made {
+            Ok(mut file) => return file.write_all(text.as_bytes()).map(|()| path),
+            Err(error) if error.kind() == io::ErrorKind::AlreadyExists => taken = error,
+            Err(error) => return Err(error),
+        }
+    }
+    Err(taken)
 }
 
 /// `lines` printed under the history, dim, once the terminal is given back.

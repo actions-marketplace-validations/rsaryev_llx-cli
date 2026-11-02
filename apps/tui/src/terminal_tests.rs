@@ -50,3 +50,22 @@ fn a_frame_reaches_the_terminal_whole_before_any_flush() {
     let got = terminal.read(&mut read).unwrap();
     assert_eq!(&read[..got], frame);
 }
+
+/// The editor's draft is a file made new, that only the person reads: one planted at its name
+/// (in a shared `/tmp`, a link to the person's own file) is never written through.
+#[test]
+fn the_editors_draft_never_writes_through_a_planted_link() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = std::env::temp_dir().join(format!("llx-draft-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let victim = dir.join("victim");
+    std::fs::write(&victim, "keep").unwrap();
+    std::os::unix::fs::symlink(&victim, dir.join(draft_name(1))).unwrap();
+    let path = draft(&dir, "the prompt").unwrap();
+    assert_eq!(std::fs::read_to_string(&victim).unwrap(), "keep");
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), "the prompt");
+    let mode = std::fs::metadata(&path).unwrap().permissions().mode();
+    assert_eq!(mode & 0o777, 0o600, "a draft others can read");
+    std::fs::remove_dir_all(&dir).unwrap();
+}

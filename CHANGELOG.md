@@ -7,6 +7,7 @@
 - `llx decide --check` exits 0 when decide can run (an OpenRouter key is set or saved) and 3 when it cannot, asking no model.
 - A Claude Code plugin, `/plugin install llx --marketplace rsaryev/llx` ([examples/claude-code](examples/claude-code/README.md)): the `llx` subagent hands bulk reading to `llx exec` on another model, and where `llx decide --check` finds a key, Claude is told when `llx decide` pays. The same for Codex as lines of `AGENTS.md` ([examples/codex](examples/codex/README.md)).
 - An entry the session took as it was sent no longer stays shown as waiting under the composer: the queue reaches the interface in the order it changed.
+- Ctrl+G's draft for `$EDITOR` is made as a new file only the person can read: a link planted at its name in a shared `/tmp` is no longer written through.
 
 ## 0.2.0
 
