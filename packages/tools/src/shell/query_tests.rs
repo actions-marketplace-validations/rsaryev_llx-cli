@@ -55,8 +55,10 @@ fn a_late_query_is_killed_with_what_it_started() {
 /// pipe closed under it.
 #[test]
 fn a_query_that_prints_more_than_is_kept_still_ends_well() {
-    let answer = query(shell("head -c 70000000 /dev/zero"), WAIT).unwrap();
-    assert_eq!(answer.len(), 64 << 20);
+    // A MiB past it, more than a pipe holds: a reader gone at the cap would cut the command off.
+    let printed = format!("head -c {} /dev/zero", MOST + (1 << 20));
+    let answer = query(shell(&printed), WAIT).unwrap();
+    assert_eq!(answer.len(), MOST);
 }
 
 #[test]

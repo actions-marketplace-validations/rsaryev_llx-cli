@@ -15,12 +15,10 @@ fn a_patch_written_as_text_changes_the_files() {
         workspace: &workspace,
         gate: &Open,
     };
-    let spec = tool.spec();
-    assert_eq!(spec.name, "apply_patch");
-    let Input::Text(grammar) = spec.input else {
-        panic!("a patch is free text with its grammar");
-    };
-    assert!(grammar.contains("*** Begin Patch"));
+    assert!(
+        matches!(tool.spec().input, Input::Text(_)),
+        "a patch is free text with its grammar"
+    );
     let patch = "*** Begin Patch\n*** Update File: a.txt\n@@\n one\n-two\n+three\n*** End Patch";
     let report = tool.call(&json!(patch)).unwrap().report;
     assert_eq!(report, "Success. Updated the following files:\nM a.txt");

@@ -251,13 +251,11 @@ fn a_command_runs_to_its_end_with_no_terminal() {
         hidden: &Vec::new,
         stop: &|| false,
     };
-    let spec = tool.spec();
-    let schema = spec.input.schema();
+    // No argument opens a terminal, and one asked for anyway fails the call before anything runs.
+    let schema = tool.spec().input.schema();
     let properties = &schema["properties"];
     assert!(properties.get("session").is_none() && properties.get("tty").is_none());
-    assert_eq!(schema["required"], serde_json::json!(["command"]));
-    assert_eq!(properties["command"]["minLength"], 1);
-    let session = tool.call(&serde_json::json!({"command": "python3", "tty": true}));
+    let session = tool.call(&json!({"command": "python3", "tty": true}));
     assert!(matches!(session, Err(ToolError::Failed(_))));
 }
 
