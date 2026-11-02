@@ -1,8 +1,9 @@
-//! The sandbox on Linux: Landlock (its ABI 3: Linux 6.2 and later) keeps the command from writing anywhere but
-//! `/dev/null` and its scratch directory, and from tracing a process outside its domain; a seccomp
-//! filter refuses it every socket (`socket`, and `io_uring`, which can open one). Both are set
-//! between fork and exec, after `no_new_privs` (so no setuid program lifts them), and everything
-//! the command starts inherits them.
+//! The sandbox on Linux: Landlock (its ABI 3: Linux 6.2 and later) keeps the command from writing
+//! anywhere but `/dev/null`, its scratch directory and, where its scope lets it (a workspace with
+//! no `.git`, `sandbox::writable`), the workspace, and from tracing a process outside its domain; a seccomp filter refuses it every socket
+//! (`socket`, and `io_uring`, which can open one). Both are set between fork and exec, after
+//! `no_new_privs` (so no setuid program lifts them), and everything the command starts inherits
+//! them.
 
 use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd, RawFd};

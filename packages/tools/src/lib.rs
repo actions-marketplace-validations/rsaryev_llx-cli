@@ -6,7 +6,8 @@
 //!   change.
 //! - [`fs`]: `apply_patch`, and the reader of the pictures a person attaches.
 //! - [`shell`]: `bash`: a command run in the workspace, its exit code and its output; the model
-//!   reads, searches and runs the checks with it.
+//!   reads, searches and runs the checks with it. The app starts its own commands the same way (a
+//!   monitor's, a short query).
 //! - [`ask`]: questions to the person (`contracts::person::Person`), who answers in the app.
 
 use contracts::tool::ToolError;

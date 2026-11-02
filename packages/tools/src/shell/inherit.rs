@@ -3,9 +3,10 @@
 //! Everything this process opens is meant to close on exec, but some descriptors are made in two
 //! steps, opened and then marked: on macOS std's pipes and sockets (it has no `pipe2`). A command
 //! another thread forks between the two steps inherits the descriptor, and a background process
-//! it starts keeps it as long as it lives: another command's output pipe, which then never ends, or the pipe std's `spawn` reads to
-//! learn whether exec succeeded, which keeps that `spawn` waiting until the background process
-//! dies. A descriptor this process itself inherited open would reach every command the same way.
+//! it starts keeps it as long as it lives: another command's output pipe, which then never ends,
+//! or the pipe std's `spawn` reads to learn whether exec succeeded, which keeps that `spawn`
+//! waiting until the background process dies. A descriptor this process itself inherited open
+//! would reach every command the same way.
 //!
 //! So between fork and exec every descriptor above stderr is marked close-on-exec. The standard
 //! streams are in place by then (std moves them before it runs the hooks), and std's own pipe for

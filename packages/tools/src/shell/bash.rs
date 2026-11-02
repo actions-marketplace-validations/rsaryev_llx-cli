@@ -22,16 +22,16 @@ const MAX_TIMEOUT_MS: u64 = 600_000;
 const DESCRIPTION: &str = "Run a shell command (`{shell}`) in the workspace root, or in `workdir`, \
 and return its exit code, wall time and output: stdout and stderr together, in the order written, \
 as a terminal shows them (no colours, a line redrawn in place at its last state, a line repeated \
-shown once with its count). Use it for builds, tests, git, package managers and searching (`rg` and \
-`rg --files` where installed, `grep`, `find`), and for reading files (`cat`, `sed -n`, `head`). Each call is a \
-fresh shell: `cd` and variables do not carry over, so pass `workdir` or chain with `&&`. Input is \
-closed and there is no terminal: never start an interactive program (an editor, a pager, a \
-prompt); pass flags like `--yes` or `--no-pager`. The command is killed, with everything it \
-started, after `timeout_ms` (default 120000, at most 600000): start a server in the background \
-with its output sent to a file. The output of a command that succeeds keeps about 80000 \
-characters (some 20000 tokens), so files of up to some 1500 lines in all read whole in one \
-command; that of one that fails, about 40000. Past that, the start and the end are kept and \
-lines over 2000 characters shortened; the result names a file with the whole output and the \
+shown once with its count). Use it for builds, tests, git, package managers and searching (`rg` \
+and `rg --files` where installed, `grep`, `find`), and for reading files (`cat`, `sed -n`, \
+`head`). Each call is a fresh shell: `cd` and variables do not carry over, so pass `workdir` or \
+chain with `&&`. Input is closed and there is no terminal: never start an interactive program \
+(an editor, a pager, a prompt); pass flags like `--yes` or `--no-pager`. The command is killed, \
+with everything it started, after `timeout_ms` (default 120000, at most 600000): start a server \
+in the background with its output sent to a file. The output of a command that succeeds keeps \
+about 80000 characters (some 20000 tokens), so files of up to some 1500 lines in all read whole \
+in one command; that of one that fails, about 40000. Past that, the start and the end are kept \
+and lines over 2000 characters shortened; the result names a file with the whole output and the \
 command that reads the cut part: read that file rather than running the command again. A \
 non-zero exit is reported as output, not as a failure. Where the context says commands run in a \
 sandbox, one that must write outside the workspace, reach the network or open a socket (a \
@@ -207,9 +207,10 @@ fn summary(command: &str) -> String {
         .replace('\n', " \u{23ce} ")
 }
 
-/// The report as Codex writes it: how the command ended, its wall time, then `Output:` and
-/// stdout and stderr as one stream, in the order they were written. Each line is a `Key: value`, so the model reads the
-/// code the same way whatever tool it was trained on.
+/// The report as Codex writes it: how the command ended, its wall time, its directory when it was
+/// given one, how many lines it printed when some were left out, then `Output:` and stdout and
+/// stderr as one stream, in the order they were written. Each line is a `Key: value`, so the
+/// model reads the code the same way whatever tool it was trained on.
 fn report(finished: Finished, place: Option<&str>) -> String {
     let seconds = format!("{:.1}", finished.elapsed.as_secs_f64());
     let mut out = vec![];

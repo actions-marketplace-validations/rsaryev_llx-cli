@@ -1,5 +1,5 @@
-//! What the tools' tests share: a fresh directory per test, and a gate that records what it was
-//! asked.
+//! What the tools' tests share: a fresh directory per test, a descriptor open without
+//! close-on-exec (`stray`), and a gate that records what it was asked.
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;

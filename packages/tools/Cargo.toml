@@ -14,8 +14,8 @@ base64.workspace = true
 contracts.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-# A command's own session, the descriptors it inherits, its sandbox on Linux and the stop of all
-# it started: the calls std has no wrapper for.
+# The unix calls std has no wrapper for: a command's own session and its kill (setsid, kill), the
+# sandboxes' system calls, the listing of processes and descriptors.
 libc.workspace = true
 
 [lints]
