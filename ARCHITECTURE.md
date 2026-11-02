@@ -176,6 +176,12 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **K6**: one place maps failures to the exit-code contract (`exit.rs`); the `--json` events and
   exit codes change only with a schema bump and a CHANGELOG entry.
 - **K7**: (retired with `llx window`.)
+- **K8**: a session has one writer. The store hands it out (`History::hold`, a `Record`) and
+  keeps it the process's for as long as it lives, with a lock the operating system lets go when
+  the process ends however it ends; a second, in this process or another, is refused
+  (`HistoryError::Held`), and the session is not opened there. A session is written as it goes,
+  each change appended (JSON Lines: its header, then each task and each fact), never rewritten
+  whole; a line a crash cut short is left out when it is read.
 
 ## Protocol rules (the seam between interface and server)
 
