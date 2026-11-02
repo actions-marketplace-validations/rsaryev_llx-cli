@@ -261,6 +261,17 @@ command is cut.
 
 - **B8**: (retired with `grep`: a search the model builds from the shell, `llx decide` and its
   helpers, as any other agent does.)
+- **B9**: a command is waited for at most 120 s: a test that hangs costs minutes of nothing, and
+  the model cannot see why while it waits. Where its session keeps jobs (the main agent's, in a
+  session and in `exec`), a command still running then is moved to the background, not killed
+  (a `sleep` is killed: waiting is the jobs' to do), and `run_in_background` starts one there at
+  once. It is a job of `jobs`, listed and stopped as one (`jobs stop`, the person's `x`), with a
+  limit of its own (R10: 30 minutes from the move, 10 in `exec`; `timeout_ms`, at most 2 hours,
+  for one started there), its whole output in a file the result names, which the model may read.
+  Its end comes back once, a kind of `arrivals.rs` (K4) carrying its report (the exit code and the
+  end of its output, as `bash` reports a command), a task of its own when none runs; it ends
+  with the session, and in `exec` the task waits for it. An agent's command, with no jobs, runs
+  to its end or its `timeout_ms` (at most 600 s) and is killed there.
 
 ## Concurrency and errors
 
