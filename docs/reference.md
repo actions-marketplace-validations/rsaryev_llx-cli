@@ -91,6 +91,8 @@ How it works:
 5. **The links** (with the decision model, unless the question asks where something is defined). A file that does what was asked through another module's function (`shell::query` for "starts a child process") may have none of the question's words. So the modules the kept files name (each `a::b` path's prefixes, and what an `import`, `from` or `require` brings in) are looked for in the files not read yet and in those the model doubted or left below its margin, the rarer modules counting more (a module a quarter of the files name links nothing); up to 12 of them are read again where they name those modules, the model told how each was reached. A file this second round keeps comes after those the first kept, held to the same margin from its own round's best.
 6. **The parts.** Around each line with the question's words, the largest whole unit that holds it and is no longer than 40 lines (a function, a type, a section of a config), found by indentation with the comments above it, so it works in any language; else the lines around it. The part the decision model picked comes first; then the parts with more of the rarer words in fewer lines, within `--lines` in all.
 
+The pattern is a regex as `rg` writes it (`spawn|Command::new`, `fn \w+_worker\(`, `\bMAX_[A-Z]+\b`), single-quoted for the shell; `-F` takes it as it is, `-i` in any case. It is `regex-lite`'s: `-i`, `\w` and `\d` know ASCII only (write a word in another script in its own case), and there is no look-around or back-reference; a pattern it cannot take is named, exit 3.
+
 | Option | Meaning |
 | --- | --- |
 | `PATH…` | Files and directories to search; the current directory when none. |

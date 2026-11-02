@@ -8,7 +8,9 @@
 - To find where something is done, defined or configured when you do not know its exact name,
   run `llx grep "<the question in plain words>" [paths]`: it ranks the files by the question's
   words, a decision model reads the best of them and keeps those that answer, and it prints each
-  with its lines. Exit 1 means no file answers. Keep `rg` for an exact name you know.
+  with its lines. Exit 1 means no file answers. Where you know a string the answer must contain,
+  add it as `-e '<regex as rg takes it>'` (`-F` fixed, `-i` any case, ASCII only): only the files
+  it matches are ranked, at a third of the cost. Keep `rg` for an exact name you know.
 - When a judgment has a few options you can name and the text is long, comes in many items, or
   is untrusted, ask `llx decide` instead of reading it all:
   `<text> | llx decide "<question>" --choices "a=what a means,b=what b means" --json`, or
