@@ -299,7 +299,7 @@ fn a_served_sessions_first_task_is_named_by_its_title_model() {
 fn a_title_answered_as_its_lane_ends_is_told_before_the_end() {
     use crate::test_support::{gated, says, served_titled};
     use contracts::history::History;
-    use protocol::{Command, ToClient, ToServer};
+    use protocol::{Command, ToServer};
     let ((to_chat, chat), (to_namer, namer)) = (gated(), gated());
     let namer = Arc::new(namer);
     to_chat.send(says("Done.")).unwrap();
@@ -340,13 +340,13 @@ fn a_title_answered_as_its_lane_ends_is_told_before_the_end() {
                 named_at.is_some() && named_at < ended_at,
                 "the title was told after its lane's end: {told:#?}"
             );
-            let later: Vec<ToClient> = peer.attach().try_iter().collect();
-            let told_title = later.iter().any(|frame| {
-                let ToClient::Event { session, event, .. } = frame else {
-                    return false;
-                };
-                session.as_ref() == Some(&id) && named(event)
-            });
+            // What the ring replays, read for a moment: it keeps the lane's end, so an empty
+            // replay never passes for one without the title.
+            let mut later = vec![];
+            listen(&peer.attach(), &mut later, moment, |_| false);
+            assert!(has(&later, lane_ended), "nothing replayed: {later:#?}");
+            let told_title = (later.iter())
+                .any(|(session, event)| session.as_ref() == Some(&id) && named(event));
             assert!(
                 !told_title,
                 "a later client is told the ended lane's title: {later:#?}"
