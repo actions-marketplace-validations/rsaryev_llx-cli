@@ -70,7 +70,7 @@ pub fn open(address: &str) {
 /// Hand `address` to the opener `program`, started in the background of a shell that ends at
 /// once: an opener may stay until the browser it started is closed (`xdg-open` where no desktop
 /// is known), and the sign-in waits for the callback meanwhile. The shell is waited for, so a
-/// daemon that runs for weeks keeps no zombie; the opener, left to the system, is reaped by it.
+/// long session keeps no zombie; the opener, left to the system, is reaped by it.
 /// Its streams go nowhere: a browser's messages never reach the terminal llx draws in.
 fn opened(program: &str, address: &str) {
     use std::process::{Command, Stdio};

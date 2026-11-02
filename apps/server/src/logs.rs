@@ -1,5 +1,5 @@
 //! The log: what each llx process did, said through Rust's `log` facade and kept in one file of
-//! the config directory, `logs/llx.log`: the daemon's life, each session's tasks, every call with
+//! the config directory, `logs/llx.log`: each session's tasks, every call with
 //! its arguments and how it ended, the model's turns. `RUST_LOG` chooses what is kept, as
 //! env_logger reads it (`warn,llx=debug`, `off`); by default llx's `info` and the rest's warnings.
 //! Each line is one event, as env_logger writes it, with the process and the thread. The file is

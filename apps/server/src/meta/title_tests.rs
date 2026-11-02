@@ -291,9 +291,8 @@ fn a_served_sessions_first_task_is_named_by_its_title_model() {
     assert!(format!("{:?}", asked[0]).contains(goal), "{asked:?}");
 }
 
-/// A title still asked for as its lane ends is told while the lane is open, never after its end:
-/// a client attaching later is told nothing of the lane (its state went with it), and the saved
-/// session keeps the title.
+/// A title still asked for as its lane ends is told while the lane is open, never after its end,
+/// and the saved session keeps the title.
 #[test]
 fn a_title_answered_as_its_lane_ends_is_told_before_the_end() {
     use crate::test_support::{gated, says, served_titled};

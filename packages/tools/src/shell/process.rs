@@ -116,7 +116,7 @@ pub(super) fn run(job: &Job) -> io::Result<Finished> {
 }
 
 /// Whether a command's environment is made quiet for an agent's reading (`quiet`), as the
-/// `bash` tool's commands are, or kept as the place has it (a monitor's).
+/// `bash` tool's commands are, or kept as it is (a monitor's).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quiet {
     On,
@@ -190,11 +190,11 @@ pub(super) fn watch(
     }
 }
 
-/// The shell for `command` in `scope`, its environment ready: the variables of the place it runs
-/// for (`workspace`'s, the client's), else this process's own, without `hidden` (the app's own
+/// The shell for `command` in `scope`, its environment ready: the variables `workspace` gives
+/// (a test's), else this process's own, without `hidden` (the app's own
 /// secrets, which a command can still read from its parent's environment: see
 /// `BashTool::hidden`), made `quiet` where `quieted` says so, and a confined command's `TMPDIR`
-/// its scratch directory, set last so the place's own does not replace it (the sandbox lets it
+/// its scratch directory, set last so the environment's own does not replace it (the sandbox lets it
 /// write there alone, so nothing set after may clear the environment); and what it holds until
 /// it ends: an open command holds nothing.
 pub fn scoped(

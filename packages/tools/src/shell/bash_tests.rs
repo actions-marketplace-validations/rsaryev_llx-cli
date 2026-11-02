@@ -265,10 +265,7 @@ fn a_command_runs_with_the_workspaces_environment_and_never_its_hidden_variables
     let path = std::env::var("PATH").unwrap_or_default();
     let env = vec![
         ("PATH".to_string(), path),
-        (
-            "LLX_ONLY_THE_CLIENT_HAS".to_string(),
-            "from the client".to_string(),
-        ),
+        ("LLX_ONLY_GIVEN".to_string(), "given".to_string()),
         ("SECRET_KEY".to_string(), "sk-1".to_string()),
     ];
     let workspace = Workspace::new(dir.path()).unwrap().with_env(env);
@@ -278,13 +275,10 @@ fn a_command_runs_with_the_workspaces_environment_and_never_its_hidden_variables
         hidden: &|| vec!["SECRET_KEY".to_string()],
         stop: &|| false,
     };
-    let command = r#"echo "$LLX_ONLY_THE_CLIENT_HAS|${SECRET_KEY-none}|${HOME-none}""#;
+    let command = r#"echo "$LLX_ONLY_GIVEN|${SECRET_KEY-none}|${HOME-none}""#;
     let report = tool.call(&json!({"command": command})).unwrap().report;
-    // The process's own HOME is not the client's: only what the client gave reaches it.
-    assert!(
-        report.ends_with("Output:\nfrom the client|none|none"),
-        "{report}"
-    );
+    // The process's own HOME is not in what was given: only what was given reaches it.
+    assert!(report.ends_with("Output:\ngiven|none|none"), "{report}");
 }
 
 #[test]

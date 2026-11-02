@@ -1,5 +1,5 @@
 //! The catalog a process keeps: read once, and read again when the file a refresh writes is
-//! newer than the copy read, looked at no more often than `every`. A daemon lives for weeks; the
+//! newer than the copy read, looked at no more often than `every`. A session may last days; the
 //! catalog it read at its start must not be the one it uses at their end.
 
 use std::sync::{Arc, Mutex, MutexGuard};

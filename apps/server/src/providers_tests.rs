@@ -104,22 +104,22 @@ fn a_chatgpt_sign_in_offers_the_models_the_backend_serves_alone() {
 }
 
 #[test]
-fn a_served_session_reads_its_key_from_its_clients_environment() {
-    // The daemon's own environment is whatever terminal started it: a key set only in the
-    // client's (its place) is the one the session thinks with.
+fn a_session_reads_its_key_from_the_environment_it_is_given() {
+    // A key set only in the environment given (not the process's) is the one the session
+    // thinks with.
     let provider = Provider::named("deepseek").unwrap();
     let variable = provider.variables().into_iter().next().unwrap();
-    let client = vec![(variable.clone(), " sk-from-the-client ".to_string())];
-    let found = provider.key_in(Some(&client));
-    assert_eq!(found, Some(("sk-from-the-client".into(), variable)));
+    let given = vec![(variable.clone(), " sk-given ".to_string())];
+    let found = provider.key_in(Some(&given));
+    assert_eq!(found, Some(("sk-given".into(), variable)));
     let selection = Selection::new(provider.entry(&provider.default_model()));
-    assert!(provider.chat_in(&selection, Some(&client)).is_some());
-    assert!(provider.signed_in_by(Some(&client)).is_some());
+    assert!(provider.chat_in(&selection, Some(&given)).is_some());
+    assert!(provider.signed_in_by(Some(&given)).is_some());
 }
 
 #[test]
 fn openrouters_address_is_read_from_the_sessions_environment() {
-    // A stand-in for OpenRouter named only in the client's environment gets the request.
+    // A stand-in for OpenRouter named only in the environment given gets the request.
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     let asked = std::thread::Builder::new()
@@ -133,7 +133,7 @@ fn openrouters_address_is_read_from_the_sessions_environment() {
         .unwrap();
     let provider = Provider::openrouter();
     let variable = provider.variables().into_iter().next().unwrap();
-    let client = vec![
+    let given = vec![
         (variable, "sk-or-test".to_string()),
         (
             "OPENROUTER_BASE_URL".to_string(),
@@ -141,7 +141,7 @@ fn openrouters_address_is_read_from_the_sessions_environment() {
         ),
     ];
     let selection = Selection::new(provider.entry(&provider.default_model()));
-    let chat = provider.chat_in(&selection, Some(&client)).unwrap();
+    let chat = provider.chat_in(&selection, Some(&given)).unwrap();
     let request = Request {
         conversation: &[],
         tools: &[],

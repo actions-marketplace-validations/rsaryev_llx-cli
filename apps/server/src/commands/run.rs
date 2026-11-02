@@ -30,16 +30,27 @@ use crate::interrupt;
 use crate::mode;
 use crate::modes::Modes;
 use crate::rules::Rules;
-use crate::server::{Ui, place};
+use crate::server::Ui;
 
 pub(crate) use self::ended::Ended;
 pub use self::front::{Front, Unready};
 
-/// The workspace `options` name (`-C`, else the current directory), with what is llx's own off
-/// limits to the tools (`place::at`).
+/// The workspace `options` name (`-C`, else the current directory), where the sessions work.
 pub(crate) fn root(options: &RunOptions) -> Result<Workspace, Failure> {
     let root = options.cd.as_deref().unwrap_or_else(|| Path::new("."));
-    place::at(root).map_err(|why| Failure::Usage(format!("-C {}: {why}", root.display())))
+    workspace(root).map_err(|why| Failure::Usage(format!("-C {}: {why}", root.display())))
+}
+
+/// The workspace at `dir`, with llx's config (keys, tokens) and sessions off limits to the tools:
+/// a prompt injection must not read them.
+fn workspace(dir: &Path) -> Result<Workspace, String> {
+    let workspace = Workspace::new(dir).map_err(|error| error.to_string())?;
+    if !workspace.root().is_dir() {
+        return Err("not a directory".into());
+    }
+    let private = provider_kit::store::dir(crate::compose::APP).into_iter();
+    let sessions = sessions::store().dir;
+    Ok(workspace.denying(private.chain([sessions])))
 }
 
 /// How a run takes its tasks.

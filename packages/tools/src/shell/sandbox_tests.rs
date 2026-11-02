@@ -66,9 +66,9 @@ fn a_read_only_command_has_a_scratch_directory_of_its_own_and_dev_null() {
 }
 
 #[test]
-fn the_scratch_directory_survives_a_clients_environment() {
-    // The daemon runs a command with the client's variables, whose own `TMPDIR` is not writable
-    // from the sandbox.
+fn the_scratch_directory_survives_an_environment_given() {
+    // An environment given whose own `TMPDIR` is not writable from the sandbox: the scratch
+    // directory, set last, still is.
     let dir = Scratch::new();
     let vars = [
         ("PATH".to_string(), "/usr/bin:/bin".to_string()),

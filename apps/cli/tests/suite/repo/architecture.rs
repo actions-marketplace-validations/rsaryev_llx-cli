@@ -305,7 +305,7 @@ fn l4_the_binary_knows_only_what_it_composes() {
 }
 
 /// L8: the server serves the protocol and knows every package but the client, in any section:
-/// its socket's own tests speak the protocol's frames as a client does, with no client (D7).
+/// its own tests speak the protocol's frames as an interface does, with no client (D7).
 #[test]
 fn l8_the_server_knows_no_client() {
     let packages = packages();

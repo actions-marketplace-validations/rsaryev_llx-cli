@@ -231,7 +231,7 @@ fn describe(method: Method) -> &'static str {
 /// `/login`: the steps, then the choice put in and saved.
 pub(super) fn run(rig: &mut Rig, ui: &Ui) {
     let shown = &|text: &str| ui.send(Event::Note(text.to_string()));
-    // The session's environment (its client's, in the daemon), kept while the rig changes.
+    // The session's environment, copied: the rig is changed while it is read.
     let env = rig.shared.workspace.env().map(<[_]>::to_vec);
     let vars = env.as_deref();
     let sign_in = |provider, method, path: &str, terminal: &mut dyn Terminal| {

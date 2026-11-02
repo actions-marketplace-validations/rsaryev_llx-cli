@@ -3,7 +3,7 @@
 //! terminal's side of a run, and exits here, with the code the run returns. Nothing else exits.
 
 // The binary's own (ARCHITECTURE.md D7): the process's hardening, and the terminal's side of a
-// run with the daemon's client side.
+// run, in this process.
 mod hardening;
 mod terminal;
 

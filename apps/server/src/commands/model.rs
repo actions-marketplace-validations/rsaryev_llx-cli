@@ -121,7 +121,7 @@ fn after_auto(model: &ModelEntry) -> usize {
 /// `/model`: the pick, then the choice put in and saved.
 pub(super) fn run_model(rig: &mut Rig, ui: &Ui) {
     let terminal = &mut ui.clone();
-    // Signed in by the session's environment (its client's, in the daemon), as `adopt` reads it.
+    // Signed in by the session's environment, as `adopt` reads it.
     let vars = rig.shared.workspace.env();
     let picked = pick_model(&rig.choice, terminal, &|p| p.signed_in_by(vars));
     match picked {

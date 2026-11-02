@@ -25,7 +25,7 @@ path = "src/main.rs"
 doc = false
 
 # The binary (ARCHITECTURE.md D7): the server and the interface it composes, the client the
-# terminal reaches the daemon through, and the protocol the server's `Front` speaks.
+# interface reaches the server through, and the protocol the server's `Front` speaks.
 [dependencies]
 server.workspace = true
 tui.workspace = true

@@ -215,7 +215,7 @@ impl App {
                 self.resolved(id, now);
                 None
             }
-            // What a command came to is the client's.
+            // What a command came to is the caller's (`Client::call`).
             ToClient::Done { .. } => None,
         }
     }

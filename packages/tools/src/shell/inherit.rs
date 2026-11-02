@@ -17,7 +17,7 @@ use std::process::Command;
 
 /// Let `command` inherit only its standard streams. A command with this hook starts by fork and
 /// exec, never by `posix_spawn`.
-pub fn streams_only(command: &mut Command) {
+pub(crate) fn streams_only(command: &mut Command) {
     let hook = || {
         close_on_exec();
         Ok(())

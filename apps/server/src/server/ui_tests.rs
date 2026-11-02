@@ -171,7 +171,7 @@ fn closing_a_lane_withdraws_its_questions_and_leaves_the_others() {
 
 #[test]
 fn a_question_waiting_does_not_keep_asking_whether_it_was_stopped() {
-    // A question may wait for hours in the daemon: it sleeps until something changes.
+    // A question may wait for hours: it sleeps until something changes.
     let (ui, peer, frames) = crate::testing::fake_peer();
     let checks = Arc::new(AtomicU64::new(0));
     let counted = Arc::clone(&checks);
@@ -230,7 +230,7 @@ fn a_stop_by_the_person_withdraws_the_question_at_once() {
     resolved(&frames, id);
 }
 
-/// The note the lane says once a client of a desk served through the protocol's frames answers
+/// The note the lane says once an interface of a desk served through the protocol's frames answers
 /// the list `typed` shows with `reply`; `None` when the lane ended first.
 #[expect(
     clippy::wildcard_enum_match_arm,
@@ -280,8 +280,8 @@ fn answered(typed: &str, reply: Reply) -> Option<String> {
 
 #[test]
 fn a_choice_past_the_list_is_read_as_a_cancel() {
-    // A client may send any index (the daemon refuses another build only by what the client
-    // says it is): `/login` takes its provider out of the list by it.
+    // A reply is the interface's word, never trusted: any index may come, and `/login` takes its
+    // provider out of the list by it.
     let said = answered("/login", Reply::Choice(Some(10_000)));
     assert_eq!(said.as_deref(), Some("Nothing changed.\n"));
 }

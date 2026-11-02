@@ -84,7 +84,7 @@ pub struct Start<'a> {
     pub quit_now: fn() -> !,
 }
 
-/// Takes the terminal, attaches to the server and starts drawing.
+/// Takes the terminal, connects to the server and starts drawing.
 pub fn start(start: Start) -> io::Result<Running> {
     let (width, height) = crossterm::terminal::size()?;
     terminal::on_signals(start.quit_now);

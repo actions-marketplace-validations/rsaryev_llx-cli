@@ -8,7 +8,7 @@ fn rust_log_is_read_as_env_logger_reads_it() {
     assert_eq!(filter.level("ureq::pool"), LevelFilter::Warn);
     assert_eq!(filter.level("llx"), LevelFilter::Debug);
     assert_eq!(filter.level("llx::output"), LevelFilter::Debug);
-    assert_eq!(filter.level("llx::server::hub"), LevelFilter::Trace);
+    assert_eq!(filter.level("llx::server::serve"), LevelFilter::Trace);
     // A target is a path: `llxx` is not under `llx`.
     assert_eq!(filter.level("llxx"), LevelFilter::Warn);
     assert_eq!(filter.max(), LevelFilter::Trace);

@@ -211,3 +211,11 @@ fn a_session_needs_a_terminal_and_no_one_task_option() {
         assert!(usage(session_allowed(None, &options(flag), true)).contains("exec"));
     }
 }
+
+#[test]
+fn a_workspace_that_is_not_a_directory_is_refused() {
+    let scratch = Scratch::new();
+    scratch.file("a.txt", "");
+    let why = workspace(&scratch.path().join("a.txt")).err().unwrap();
+    assert_eq!(why, "not a directory");
+}

@@ -1,5 +1,5 @@
 //! The small commands: `/diff` (the working tree's changes, new files too), `/init` (an
-//! AGENTS.md written for the project), `/copy` (the last answer, for the client's clipboard) and
+//! AGENTS.md written for the project), `/copy` (the last answer, for the person's clipboard) and
 //! `/usage` (what the session spent).
 
 use std::path::Path;
@@ -68,8 +68,8 @@ fn compared(root: &Path, wait: Duration) -> String {
     rows.join("\n") + "\n"
 }
 
-/// `/copy`: the last answer, for the client to copy: the clipboard is the person's (K2), and
-/// the client says what came of it. What there is to say here instead, if anything.
+/// `/copy`: the last answer, for the interface to copy: the clipboard is the person's (K2), and
+/// the interface says what came of it. What there is to say here instead, if anything.
 pub(crate) fn copy(rig: &Rig) -> Option<&'static str> {
     let Some(answer) = last_answer(&rig.session.turns) else {
         return Some("No answer to copy yet.\n");

@@ -15,7 +15,7 @@ pub struct Workspace {
     /// Files and directories no tool may read or change, however they are reached (the app's own
     /// key and records): canonical where they exist.
     denied: Vec<PathBuf>,
-    /// The environment commands run with, when it is not this process's: the client's.
+    /// The environment commands run with, when it is not this process's: one a test gives.
     env: Option<Vec<(String, String)>>,
 }
 

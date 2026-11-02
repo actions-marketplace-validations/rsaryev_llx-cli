@@ -7,14 +7,14 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-# The library is `llx`: its log's targets (`llx::session`, `llx::server::hub`), the default
+# The library is `llx`: its log's targets (`llx::session`, `llx::server::serve`), the default
 # filter (`warn,llx=info`) and `RUST_LOG=llx=debug` name it so, as when it was the binary.
 [lib]
 name = "llx"
 path = "src/lib.rs"
 
 # What the binary's tests drive the server with (`llx::test_support`: a desk served in process,
-# gated models, a daemon's socket). Only `apps/cli`'s dev-dependencies turn it on, so the release
+# gated models). Only `apps/cli`'s dev-dependencies turn it on, so the release
 # build never has it.
 [features]
 testing = []
@@ -35,7 +35,7 @@ clap.workspace = true
 serde_json.workspace = true
 log.workspace = true
 unicode-width.workspace = true
-# Signals, the daemon's lock, sockets' and files' modes: calls std has no wrapper for.
+# Signals and files' modes: calls std has no wrapper for.
 libc.workspace = true
 
 [lints]

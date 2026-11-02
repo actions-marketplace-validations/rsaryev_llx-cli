@@ -36,7 +36,7 @@ pub fn save(path: &Path, text: &str) -> std::io::Result<()> {
         std::fs::create_dir_all(parent)?;
     }
     // Its own name per save, the whole file name kept: two saves at once, from two processes or
-    // two of the daemon's sessions (threads of one process), never write into one file, nor do
+    // two threads of one (a catalog's refresh and a sign-in), never write into one file, nor do
     // two files of one stem (`models.json`, `models.etag`).
     static SAVES: AtomicU64 = AtomicU64::new(0);
     let Some(name) = path.file_name() else {

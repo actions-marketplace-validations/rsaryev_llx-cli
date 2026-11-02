@@ -65,7 +65,7 @@ pub enum Event {
     /// own or of its agents'.
     Spent(u64),
     /// What the session spent in all so far, its agents included: sent whole,
-    /// never as a change, so a client that missed one is right at the next.
+    /// never as a change, so nothing need track one.
     Total(Total),
     /// The lane's conversation went back or began again: its agents are gone.
     AgentsCleared,
@@ -86,7 +86,7 @@ pub enum Event {
     },
     /// The task running read what the person said to it: shown now as theirs.
     Steered(Vec<String>),
-    /// Text for the client's clipboard (`/copy`): the clipboard is the person's, not the server's.
+    /// Text for the person's clipboard (`/copy`): the clipboard is the person's, not the server's.
     Copy(String),
     /// The interface's work is over: the terminal is given back.
     Quit,

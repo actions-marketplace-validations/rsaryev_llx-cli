@@ -111,22 +111,22 @@ fn the_apps_secrets_are_not_in_its_environment() {
 }
 
 #[test]
-fn a_monitor_runs_with_the_environment_of_the_client() {
+fn a_monitor_runs_with_the_environment_it_is_given() {
     let vars = [
         (
             "PATH".to_string(),
             std::env::var("PATH").unwrap_or_default(),
         ),
-        ("LLX_PLACE".to_string(), "client".to_string()),
+        ("LLX_GIVEN".to_string(), "given".to_string()),
     ];
-    let client = here().with_env(vars.to_vec());
-    let command = r#"echo "$LLX_PLACE ${HOME-none}""#;
-    let (lines, _) = with((command, Scope::Open), &client, &[], 10, &|| false);
-    assert_eq!(lines, [vec!["client none"]]);
+    let given = here().with_env(vars.to_vec());
+    let command = r#"echo "$LLX_GIVEN ${HOME-none}""#;
+    let (lines, _) = with((command, Scope::Open), &given, &[], 10, &|| false);
+    assert_eq!(lines, [vec!["given none"]]);
 }
 
 /// A confined monitor writes its `$TMPDIR`, as the mode's context tells the model, whatever
-/// `TMPDIR` the client has: the sandbox lets it write only its scratch directory there.
+/// `TMPDIR` its environment has: the sandbox lets it write only its scratch directory there.
 #[cfg(target_os = "macos")]
 #[test]
 fn a_confined_monitor_has_a_scratch_tmpdir_of_its_own() {
@@ -137,10 +137,10 @@ fn a_confined_monitor_has_a_scratch_tmpdir_of_its_own() {
         ),
         ("TMPDIR".to_string(), "/nowhere".to_string()),
     ];
-    let client = here().with_env(vars.to_vec());
+    let given = here().with_env(vars.to_vec());
     let command = r#"echo kept > "$TMPDIR/x" && cat "$TMPDIR/x""#;
     for scope in [Scope::Workspace, Scope::ReadOnly] {
-        let (lines, ended) = with((command, scope), &client, &[], 10, &|| false);
+        let (lines, ended) = with((command, scope), &given, &[], 10, &|| false);
         assert_eq!(lines, [vec!["kept"]], "{scope:?}");
         assert_eq!(ended, "exit 0", "{scope:?}");
     }

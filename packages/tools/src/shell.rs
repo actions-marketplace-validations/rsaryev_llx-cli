@@ -1,7 +1,7 @@
 //! The shell tool: [`BashTool`] (`bash`) runs a command in the workspace, after asking the gate,
 //! and reports its exit code and output; a command the gate confines runs in the system's sandbox
 //! ([`Scope`]). What the app runs itself starts the same way: a monitor's command ([`permit`],
-//! [`scoped`], [`kill`]), a short query ([`query()`]), the daemon ([`streams_only`]); every session
+//! [`scoped`], [`kill`]), a short query ([`query()`]); every session
 //! still running is listed ([`track`]), for [`kill_all`] when the process must quit at once.
 
 mod bash;
@@ -14,7 +14,6 @@ mod sandbox;
 mod sweep;
 
 pub use bash::BashTool;
-pub use inherit::streams_only;
 pub use leaders::{Tracked, kill_all, track};
 pub use process::{Quiet, SHELL, kill, scoped, shell};
 pub use query::{Unanswered, query};

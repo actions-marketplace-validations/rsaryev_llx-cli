@@ -35,7 +35,7 @@ pub(crate) fn compose(setup: Setup, work: impl FnOnce(&mut Rig) -> i32) -> i32 {
 /// One lane over `shared`: its models, its stop (found by its session id), its events tagged
 /// with that id (the desk told the interface of it); `work` runs with it.
 pub(crate) fn lane(shared: &Shared, seat: Seat, work: impl FnOnce(&mut Rig) -> i32) -> i32 {
-    // The session's environment: in the daemon, its client's, whose keys it thinks with.
+    // The environment its keys are read from: the process's, unless a test gives one.
     let vars = shared.workspace.env();
     let live = LiveChat::of(&shared.choice, vars);
     // Where an OpenRouter key reaches it, unless the person turned it off.

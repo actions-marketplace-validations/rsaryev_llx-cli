@@ -68,8 +68,8 @@ fn a_key_shows_only_its_ends() {
 
 #[test]
 fn two_files_saved_at_once_from_two_threads_keep_their_own_text() {
-    // The daemon's sessions are threads of one process: a catalog and its ETag (one stem) saved
-    // at once must not share a temporary file.
+    // A process's threads (a catalog's refresh, a sign-in) may save at once: a catalog and its
+    // ETag (one stem) must not share a temporary file.
     let dir = scratch("threads");
     let catalog = dir.join("models.json");
     let etag = dir.join("models.etag");

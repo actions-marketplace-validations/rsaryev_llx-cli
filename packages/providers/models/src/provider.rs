@@ -1,7 +1,7 @@
 //! A provider as the catalog lists it: its name and key variables read with the document, each of
 //! its models decoded the first time it is asked for. A refreshed catalog lists thousands of
 //! models and a run uses a handful, so reading it is an index of raw JSON, not a decode of all of
-//! it (a start of 50 ms and 60 MB for nothing, in a daemon for as long as it lives).
+//! it (a start of 50 ms and 60 MB for nothing).
 
 use std::collections::BTreeMap;
 use std::sync::OnceLock;

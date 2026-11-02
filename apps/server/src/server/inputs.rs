@@ -1,5 +1,5 @@
-//! What the person sends each lane, kept by the server (docs/daemon.md: the input queue is the
-//! server's, the interface only shows it). An entry goes to the lane waiting for one; words sent
+//! What the person sends each lane, kept by the server: the input queue is the server's, the
+//! interface only shows it. An entry goes to the lane waiting for one; words sent
 //! while a task works go to that task at its next step (steering); a command, a picture or Tab
 //! waits for the task to end; what comes back from the background waits behind the person's own.
 //! Every change, and only a change, is told to the interface as the lane's [`Event::Queue`], in

@@ -53,7 +53,7 @@ pub(super) fn watch(
 ) -> Result<Ended, String> {
     // The tools' own way to run a command: a session of its own, only the standard streams
     // inherited (a monitor lives long: a descriptor inherited by chance would stay open as long),
-    // and a confined one's scratch `TMPDIR`. Its environment is the place's as it is: the quiet
+    // and a confined one's scratch `TMPDIR`. Its environment is kept as it is: the quiet
     // variables of `bash` would change what a watched program prints.
     let quiet = tools::shell::Quiet::Off;
     let (mut shell, _held) = tools::shell::scoped(command, scope, workspace, hidden, quiet)

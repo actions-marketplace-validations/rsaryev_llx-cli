@@ -182,7 +182,7 @@ pub struct Link {
 }
 
 /// The server's side of a desk a test is attached to: what runs in its lanes, and its lanes'
-/// inputs, as the next interface reaches them.
+/// inputs, as the interface reaches them.
 pub struct Server(Arc<Peer>);
 
 impl Server {

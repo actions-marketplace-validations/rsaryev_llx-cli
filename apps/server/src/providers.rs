@@ -20,8 +20,8 @@ mod login;
 
 pub(crate) use deciding::{adviser, decider};
 
-/// Where a key's variables are read: a session's environment (its client's, in the daemon),
-/// else, for `None`, this process's.
+/// Where a key's variables are read: the environment the workspace gives (a test's), else, for
+/// `None`, this process's.
 pub(crate) type Vars<'a> = Option<&'a [(String, String)]>;
 
 /// Variable `name` in `vars`.
