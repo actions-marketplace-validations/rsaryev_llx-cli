@@ -144,13 +144,17 @@ impl App {
         self.views.sessions.retain(|session| !theirs(session));
     }
 
-    /// Show the session `id`: its whole transcript, from the top.
+    /// Show the session `id`: its whole transcript, from the top. Another lane's gives the
+    /// list's keys back to the prompt: the rows it chose among were the other lane's.
     pub(crate) fn show(&mut self, id: &str) {
         let Some(at) = self.views.find(id) else {
             return;
         };
         if id == self.views.shown {
             return;
+        }
+        if self.views.lane_of(at) != self.views.home() {
+            self.views.focus = None;
         }
         self.views.shown = id.to_string();
         self.views.replay = true;

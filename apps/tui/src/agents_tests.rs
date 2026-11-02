@@ -359,6 +359,30 @@ fn the_last_job_ending_gives_the_keys_back_to_the_prompt() {
 }
 
 #[test]
+fn another_lane_shown_gives_the_keys_back_to_the_prompt() {
+    let now = Instant::now();
+    let mut app = app();
+    for id in ["tui-shown-a", "tui-shown-b"] {
+        let (id, name) = (id.to_string(), id.to_string());
+        app.event(Event::LaneStarted { id, name }, now);
+    }
+    let started = Event::Started {
+        id: "tui-shown-scout".into(),
+        name: "scout".into(),
+    };
+    app.frame(in_session("tui-shown-a", started), now);
+    keys(&mut app, &[KeyCode::Down, KeyCode::Down], now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("scout"), "{screen}");
+    // The server shows the other lane (one the person opened): it has no agents, no list.
+    app.event(Event::Show("tui-shown-b".into()), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert!(!screen.contains("scout"), "{screen}");
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
+}
+
+#[test]
 fn an_agent_started_in_a_lane_gets_its_events() {
     let now = Instant::now();
     let mut app = app();
