@@ -38,7 +38,7 @@ impl App {
     pub(super) fn enter_list(&mut self) {
         let shown = self.views.find(&self.views.shown).unwrap_or(0);
         let row = self.views.order().iter().position(|&at| at == shown);
-        self.views.focus = Some(row.unwrap_or(0));
+        self.views.focus = self.views.at(row.unwrap_or(0));
     }
 
     /// Stop the task of the lane `id`, once, and never quit for it: a lane with no task (or
@@ -69,9 +69,10 @@ impl App {
         )]
         match key.code {
             KeyCode::Up if row == 0 => self.views.focus = None,
-            KeyCode::Up => self.views.focus = Some(row - 1),
+            KeyCode::Up => self.views.focus = self.views.at(row - 1),
             KeyCode::Down => {
-                self.views.focus = self.last_row().map(|last| stepped(row, last, key.code));
+                let to = self.last_row().map(|last| stepped(row, last, key.code));
+                self.views.focus = to.and_then(|to| self.views.at(to));
             }
             KeyCode::Enter | KeyCode::Right => {
                 if let Some(id) = session.map(|view| view.id.clone()) {

@@ -247,7 +247,7 @@ fn ctrl_c_in_the_tree_gives_the_keys_back_and_stops_nothing() {
     app.event(Event::TaskStarted("go".into()), now);
     started(&mut app, "s1", "scout");
     press(&mut app, KeyCode::Down, now);
-    assert_eq!(app.views.focus, Some(0));
+    assert_eq!(app.views.row(), Some(0));
     assert_eq!(app.input(crate::test_support::ctrl('c'), now), None);
     assert_eq!(app.views.focus, None);
     assert!(app.busy().is_some(), "the task goes on");

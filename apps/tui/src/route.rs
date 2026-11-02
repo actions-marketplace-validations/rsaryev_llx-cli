@@ -16,12 +16,20 @@ impl App {
     /// What happened in session `id` (a lane or an agent); one no longer shown is let go.
     pub(crate) fn event_in(&mut self, id: &str, event: Event, now: Instant) -> Option<Action> {
         let at = self.views.find(id)?;
-        self.on(at, event, now)
+        self.routed(at, event, now)
     }
 
     /// What happened in the server as a whole, or in the lane shown.
     pub(crate) fn event(&mut self, event: Event, now: Instant) -> Option<Action> {
-        self.on(self.views.home(), event, now)
+        self.routed(self.views.home(), event, now)
+    }
+
+    /// The event from the session at `at` taken; the list's choice stays on what it names as
+    /// rows come and go around it, and goes with its own row.
+    fn routed(&mut self, at: usize, event: Event, now: Instant) -> Option<Action> {
+        let action = self.on(at, event, now);
+        self.views.settle();
+        action
     }
 
     /// What only a lane has, and what is the interface's as a whole (a lane started, the
@@ -77,10 +85,6 @@ impl App {
                 let mut jobs = std::mem::take(&mut self.views.jobs);
                 jobs.sort_by_key(|(lane, _)| self.views.find(lane));
                 self.views.jobs = jobs;
-                // A row that went takes the list's keys to the last one left; with none left,
-                // the prompt has them (a list no longer drawn would take the next key).
-                let last = self.last_row();
-                self.views.focus = self.views.focus.zip(last).map(|(row, last)| row.min(last));
             }
             (Event::LaneStarted { id, name }, _) => {
                 self.views.lane_started(id.clone(), &name);

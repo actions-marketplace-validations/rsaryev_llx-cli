@@ -15,9 +15,8 @@ pub(crate) struct Views {
     pub jobs: Vec<(String, protocol::JobRow)>,
     /// The id of the session shown.
     pub shown: String,
-    /// The row chosen in the list while it has the keys, in the order the tree draws the
-    /// sessions, then the jobs; `None` while the composer has them.
-    pub focus: Option<usize>,
+    /// What the list chose while it has the keys; `None` while the composer has them.
+    pub focus: Option<Chosen>,
     /// The view changed: the screen is cleared before the next frame.
     pub replay: bool,
 }
@@ -33,6 +32,16 @@ impl Default for Views {
             replay: false,
         }
     }
+}
+
+/// A row of the list, by what it names, not where it is: rows that come or go around it leave
+/// it on its own, and it goes with its own.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Chosen {
+    /// A lane's or an agent's row: the session's id.
+    Session(String),
+    /// A job's row: its lane's id and its own.
+    Job { lane: String, job: String },
 }
 
 /// One session as the interface keeps it: a lane, or an agent with its parent.
@@ -202,7 +211,6 @@ impl Views {
         let theirs = |view: &SessionView| view.id == id || view.parent.as_deref() == Some(id);
         self.sessions.retain(|view| !theirs(view));
         self.jobs.retain(|(lane, _)| lane != id);
-        self.focus = None;
         let next = self.sessions.iter().find(|view| view.parent.is_none());
         next.filter(|_| shown).map(|view| view.id.clone())
     }
@@ -229,6 +237,40 @@ impl Views {
         match agents.is_empty() {
             true => vec![],
             false => std::iter::once(lane).chain(agents).collect(),
+        }
+    }
+
+    /// The row of the list the choice is on, while its row is drawn: the sessions in the tree's
+    /// order, then the jobs it draws (those past the first few are only counted).
+    pub(crate) fn row(&self) -> Option<usize> {
+        let order = self.order();
+        match self.focus.as_ref()? {
+            Chosen::Session(id) => order.iter().position(|&at| self.sessions[at].id == *id),
+            Chosen::Job { lane, job } => {
+                let mut drawn = self.jobs.iter().take(super::tree::ROWS);
+                let at = drawn.position(|(its, row)| its == lane && row.id == *job)?;
+                Some(order.len() + at)
+            }
+        }
+    }
+
+    /// What the list's row `row` names, while it is drawn.
+    pub(crate) fn at(&self, row: usize) -> Option<Chosen> {
+        let order = self.order();
+        if let Some(&at) = order.get(row) {
+            return Some(Chosen::Session(self.sessions[at].id.clone()));
+        }
+        let job = row - order.len();
+        let (lane, job) = self.jobs.get(job).filter(|_| job < super::tree::ROWS)?;
+        let (lane, job) = (lane.clone(), job.id.clone());
+        Some(Chosen::Job { lane, job })
+    }
+
+    /// The choice goes when its row has: the composer has the keys back, as a list that no
+    /// longer draws what it chose would take the next key for another row.
+    pub(crate) fn settle(&mut self) {
+        if self.row().is_none() {
+            self.focus = None;
         }
     }
 }

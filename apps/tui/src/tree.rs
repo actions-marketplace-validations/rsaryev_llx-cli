@@ -65,7 +65,7 @@ pub(crate) fn render(
     // An agent's name column is its siblings', and the last of them closes the branch.
     let names = (order.iter().skip(1)).map(|&at| text_width(&printable(sessions[at].title())));
     let agents = column(names.max().unwrap_or(0), AGENT);
-    let focus = app.views.focus;
+    let focus = app.views.row();
     let shown = order
         .iter()
         .position(|&at| sessions[at].id == app.views.shown);
@@ -160,6 +160,7 @@ fn others(app: &App) -> Option<String> {
 /// The jobs' rows: a monitor (`≋`, its command, how much is left) or a schedule (`◷`, when).
 fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static>> {
     let mut out = vec![];
+    let focus = app.views.row();
     for (at, (_, job)) in app.views.jobs.iter().enumerate().take(ROWS) {
         let (glyph, right) = match (job.until_at, &job.next) {
             (Some(until), _) => {
@@ -175,7 +176,7 @@ fn jobs(app: &App, first: usize, names: usize, width: usize) -> Vec<Line<'static
         };
         out.push(row(
             Row {
-                chosen: app.views.focus == Some(first + at),
+                chosen: focus == Some(first + at),
                 branch: Branch::None,
                 glyph,
                 name: &job.name,

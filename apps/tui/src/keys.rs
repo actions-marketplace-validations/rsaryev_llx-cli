@@ -20,7 +20,7 @@ impl App {
         if !self.questions.is_empty() {
             return self.question_key(key, now);
         }
-        if let Some(row) = self.views.focus {
+        if let Some(row) = self.views.row() {
             return self.list_key(key, row, now);
         }
         if self.listing.is_some() {

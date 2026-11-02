@@ -299,7 +299,7 @@ fn job(id: &str, name: &str) -> protocol::JobRow {
 }
 
 #[test]
-fn the_list_chooses_only_job_rows_it_draws_and_keeps_a_row_chosen_when_rows_go() {
+fn the_list_chooses_only_job_rows_it_draws_and_gives_the_keys_back_when_its_job_ends() {
     let now = Instant::now();
     let mut app = app();
     let ids: Vec<String> = (1..=6)
@@ -321,10 +321,90 @@ fn the_list_chooses_only_job_rows_it_draws_and_keeps_a_row_chosen_when_rows_go()
         job: ids[4].clone(),
     };
     assert_eq!(commands(&mut app), [stop], "the row chosen, not one hidden");
-    // The chosen job ends: the row chosen is one that is still there.
+    // The chosen job ends: no other is chosen in its place, and ← is the prompt's.
     app.event(Event::Jobs(vec![job(&ids[0], "job1")]), now);
     let screen = Term::new(&app).draw(&mut app, now);
-    assert_eq!(chosen(&screen), Some("job1"), "{screen}");
+    assert_eq!(chosen(&screen), None, "{screen}");
+    press(&mut app, KeyCode::Left, now);
+    assert_eq!(commands(&mut app), [Command::List], "← is the prompt's");
+}
+
+#[test]
+fn the_job_chosen_stays_chosen_as_the_lanes_first_agent_starts_above_it() {
+    let now = Instant::now();
+    let mut app = app();
+    app.event(Event::TaskStarted("main task".into()), now);
+    app.event(Event::Jobs(vec![job("tui-follows-job", "watch")]), now);
+    press(&mut app, KeyCode::Down, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
+    // The lane's first agent: the lane's row and the agent's come above the jobs.
+    let started = Event::Started {
+        id: "tui-follows-scout".into(),
+        name: "scout".into(),
+    };
+    app.event(started, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("watch"), "{screen}");
+    press(&mut app, KeyCode::Char('x'), now);
+    let stop = Command::StopJob {
+        lane: String::new(),
+        job: "tui-follows-job".into(),
+    };
+    assert_eq!(
+        commands(&mut app),
+        [stop],
+        "the job chosen, not the lane's task"
+    );
+}
+
+#[test]
+fn the_job_chosen_stays_chosen_as_a_job_above_it_ends() {
+    let now = Instant::now();
+    let mut app = app();
+    let rows = |names: &[&str]| -> Vec<protocol::JobRow> {
+        let id = |name: &str| format!("tui-follows-{name}");
+        names.iter().map(|&name| job(&id(name), name)).collect()
+    };
+    app.event(Event::Jobs(rows(&["jone", "jtwo", "jthree"])), now);
+    keys(&mut app, &[KeyCode::Down, KeyCode::Down], now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("jtwo"), "{screen}");
+    app.event(Event::Jobs(rows(&["jtwo", "jthree"])), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("jtwo"), "{screen}");
+    press(&mut app, KeyCode::Char('x'), now);
+    let stop = Command::StopJob {
+        lane: String::new(),
+        job: "tui-follows-jtwo".into(),
+    };
+    assert_eq!(commands(&mut app), [stop], "jtwo, not the job after it");
+}
+
+#[test]
+fn the_job_chosen_stays_chosen_as_another_lane_ends_with_its_jobs() {
+    let now = Instant::now();
+    let mut app = app();
+    for id in ["tui-ends-a", "tui-ends-b", "tui-ends-c"] {
+        let (id, name) = (id.to_string(), id.to_string());
+        app.event(Event::LaneStarted { id, name }, now);
+    }
+    let jobs = |lane: &str, name: &str| in_session(lane, Event::Jobs(vec![job(name, name)]));
+    app.frame(jobs("tui-ends-b", "bwatch"), now);
+    app.frame(jobs("tui-ends-c", "cwatch"), now);
+    keys(&mut app, &[KeyCode::Down, KeyCode::Down], now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("cwatch"), "{screen}");
+    // B ends, not shown: its job's row goes from above the one chosen.
+    app.frame(in_session("tui-ends-b", Event::LaneEnded), now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    assert_eq!(chosen(&screen), Some("cwatch"), "{screen}");
+    press(&mut app, KeyCode::Char('x'), now);
+    let stop = Command::StopJob {
+        lane: "tui-ends-c".into(),
+        job: "cwatch".into(),
+    };
+    assert_eq!(commands(&mut app), [stop]);
 }
 
 #[test]

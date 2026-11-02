@@ -139,7 +139,6 @@ impl App {
         if self.views.home() == at {
             self.show(&lane);
         }
-        self.views.focus = None;
         let theirs = |session: &SessionView| session.parent.as_ref() == Some(&lane);
         self.views.sessions.retain(|session| !theirs(session));
     }
