@@ -134,14 +134,16 @@ fn when_the_model_says_no_file_answers_nothing_is_shown_and_the_exit_is_1() {
 fn json_gives_each_file_with_its_score_and_lines() {
     let home = Home::new();
     project(&home);
+    let model = Model::start(vec![]);
     let out = grep(
         &home,
-        None,
+        Some(&model),
         &["grep", "retry", "project", "--json", "--lexical"],
     );
     let answer: Value = serde_json::from_slice(&out.stdout).unwrap();
     assert_eq!(answer["by"], "words");
     assert_eq!(answer["files"][0]["file"], "project/src/retry.rs");
+    assert!(answer["files"][0]["score"].is_number(), "{answer}");
     assert_eq!(answer["files"][0]["blocks"][0]["start"], 3);
     assert!(
         answer["files"][0]["blocks"][0]["text"]
@@ -150,6 +152,7 @@ fn json_gives_each_file_with_its_score_and_lines() {
             .starts_with("/// Send")
     );
     // --lexical asks no model, even with a key there.
+    assert!(model.advised().is_empty(), "{:?}", model.advised());
     assert!(!text(&out.stderr).contains("OpenRouter"));
 }
 

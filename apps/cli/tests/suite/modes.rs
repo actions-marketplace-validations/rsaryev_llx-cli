@@ -1,4 +1,4 @@
-//! Modes as the person writes them: named sets of rules in `<config>/llx/settings.json`, chosen
+//! Modes as the person writes them: named sets of rules in `~/.config/llx/settings.json`, chosen
 //! with `--mode`, replacing a built-in one of the same name, and refused when they cannot be read.
 
 use serde_json::json;

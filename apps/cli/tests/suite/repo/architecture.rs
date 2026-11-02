@@ -1,4 +1,6 @@
-//! The layering rules (ARCHITECTURE.md, L1-L8), checked on the manifests and sources of the workspace.
+//! The layering rules (ARCHITECTURE.md L1-L8), checked on the manifests and sources of the
+//! workspace, with no dependency renamed past them; and two rules of every file: unit tests in
+//! their own files (S3), English only (S7).
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

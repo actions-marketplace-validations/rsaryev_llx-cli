@@ -1,4 +1,5 @@
-//! Signing out, and a run that is not signed in: it stops before any model.
+//! Signing out, and a run that cannot think as asked (not signed in, or at a level its model
+//! lacks): it stops before any model.
 
 use crate::common::home::{FAKE_KEY, Home, text};
 

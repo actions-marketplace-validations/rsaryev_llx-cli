@@ -142,7 +142,7 @@ fn the_desk_never_opens_more_than_max_lanes() {
     });
 }
 
-// How the desk ends: a stop, a panic, a quit, the connection gone.
+// How the desk ends: a stop, a panic, a quit, the connection gone, the background.
 
 #[test]
 fn stopping_lane_b_leaves_lane_a_running() {
@@ -155,7 +155,8 @@ fn stopping_lane_b_leaves_lane_a_running() {
         person.until("B works", |app| app.busy());
         let stopped = person.interrupt();
         assert_eq!(stopped, Some(lane_b.clone()));
-        to_b.send(call("read", json!({"path": "."}))).unwrap();
+        // The model's reply lands after the stop: a call, to no tool, that is never run.
+        to_b.send(call("nothing", json!({}))).unwrap();
         person.until("B ends", |app| app.ended(&lane_b));
         assert_eq!(
             person.state(&lane_b),
@@ -229,7 +230,8 @@ fn quit_with_lanes_that_stop_ends_without_the_hard_exit() {
     });
 }
 
-/// The command outlasts the stop, however late it lands: it is killed, and no turn comes after.
+/// The terminal closed with nothing chosen stops the work: a call the model makes after it is
+/// never run, and no turn comes after.
 #[test]
 #[expect(
     clippy::disallowed_methods,
@@ -246,7 +248,7 @@ fn a_connection_that_ends_without_background_stops_the_work() {
             // The terminal closed, nothing chosen: as "Exit and stop tasks".
             drop(person);
             std::thread::sleep(Duration::from_millis(300));
-            to_a.send(call("read", json!({"path": "."}))).unwrap();
+            to_a.send(call("nothing", json!({}))).unwrap();
             std::thread::sleep(Duration::from_millis(500));
             let turns = a.turns();
             if turns > 1 {

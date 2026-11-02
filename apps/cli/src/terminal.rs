@@ -1,8 +1,7 @@
-//! The binary's side of a run (ARCHITECTURE.md D7): what stays in `apps/cli`, the server and the
-//! interface being crates of their own. It is the one place that knows both: the
-//! interface at this terminal, attached to the daemon (`remote`) or to a server in this process,
-//! each lane's trace as the interface draws it, and the daemon's client side (`daemon`: its
-//! status, reach, start and stop). The server takes it as its `Front`.
+//! The binary's side of a run (ARCHITECTURE.md D7), the one place that knows both the server and
+//! the interface: the interface at this terminal, attached to the daemon (`remote`) or to a server
+//! in this process, each lane's trace as the interface draws it, and the daemon's client side
+//! (`daemon`: its status, reach, start and stop). The server takes it as its `Front`.
 
 mod daemon;
 mod remote;

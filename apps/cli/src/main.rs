@@ -2,9 +2,8 @@
 //! workspace. This binary hardens the process, hands the server (`llx`, apps/server) this
 //! terminal's side of a run, and exits here, with the code the run returns. Nothing else exits.
 
-// The binary's own, which stay in `apps/cli` now that the server and the interface are crates of
-// their own (ARCHITECTURE.md D7): the process's hardening, and the terminal's wiring with the
-// daemon's client side.
+// The binary's own (ARCHITECTURE.md D7): the process's hardening, and the terminal's side of a
+// run with the daemon's client side.
 mod hardening;
 mod terminal;
 

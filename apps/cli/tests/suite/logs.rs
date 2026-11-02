@@ -1,4 +1,4 @@
-//! The log: what a run did, in `<config>/llx/logs/llx.log`, as Rust's `log` facade says it, and
+//! The log: what a run did, in `~/.config/llx/logs/llx.log`, as Rust's `log` facade says it, and
 //! `RUST_LOG` choosing what is kept.
 
 use serde_json::json;

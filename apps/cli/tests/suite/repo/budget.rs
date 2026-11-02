@@ -1,5 +1,6 @@
-//! The size budget: the whole project's working code stays under a hard limit. A small agent is a
-//! goal, not an accident; when a change does not fit, code is removed, the limit is not raised.
+//! The size budget (ARCHITECTURE.md S1, S2): the whole project's working code stays under a hard
+//! limit, and each file under its own. A small agent is a goal, not an accident; when a change
+//! does not fit, code is removed, the limit is not raised.
 
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
@@ -9,9 +10,9 @@ use super::{crates, root, shown, walk, working};
 
 /// Lines of working code in the whole workspace, at most. Hard: not to be raised. It was 17,000;
 /// agents, parallel calls, steering, monitors and schedules took it to 20,000; the model catalog's
-/// build script, background sessions and the terminal window to 25,000, then to 30,000 for the window's tabs
-/// of every kind and the lanes' queue, then to 50,000 for the daemon, its thin client and what comes
-/// after: the owner's raises.
+/// build script, background sessions and the terminal window to 25,000, then to 30,000 for the
+/// window's tabs of every kind and the lanes' queue, then to 50,000 for the daemon, its thin
+/// client and what comes after: the owner's raises.
 const LIMIT: usize = 50_000;
 
 /// Lines that are code: not blank and not a comment (a line may start with `*` as a

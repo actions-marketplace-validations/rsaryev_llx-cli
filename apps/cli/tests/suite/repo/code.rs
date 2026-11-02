@@ -120,7 +120,7 @@ fn the_workspace_lints_are_denied_and_kept() {
 }
 
 /// S4: working code is never exempt as a whole: an `allow` sits on the item it is about. Build
-/// scripts fail the build by panicking, and say so once.
+/// scripts, not walked here, fail the build by panicking, and say so once, at their top.
 #[test]
 fn no_working_file_turns_a_lint_off_whole() {
     let mut found = vec![];

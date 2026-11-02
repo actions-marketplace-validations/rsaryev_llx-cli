@@ -1,10 +1,10 @@
-//! A scripted model behind a real HTTP server:
-//! the binary under test calls it as it calls OpenRouter (`OPENROUTER_BASE_URL`), it answers each
-//! chat completion from a script, and it keeps every request for the test to read. No network.
-//! A session's title is asked for beside its tasks: those requests are answered apart (with the
-//! title set, else the task itself), never from the script, and kept apart. So is the advice a
-//! task asks of the decision model (`/systemone`): answered with nothing, so it changes nothing,
-//! unless the script's next reply is a decision, and kept apart too.
+//! A scripted model behind a real HTTP server: the binary under test calls it as it calls
+//! OpenRouter (`OPENROUTER_BASE_URL`), it answers each chat completion from a script, and it keeps
+//! every request for the test to read. No network. A session's title is asked for beside its
+//! tasks: those requests are answered apart (with the title set, else the task itself), never from
+//! the script, and kept apart. So is the advice a task asks of the decision model (`/systemone`):
+//! answered with nothing, so it changes nothing, unless the script's next reply is a decision, and
+//! kept apart too (a scripted decision is kept among the requests as well).
 
 use std::collections::VecDeque;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -130,12 +130,14 @@ impl Model {
         self.shared.lock().unwrap().advised.clone()
     }
 
-    /// How many requests the model received but the titles'.
+    /// How many requests the model received but the titles' and the advice it answered with
+    /// nothing.
     pub(crate) fn received(&self) -> usize {
         self.shared.lock().unwrap().requests.len()
     }
 
-    /// Every request the model received but the titles', as JSON, in order.
+    /// Every request the model received but the titles' and the advice it answered with nothing,
+    /// as JSON, in order.
     pub(crate) fn requests(&self) -> Vec<Value> {
         self.shared.lock().unwrap().requests.clone()
     }

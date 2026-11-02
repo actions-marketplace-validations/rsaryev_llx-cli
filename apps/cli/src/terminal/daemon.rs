@@ -17,8 +17,9 @@ use llx::daemon::{READY_LINE, build, socket_path};
 
 /// How long a daemon has to say what it is.
 const ASK: Duration = Duration::from_secs(2);
-/// How long a daemon has to start, and to end when asked.
+/// How long a daemon has to start.
 const READY: Duration = Duration::from_secs(10);
+/// How long a daemon has to end when asked: one under load answers late.
 const ENDING: Duration = Duration::from_secs(10);
 
 /// The daemon at `path`, if one answers within `wait`: a socket file with nobody behind it, or a
@@ -73,8 +74,8 @@ pub(super) fn stop(path: &Path) -> bool {
     }) else {
         return true;
     };
-    // A daemon under load answers late: a stop is given as long as the daemon has to end. One
-    // that ends before its answer leaves is gone, which is what was asked.
+    // A stop is given as long as the daemon has to end, not a status's wait. One that ends
+    // before its answer leaves is gone, which is what was asked.
     match client.call(Command::Shutdown, ENDING) {
         Ok(_) | Err(client::CallError::Gone) => {}
         Err(client::CallError::Timeout | client::CallError::Failed(_)) => return false,

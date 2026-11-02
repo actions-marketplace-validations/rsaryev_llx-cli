@@ -1,4 +1,5 @@
-//! The repository itself: its layering rules (AGENTS.md) and its size budget.
+//! The repository itself, as ARCHITECTURE.md binds it: its layers (`architecture`), the core that
+//! names no effect (`core`), the code rules (`code`) and the size budget (`budget`).
 
 use std::path::{Path, PathBuf};
 
@@ -38,7 +39,7 @@ fn crates() -> Vec<PathBuf> {
 }
 
 /// Working code: a Rust source that is not a test beside the code (`*_tests.rs`) or a test-only
-/// helper (`testing.rs`, `fakes.rs`, the interface's `test_support.rs`).
+/// helper (`testing.rs`, `test_support.rs`, `fakes.rs`).
 fn working(path: &Path) -> bool {
     let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
     name.ends_with(".rs")
