@@ -13,8 +13,8 @@ mod spent;
 
 use std::borrow::Cow;
 use std::io::Write;
-use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 use contracts::chat::Spend;
@@ -87,8 +87,9 @@ pub(crate) struct Output {
     total: Mutex<contracts::history::Spent>,
     /// Where stderr is read: a CI runner may take a line of it as a command.
     runner: Runner,
-    /// The session of the task running, as the log names it.
-    session: Mutex<String>,
+    /// The session of the task running, as the log names it: copied out, so no line is written
+    /// under the lock (R6).
+    session: Mutex<Arc<str>>,
 }
 
 /// What reads the trace.
@@ -182,6 +183,11 @@ impl Output {
         self
     }
 
+    /// The session of the task running, as the log names it.
+    fn who(&self) -> Arc<str> {
+        Arc::clone(&lock(&self.session))
+    }
+
     /// Whether the reader of stdout has gone.
     pub(crate) fn closed(&self) -> bool {
         self.closed.load(Ordering::SeqCst)
@@ -191,7 +197,7 @@ impl Output {
     pub(crate) fn started(&self, start: &Start) {
         *lock(&self.started) = Instant::now();
         lock(&self.done).clear();
-        start.session.clone_into(&mut lock(&self.session));
+        *lock(&self.session) = Arc::from(start.session);
         logged::started(start);
         if let Some(ui) = &self.ui {
             ui.send(Event::TaskStarted(start.goal.to_string()));

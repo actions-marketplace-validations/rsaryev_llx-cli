@@ -14,7 +14,7 @@ use protocol::Event;
 
 impl Observer for Output {
     fn call(&self, call: &ToolCall) {
-        logged::call(&lock(&self.session), call);
+        logged::call(&self.who(), call);
         let label = label(&call.name, &call.arguments);
         let step = contracts::history::Step {
             what: call.name.clone(),
@@ -38,7 +38,7 @@ impl Observer for Output {
     }
 
     fn result(&self, call: &ToolCall, outcome: &Result<ToolOutput, ToolError>) {
-        logged::result(&lock(&self.session), call, outcome);
+        logged::result(&self.who(), call, outcome);
         let now = self.millis();
         let mut done = lock(&self.done);
         if let Some((_, step)) = done.iter_mut().rev().find(|(id, _)| *id == call.id) {
@@ -63,7 +63,7 @@ impl Observer for Output {
 
     // `--json` has no event for it: the events are a contract, changed only with the schema.
     fn said(&self, text: &str) {
-        logged::said(&lock(&self.session), text);
+        logged::said(&self.who(), text);
         let said = Event::Answer(text.to_string());
         if let Some(ui) = &self.ui {
             return ui.send(said);
@@ -85,12 +85,12 @@ impl Observer for Output {
     fn advised(&self, said: &str) {
         // The person reads the words; the model reads them in their tags.
         let words = said.replace("<review>", "").replace("</review>", "");
-        log::info!("{}: advised: {words}", lock(&self.session));
+        log::info!("{}: advised: {words}", self.who());
         self.note(&format!("✻ {words}\n"));
     }
 
     fn turn(&self, usage: &Usage) {
-        logged::turn(&lock(&self.session), usage);
+        logged::turn(&self.who(), usage);
         let spent = contracts::history::Spent::from(usage);
         let step = contracts::history::Step {
             what: "model".into(),
