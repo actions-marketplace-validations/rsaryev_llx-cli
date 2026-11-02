@@ -31,7 +31,7 @@ fn three(now: Instant) -> App {
     app.frame(from("B", Event::Note("B's own transcript".into())), now);
     app.frame(from("B", Event::TaskStarted("fix it".into())), now);
     let choose = protocol::Asked::Choose {
-        title: "Implement this plan?".into(),
+        title: "Login › Provider".into(),
         options: vec![("Yes".into(), String::new())],
         marked: None,
     };

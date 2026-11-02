@@ -1,7 +1,7 @@
 //! The questions the lanes put to the person, one open at a time: the others wait their turn in
 //! the order they came. A lane that is not shown is named on its approvals and questions, and
 //! they ignore keys for a moment as they come up (what was typed for the composer must not answer
-//! them); its own choices (carry out the plan? `/login`'s steps) wait until it is shown.
+//! them); its own choices (`/login`'s, `/model`'s and `/rewind`'s steps) wait until it is shown.
 
 use std::time::{Duration, Instant};
 

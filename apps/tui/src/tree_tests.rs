@@ -214,7 +214,7 @@ fn waiting_for_you_detail_when_held() {
     let mut app = App::new(60, 20, vec![]);
     lanes(&mut app, &[("A", "first"), ("B", "add tabs")]);
     let choose = protocol::Asked::Choose {
-        title: "Implement this plan?".into(),
+        title: "Login › Provider".into(),
         options: vec![("Yes".into(), String::new())],
         marked: None,
     };

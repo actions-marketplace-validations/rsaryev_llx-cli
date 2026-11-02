@@ -10,7 +10,9 @@ use super::style;
 use crate::printable::printable;
 use protocol::Approval;
 
-/// `label` names the session asking when it is not the one shown.
+/// Whether `tool` may do what `summary` says, the summary whole under the title: yes, yes and
+/// don't ask again for the tool, or no with what to do instead. `label` names the session asking
+/// when it is not the one shown.
 pub(crate) fn approval(tool: &str, summary: &str, label: Option<&str>) -> Select {
     let title = match tool {
         "bash" => "Run this command?".to_string(),
@@ -71,6 +73,8 @@ pub(crate) fn question(
     if own == 0 { select.typing(0) } else { select }
 }
 
+/// A choice of llx's own (`/login`'s, `/model`'s and `/rewind`'s steps): each option with its
+/// detail, the marker on `marked`.
 pub(crate) fn choice(title: &str, options: &[(String, String)], marked: Option<usize>) -> Select {
     let title = vec![heading(&printable(title), "")];
     let choices = options

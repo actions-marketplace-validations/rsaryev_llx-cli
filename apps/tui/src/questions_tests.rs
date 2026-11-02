@@ -79,14 +79,14 @@ fn an_open_question_is_a_line_to_type_at_once() {
 }
 
 #[test]
-fn the_plan_handoff_starts_on_the_option_marked() {
+fn a_choice_of_llx_starts_on_the_option_marked() {
     let now = Instant::now();
     let mut app = App::new(60, 20, vec![]);
     let options = vec![
-        ("Yes, in default mode".to_string(), String::new()),
-        ("No, stay in plan mode".to_string(), String::new()),
+        ("OpenRouter".to_string(), String::new()),
+        ("OpenAI".to_string(), String::new()),
     ];
-    let title = "Implement this plan?".to_string();
+    let title = "Login › Provider".to_string();
     let choose = Asked::Choose {
         title,
         options,
@@ -94,10 +94,10 @@ fn the_plan_handoff_starts_on_the_option_marked() {
     };
     app.asked(1, "", choose, now);
     insta::assert_snapshot!(live_area(&app, now), @"
-    • Implement this plan?
+    • Login › Provider
 
-      1. Yes, in default mode
-    ❯ 2. No, stay in plan mode
+      1. OpenRouter
+    ❯ 2. OpenAI
 
       enter select · esc cancel
     ");

@@ -529,7 +529,7 @@ fn approve(app: &mut App, id: &str, summary: &str, at: Instant) -> u64 {
 fn choose(app: &mut App, id: &str, now: Instant) -> u64 {
     let asked = next_id();
     let choose = protocol::Asked::Choose {
-        title: "Implement this plan?".into(),
+        title: "Login › Provider".into(),
         options: vec![("Yes".into(), String::new()), ("No".into(), String::new())],
         marked: None,
     };
@@ -591,10 +591,10 @@ fn held_choice_waits_until_shown() {
     let picked = choose(&mut app, "B", now);
     assert!(app.questions.is_empty(), "held until B is shown");
     let shown = live_area(&app, now);
-    assert!(!shown.contains("Implement this plan?"), "{shown}");
+    assert!(!shown.contains("Login › Provider"), "{shown}");
     app.show("B");
     let shown = live_area(&app, now);
-    assert!(shown.contains("Implement this plan?"), "{shown}");
+    assert!(shown.contains("Login › Provider"), "{shown}");
     app.input(key(KeyCode::Enter), now);
     assert_eq!(replies(&mut app), [(picked, Reply::Choice(Some(0)))]);
 }
