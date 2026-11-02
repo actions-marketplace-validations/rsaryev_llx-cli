@@ -17,7 +17,7 @@ fn reading_of(reads: usize, report: &str) -> Conversation {
     running(&commands, report)
 }
 
-/// A conversation of one call a command, each getting `report` back.
+/// A conversation of one call per command, each getting `report` back.
 fn running(commands: &[String], report: &str) -> Conversation {
     let mut conversation = Conversation::new("rules");
     conversation.push(Message::User("Goal: look".into()));
@@ -299,8 +299,8 @@ mod dialogue {
     const REAL: f64 = 1.3;
     const WINDOW: u64 = 60_000;
 
-    /// A model that reads a file (or writes one) with a command for `TURNS` turns, then answers; it reports the
-    /// real size of each request and keeps a copy of it.
+    /// A model that reads a file (or writes one) with a command for `TURNS` turns, then answers;
+    /// it reports the real size of each request and keeps a copy of it.
     #[derive(Default)]
     struct Model {
         requests: Mutex<Vec<Vec<Message>>>,

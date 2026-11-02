@@ -9,6 +9,7 @@ use contracts::tool::{Input, Tool, ToolError, ToolOutput, ToolSpec};
 
 use crate::observer::Observer;
 
+/// What a call came to, as its tool said it.
 pub(crate) type Outcome = Result<ToolOutput, ToolError>;
 
 /// The calls from `start` on that run together: the run of calls that may run in parallel, or

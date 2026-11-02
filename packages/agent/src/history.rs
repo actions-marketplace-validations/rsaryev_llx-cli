@@ -2,7 +2,7 @@
 //! the app. Each participant (the main agent, each agent it started) keeps its own conversation
 //! and is fitted to its own model, so one strategy serves them all.
 //!
-//! [`Pipeline`] is the strategy llx uses: named [`Stage`]s, least valuable first, each eliding
+//! [`Pipeline`] is the strategy llx uses: named `Stage`s, least valuable first, each eliding
 //! what it owns (outputs, arguments) for pointers that say how to get it back. No summary. Made
 //! for the prompt cache:
 //! - nothing runs while the conversation is under `HIGH` of the model's limit (a pruned prefix
@@ -26,14 +26,18 @@ use crate::conversation::Conversation;
 const FALLBACK: u64 = 128_000;
 /// The most a request holds, whatever the window: quality and cost fall well before a million.
 const AUTO: u64 = 272_000;
+/// Messages of the recent tail left alone, however few tokens they take; past the ceiling, all
+/// but these give way.
 const MIN_TAIL: usize = 4;
 /// Tokens of the recent tail llx leaves alone.
 const TAIL: u64 = 16_384;
-/// Percent of the ceiling that opens the gate, and where a pass stops.
+/// Percent of the ceiling that opens the gate.
 const HIGH: u64 = 90;
+/// Percent of the ceiling a pass stops at.
 const LOW: u64 = 60;
-/// Characters below which nothing is worth eliding.
-const MIN_CHARS: usize = 400;
+/// Bytes below which nothing is worth eliding.
+const MIN_BYTES: usize = 400;
+/// What every pointer says, so an elision is told apart.
 pub(crate) const MARKER: &str = "elided to save context";
 /// What a picture counts for, in tokens.
 const IMAGE: u64 = 1_500;
@@ -87,7 +91,8 @@ pub trait Strategy: Send + Sync {
         (window - reserve).min(AUTO)
     }
 
-    /// Prepare `conversation` for a request that may hold `ceiling` tokens.
+    /// Prepare `conversation` for a request that may hold `ceiling` tokens; `ratio`: real tokens
+    /// per estimated one, from the last answer's usage.
     fn prepare(&self, conversation: &mut Conversation, ceiling: u64, ratio: f64) -> Report;
 }
 
@@ -263,7 +268,7 @@ fn tail(conversation: &Conversation, budget: u64) -> usize {
 /// Whether a text is worth eliding. A pointer is far shorter than this, so it never is: an
 /// output that only quotes the marker is elided as any other.
 pub(crate) fn worth(text: &str) -> bool {
-    text.len() >= MIN_CHARS
+    text.len() >= MIN_BYTES
 }
 
 /// Whether a call's arguments hold a text worth eliding: a value of its object, or the text
@@ -285,7 +290,7 @@ pub(crate) fn whole(tokens: f64) -> u64 {
     tokens as u64
 }
 
-/// A message's tokens, estimated: four characters to a token.
+/// A message's tokens, estimated: four bytes of its text to a token.
 pub(crate) fn tokens(message: &Message) -> u64 {
     let chars = match message {
         Message::System(text) | Message::User(text) => text.len(),

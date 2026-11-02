@@ -1,12 +1,13 @@
 //! The agent's loop: the chat model reads the goal and calls tools until it answers with a
 //! message and no call, bounded by `max_turns` (unlimited unless the app sets one). That message
 //! is the answer; with `--schema`, the data is then asked for in one more request with the
-//! `result` call forced ([`crate::schema`]). Nothing invites the model to stop, and only the
-//! advisor pushes it on, twice a task at most (C9, `agent/advice.rs`): a failed call goes back to
-//! it with its reason, and no tool ends the task.
-//! The calls of one turn that may run together do ([`crate::calls`]). Before each turn, what
-//! came into the inbox is said; an answer while something is still to come waits for it, and the
-//! run goes on.
+//! `result` call forced (`crate::schema`). Nothing invites the model to stop: a failed call goes
+//! back to it with its reason, and no tool ends the task. Only the advisor pushes an answer on,
+//! twice a task at most (C9, `agent/advice.rs`).
+//! The calls of one turn that may run together do (`crate::calls`). A reply the output limit cut
+//! off is not an answer: the model goes on from it, and its last call is never run as it stands
+//! (B7, `agent/handling.rs`). Before each turn, what came into the inbox is said; an answer while
+//! something is still to come waits for it, and the run goes on.
 
 mod advice;
 mod handling;
@@ -40,6 +41,8 @@ const RETURNED: &str = "The result was returned.";
 /// agent began them: the first is 1, as 0 is no task's.
 static TASKS: AtomicU64 = AtomicU64::new(1);
 
+/// One participant's loop (the main session, or an agent it started): its model, its tools and
+/// how its conversation is kept; [`Agent::run`] reaches each goal.
 pub struct Agent<'a> {
     pub chat: &'a dyn Chat,
     pub tools: &'a [&'a dyn Tool],
@@ -64,16 +67,19 @@ pub struct Agent<'a> {
     pub advisor: Option<&'a dyn Advisor>,
 }
 
+/// How a run ended.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Status {
     /// The model answered: a message with no call.
     Done,
     /// Turns ran out before an answer.
     Exhausted,
-    /// The model, or what a tool depends on, could not be reached.
+    /// The run could not go on, and why: the model, or what a tool depends on, could not be
+    /// reached, or the model's replies kept being cut off at its output limit.
     Error(String),
 }
 
+/// What a run came to.
 pub struct Run {
     pub status: Status,
     pub answer: String,

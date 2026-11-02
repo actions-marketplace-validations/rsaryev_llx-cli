@@ -18,6 +18,7 @@ const MAX_RESULT: usize = 90_000;
 /// What a call left without a result (a run that ended mid-turn) is answered with.
 const UNANSWERED: &str = "The call was not carried out: the run ended first.";
 
+/// The messages, each one's estimated size, and the level the conversation thinks at.
 #[derive(Debug)]
 pub struct Conversation {
     messages: Vec<Message>,
@@ -58,7 +59,7 @@ impl Conversation {
     }
 
     /// The level it thinks at, where it is not the model's chosen one.
-    pub fn effort(&self) -> Option<Effort> {
+    pub(crate) fn effort(&self) -> Option<Effort> {
         self.effort
     }
 

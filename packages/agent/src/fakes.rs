@@ -1,5 +1,6 @@
 //! Fakes of the ports the agent speaks to, for its tests: a scripted chat model, a scripted
-//! tool and an observer that writes events down. No network, no real tool.
+//! tool, an observer that writes events down and one that shows nothing, and `Keep`, the history
+//! strategy that sends a conversation as it is. No network, no real tool.
 
 use std::sync::Mutex;
 
