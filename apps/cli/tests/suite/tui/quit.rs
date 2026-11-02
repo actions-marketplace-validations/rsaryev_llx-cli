@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use crate::common::eventually;
 use crate::common::model::Model;
-use crate::common::term::Term;
+use crate::common::term::{Term, key};
 
 #[test]
 #[expect(
@@ -12,11 +12,11 @@ use crate::common::term::Term;
     reason = "a test gives a late row the time to be drawn: there is no event to wait on"
 )]
 fn quitting_leaves_no_prompt_row_on_the_screen() {
-    for keys in [&["\x04"][..], &["\x03", "\x03"]] {
+    for keys in [&[key::CTRL_D][..], &[key::CTRL_C, key::CTRL_C]] {
         let model = Model::start(vec![]);
         let mut term = Term::start(&model, &[]);
-        for key in keys {
-            term.press(key);
+        for pressed in keys {
+            term.press(pressed);
         }
         let gone = || (!term.screen().contains('❯')).then_some(());
         let _ = eventually(Duration::from_secs(5), Duration::from_millis(50), gone);

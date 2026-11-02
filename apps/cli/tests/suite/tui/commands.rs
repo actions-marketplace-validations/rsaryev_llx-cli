@@ -1,6 +1,6 @@
 //! The slash commands at the prompt.
 
-use super::LONG;
+use super::{LONG, until_file};
 use crate::common::model::{Model, Reply};
 use crate::common::term::{Term, key};
 
@@ -87,15 +87,14 @@ fn a_command_given_as_the_first_message_is_carried_out_not_sent_to_the_model() {
 fn a_new_kept_for_after_the_task_says_how_to_open_a_session() {
     // The bug: `/clear` (another spelling of `/new`) kept with Tab for after the task reached
     // the session, which did nothing with it and said nothing.
-    let command = "for i in $(seq 200); do [ -e go ] && break; sleep 0.05; done";
     let model = Model::start(vec![
-        Reply::call("bash", serde_json::json!({"command": command})),
+        Reply::call("bash", serde_json::json!({"command": until_file("go")})),
         Reply::done("Done."),
     ]);
     let mut term = Term::start(&model, &["-y"]);
     term.type_text("wait a little").press(key::ENTER);
     term.wait_for("Running for i in", LONG);
-    term.type_text("/clear").press("\t");
+    term.type_text("/clear").press(key::TAB);
     term.wait_for("⏎ /clear", LONG);
     std::fs::write(term.file("go"), "").unwrap();
     term.wait_for("/new opens a session when typed at the prompt", LONG);

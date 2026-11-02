@@ -16,9 +16,9 @@ fn a_closed_stdout_ends_quietly_with_zero() {
     let home = Home::new();
     let help = into_a_closed_pipe(&mut home.llx(&["--help"]));
     assert_eq!(help.status.code(), Some(0));
-    let status = into_a_closed_pipe(home.llx(&["logout"]).env("OPENROUTER_API_KEY", FAKE_KEY));
-    assert_eq!(status.status.code(), Some(0));
-    assert!(status.stderr.is_empty(), "{}", text(&status.stderr));
+    let logout = into_a_closed_pipe(home.llx(&["logout"]).env("OPENROUTER_API_KEY", FAKE_KEY));
+    assert_eq!(logout.status.code(), Some(0));
+    assert!(logout.stderr.is_empty(), "{}", text(&logout.stderr));
     let sessions = into_a_closed_pipe(&mut home.llx(&["sessions"]));
     assert_eq!(sessions.status.code(), Some(0));
     assert!(sessions.stderr.is_empty());

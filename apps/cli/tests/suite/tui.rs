@@ -20,3 +20,9 @@ mod suspend;
 
 /// How long a flow waits for what the screen should show.
 const LONG: Duration = Duration::from_secs(20);
+
+/// A command that runs until the file `name` exists in the workspace (at most 10 s): what keeps a
+/// task working while a flow acts on it. The screen shows it as `Running for i in`.
+fn until_file(name: &str) -> String {
+    format!("for i in $(seq 200); do [ -e {name} ] && break; sleep 0.05; done")
+}

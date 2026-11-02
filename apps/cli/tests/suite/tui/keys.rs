@@ -55,7 +55,7 @@ fn the_editor_has_the_keys_while_it_runs() {
     std::fs::set_permissions(&editor, mode).unwrap();
     let mut term = Term::spawn(&model, &[], &[("VISUAL", editor.to_str().unwrap())]);
     term.wait_for("❯", LONG);
-    term.press("\x07");
+    term.press(key::CTRL_G);
     term.wait_for("EDITING", LONG);
     term.type_text("from the editor").press(key::ENTER);
     term.wait_for("❯ from the editor", LONG);

@@ -2,7 +2,7 @@
 
 use serde_json::json;
 
-use super::LONG;
+use super::{LONG, until_file};
 use crate::common::model::{Model, Reply, said};
 use crate::common::term::{Term, key};
 
@@ -10,9 +10,8 @@ use crate::common::term::{Term, key};
 fn a_message_sent_while_a_command_runs_reaches_the_task() {
     // The command runs until the test lets it end (at most 10 s), so the message is sent while
     // it runs however slowly the keys are typed.
-    let command = "for i in $(seq 200); do [ -e go ] && break; sleep 0.05; done";
     let model = Model::start(vec![
-        Reply::call("bash", json!({"command": command})),
+        Reply::call("bash", json!({"command": until_file("go")})),
         Reply::done("Noted."),
     ]);
     let mut term = Term::start(&model, &["-y"]);

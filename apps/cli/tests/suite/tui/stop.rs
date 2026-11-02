@@ -2,16 +2,15 @@
 
 use serde_json::json;
 
-use super::LONG;
+use super::{LONG, until_file};
 use crate::common::model::{Model, Reply};
 use crate::common::term::{Term, key};
 
 #[test]
 fn esc_stops_the_task_running() {
     // The command would run for 10 s: only the stop ends it sooner.
-    let command = "for i in $(seq 200); do [ -e go ] && break; sleep 0.05; done";
     let model = Model::start(vec![
-        Reply::call("bash", json!({"command": command})),
+        Reply::call("bash", json!({"command": until_file("go")})),
         Reply::done("Done."),
     ]);
     let mut term = Term::start(&model, &["-y"]);

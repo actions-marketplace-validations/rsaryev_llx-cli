@@ -21,11 +21,13 @@ const ROWS: u16 = 40;
 /// Keys as a terminal sends them (only those the flows press).
 pub(crate) mod key {
     pub(crate) const ENTER: &str = "\r";
+    pub(crate) const TAB: &str = "\t";
     pub(crate) const ESC: &str = "\x1b";
     pub(crate) const DOWN: &str = "\x1b[B";
     pub(crate) const LEFT: &str = "\x1b[D";
     pub(crate) const CTRL_C: &str = "\x03";
     pub(crate) const CTRL_D: &str = "\x04";
+    pub(crate) const CTRL_G: &str = "\x07";
     pub(crate) const CTRL_Z: &str = "\x1a";
 }
 
@@ -328,7 +330,7 @@ impl Drop for Term {
     fn drop(&mut self) {
         // Ctrl-C stops a task or clears the prompt; Ctrl-D on an empty prompt then quits, and
         // where work still runs, the question it asks is answered "Exit and stop tasks".
-        let _ = self.input.write_all(b"\x03");
+        let _ = self.input.write_all(key::CTRL_C.as_bytes());
         let screen = Arc::clone(&self.screen);
         let _ = eventually(Duration::from_secs(3), Duration::from_millis(100), || {
             if let Ok(Some(_)) = self.child.try_wait() {
@@ -336,7 +338,8 @@ impl Drop for Term {
             }
             let shown = screen.lock().unwrap().screen().contents();
             let quitting = shown.contains("1. Exit and stop tasks");
-            let _ = self.input.write_all(if quitting { b"1" } else { b"\x04" });
+            let answer = if quitting { "1" } else { key::CTRL_D };
+            let _ = self.input.write_all(answer.as_bytes());
             None
         });
         let _ = self.child.kill();

@@ -6,15 +6,10 @@ use std::time::Duration;
 
 use serde_json::json;
 
-use super::LONG;
+use super::{LONG, until_file};
 use crate::common::eventually;
 use crate::common::model::{Model, Reply, said};
 use crate::common::term::{Term, key};
-
-/// A command that runs until the file `name` exists in the workspace (at most 10 s).
-fn until_file(name: &str) -> String {
-    format!("for i in $(seq 200); do [ -e {name} ] && break; sleep 0.05; done")
-}
 
 /// Wait until the screen no longer shows `needle`: another session is shown.
 fn wait_gone(term: &Term, needle: &str) -> String {

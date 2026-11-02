@@ -45,10 +45,7 @@ fn a_daemon_is_idle_only_when_nothing_needs_it() {
     };
     assert!(nothing.idle());
     let with = |set: fn(&mut Status)| {
-        let mut status = Status {
-            build: build(),
-            ..nothing.clone()
-        };
+        let mut status = nothing.clone();
         set(&mut status);
         status.idle()
     };

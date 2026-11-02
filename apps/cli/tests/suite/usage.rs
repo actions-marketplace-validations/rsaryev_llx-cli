@@ -1,7 +1,7 @@
 //! What the command line refuses: exit code 3 and a word on stderr that says why.
 
 use crate::common::home::{FAKE_KEY, Home, detach, output, own_terminal, text};
-use crate::common::term::cooked;
+use crate::common::term::{cooked, pty};
 
 #[test]
 fn an_unknown_flag_is_a_usage_error() {
@@ -50,7 +50,7 @@ fn a_session_without_a_terminal_points_to_exec() {
 fn a_session_whose_interface_cannot_start_points_to_exec() {
     use std::process::Stdio;
     let home = Home::new();
-    let (master, slave) = crate::common::term::pty();
+    let (master, slave) = pty();
     let mut command = home.llx(&["fix the tests"]);
     command.current_dir(home.path());
     detach(&mut command);
@@ -106,7 +106,7 @@ fn an_interface_that_cannot_draw_gives_the_terminal_back() {
     use std::os::fd::AsFd;
     use std::process::Stdio;
     let home = Home::new();
-    let (master, slave) = crate::common::term::pty();
+    let (master, slave) = pty();
     let (reader, writer) = std::io::pipe().unwrap();
     drop(reader);
     let mut command = home.llx(&["fix the tests"]);
