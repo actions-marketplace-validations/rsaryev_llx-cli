@@ -141,6 +141,10 @@ expect "a hook, a shell script with no extension" "" "repo
 shellcheck
 secrets" scripts/hooks/pre-commit
 
+expect "CI's jobs in Docker, a shell script with no extension" "" "repo
+shellcheck
+secrets" scripts/ci-docker
+
 expect "a file gone: its crate, and the links that may name it" "" "fmt
 clippy -p llx -p server -p tools
 test -p llx -p server -p tools

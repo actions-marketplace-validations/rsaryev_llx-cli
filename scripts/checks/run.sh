@@ -110,7 +110,7 @@ check_secrets() {
 # Every shell script of the repository, tracked or new.
 shell_files() {
   git ls-files --cached --others --exclude-standard -- \
-    '*.sh' scripts/check scripts/setup 'scripts/hooks/*' |
+    '*.sh' scripts/check scripts/setup scripts/ci-docker 'scripts/hooks/*' |
     while IFS= read -r shell_file; do
       if [ -f "$shell_file" ]; then printf '%s\n' "$shell_file"; fi
     done

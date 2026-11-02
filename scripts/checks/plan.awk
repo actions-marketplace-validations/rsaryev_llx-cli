@@ -8,7 +8,7 @@
 #   site/, docs/, examples/README.md -> the site's build (not in fast)
 #   action.yml, action/     -> action/test.sh
 #   scripts/check, scripts/checks/ -> the checks' own tests
-#   *.sh, scripts/check, scripts/setup, scripts/hooks/ -> shellcheck
+#   *.sh, scripts/check, scripts/setup, scripts/ci-docker, scripts/hooks/ -> shellcheck
 #   action.yml, examples/github/, .github/workflows/, .github/actions/ -> actionlint
 #   examples/github/        -> the examples' conventions
 #   *.md, or any path gone  -> relative links and anchors
@@ -53,7 +53,7 @@ $1 == "" { next }
   if (path ~ /^(site|docs)\// || path == "examples/README.md") note("site", path)
   if (path == "action.yml" || path ~ /^action\//) note("action", path)
   if (path == "scripts/check" || path ~ /^scripts\/checks\//) note("plan", path)
-  if (path ~ /\.sh$/ || path == "scripts/check" || path == "scripts/setup" || path ~ /^scripts\/hooks\//)
+  if (path ~ /\.sh$/ || path ~ /^scripts\/(check|setup|ci-docker)$/ || path ~ /^scripts\/hooks\//)
     note("shell", path)
   if (path == "action.yml" || path ~ /^examples\/github\// || path ~ /^\.github\/(workflows|actions)\//)
     note("workflow", path)
