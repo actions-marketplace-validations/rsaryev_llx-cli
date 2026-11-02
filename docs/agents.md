@@ -79,7 +79,7 @@ The same skill, as a plugin:
 /plugin install llx --marketplace rsaryev/llx
 ```
 
-On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is loaded, Claude runs, without asking, the commands that change nothing: `llx grep`, `llx decide`, `llx exec --mode plan`, `llx doctor` and `llx --help`.
+On an older Claude Code: `/plugin marketplace add rsaryev/llx`, then `/plugin install llx@llx`. While the skill is active, its `allowed-tools` lets Claude run these commands without asking you: `llx --help`, `llx exec --help` and `llx doctor` as they are, and `llx grep`, `llx decide` and `llx exec --mode plan` with any arguments after them. It grants nothing else and takes no tool away: every other command goes by your permission settings.
 
 ### AGENTS.md / CLAUDE.md
 
