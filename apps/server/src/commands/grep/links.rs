@@ -13,7 +13,7 @@ use contracts::model::Decider;
 use super::judge::{self, Parts};
 use super::listing::Doc;
 use super::terms::Term;
-use super::{JUDGED_LINES, MAYBE, YES, asks_about_tests, rank};
+use super::{JUDGED_LINES, MAYBE, asks_about_tests, bar, rank};
 use crate::cli::GrepArgs;
 
 /// A module more than this share of the files name links nothing: `std::fmt`, `crate::error`.
@@ -198,8 +198,13 @@ pub(super) fn second_round(
     let judged: Vec<(usize, Option<f64>)> = (candidates.iter().copied())
         .zip(verdicts.yes.iter().copied())
         .collect();
+    // The files shown link; one the margin left out, and the doubted, are read again.
+    let best = (judged.iter())
+        .filter_map(|(_, yes)| *yes)
+        .fold(0.0, f64::max);
+    let shown = bar(best);
     let kept_files: Vec<usize> = (judged.iter())
-        .filter(|(_, yes)| yes.is_some_and(|yes| yes >= YES))
+        .filter(|(_, yes)| yes.is_some_and(|yes| yes >= shown))
         .map(|(doc, _)| *doc)
         .collect();
     if kept_files.is_empty() {
@@ -208,7 +213,7 @@ pub(super) fn second_round(
     // Settled: read, and answered either way with some certainty.
     let mut settled = vec![false; docs.len()];
     for (doc, yes) in &judged {
-        settled[*doc] = !yes.is_some_and(|yes| (MAYBE..YES).contains(&yes));
+        settled[*doc] = !yes.is_some_and(|yes| (MAYBE..shown).contains(&yes));
     }
     let tests_asked = asks_about_tests(terms);
     let kept = |doc: usize| tests_asked || docs.get(doc).is_some_and(|d| !rank::is_test(&d.path));

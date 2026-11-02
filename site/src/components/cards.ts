@@ -153,7 +153,7 @@ export const CARDS: Card[] = [
         ],
         align: 'lr',
       },
-      out('4 of 1,199 files answer, 80 read: 2.4 s, $0.005', 'dim'),
+      out('4 of 1,199 files answer, 80 read: 2.1 s, $0.005', 'dim'),
       {
         grid: [
           [['dim', '24 questions, known answers'], ['dim', 'R@5'], ['dim', 'no answer']],

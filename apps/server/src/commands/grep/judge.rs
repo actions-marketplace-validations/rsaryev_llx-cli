@@ -13,7 +13,7 @@ use crate::error::Failure;
 use crate::sync::each_at_once;
 
 /// How many files are read at once: each answer takes well under a second.
-const AT_ONCE: usize = 12;
+const AT_ONCE: usize = 24;
 /// A file shorter than this is read whole.
 const WHOLE: usize = 6000;
 /// Of a longer one, its start, then its best parts up to [`WHOLE`] in all.

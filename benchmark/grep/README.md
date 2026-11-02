@@ -57,13 +57,15 @@ At `f19ba1cb`, on an idle macOS arm64:
 
 | Mode | R@5 | R@10 | P@5 | MRR | none | time | cost | KB read |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| judged | 98% | 98% | 80% | 0.89 | 4/4 | 3.89 s | $0.0053 | 4.1 |
+| judged | 98% | 100% | 80% | 0.89 | 4/4 | 2.09 s | $0.0053 | 4.3 |
 | words | 80% | 93% | 43% | 0.68 | 0/4 | 0.19 s | 0 | 11.3 |
 | rg | 46% | 67% | 35% | 0.25 | 2/4 | 0.03 s | 0 | 19.2 |
 
 A file that does the thing with none of the question's words (`concept-1`'s `doctor.rs`, which
 runs a shell through `tools::shell::query`) is found through the module it shares with a file
-that answers: the second round, which costs about a second. What it still misses: a file so
-found that the model still finds less likely than the best by more than 0.25 (`extras.rs`, at
-0.70), and the precision of a vague question (`flow`), where the decision model leans to yes on
-every file near the subject.
+that answers: the second round, which reads again the files the first doubted or left below its
+margin where they name the module, and shows what it keeps after the first round's. Every file
+an answer must name is now in the first ten; `extras.rs`, found that way, comes sixth. What it
+still misses is the precision of a vague question (`flow`), where the decision model leans to yes
+on every file near the subject. Two runs of the same build differ by about 0.02 in MRR and a
+second in time: the decision model's answers and the network both vary.

@@ -153,6 +153,13 @@ fn candidates(docs: &[Doc], ranked: &[rank::Scored], terms: &[Term], judge: usiz
     order
 }
 
+/// The least probability a file is shown with, in a round whose best file has `best`: at least
+/// [`YES`], and within [`BELOW_BEST`] of the best (the model leans to yes on a file near the
+/// subject: one far below the best is seldom what was asked).
+fn bar(best: f64) -> f64 {
+    YES.max(best - BELOW_BEST)
+}
+
 /// Whether the question is about tests: then a test file is read as any other.
 fn asks_about_tests(terms: &[Term]) -> bool {
     terms
@@ -188,13 +195,22 @@ fn picked(
             .then(b.1.total_cmp(&a.1))
             .then(place(a.0).cmp(&place(b.0)))
     });
-    let best = judged.iter().map(|(_, yes, ..)| *yes).fold(0.0, f64::max);
-    let judged: Vec<(usize, f64, Lead)> =
-        judged.into_iter().map(|(d, y, l, _)| (d, y, l)).collect();
-    let shown = YES.max(best - BELOW_BEST);
+    // Each round's margin from its own best: a second round's file comes after all the first
+    // kept, so the first's best does not bar it.
+    let best = |second: bool| {
+        (judged.iter())
+            .filter(|(.., round)| *round == second)
+            .map(|(_, yes, ..)| *yes)
+            .fold(0.0, f64::max)
+    };
+    let (first_bar, second_bar) = (bar(best(false)), bar(best(true)));
+    let bar = |second: bool| match second {
+        true => second_bar,
+        false => first_bar,
+    };
     let found = (judged.iter())
-        .filter(|(_, yes, _)| *yes >= shown)
-        .map(|&(doc, score, lead)| Found {
+        .filter(|(_, yes, _, second)| *yes >= bar(*second))
+        .map(|&(doc, score, lead, _)| Found {
             doc,
             score,
             blocks: vec![],
@@ -202,9 +218,9 @@ fn picked(
         })
         .collect();
     let maybe = (judged.iter())
-        .filter(|(_, yes, _)| (MAYBE..shown).contains(yes))
+        .filter(|(_, yes, _, second)| (MAYBE..bar(*second)).contains(yes))
         .take(MOST_UNSURE)
-        .map(|&(doc, yes, _)| (doc, yes))
+        .map(|&(doc, yes, ..)| (doc, yes))
         .collect();
     Outcome {
         found,

@@ -63,6 +63,7 @@ fn a_file_the_model_was_unsure_of_is_read_again_where_it_names_a_kept_files_modu
         doc("monitor.rs", "fn start() { tools::shell::scoped(x) }\n"),
         doc("doctor.rs", "fn probe() { tools::shell::query(x) }\n"),
         doc("serve.rs", "fn serve() { tools::shell::query(y) }\n"),
+        doc("extras.rs", "fn diff() { tools::shell::query(z) }\n"),
     ];
     for n in 0..12 {
         docs.push(doc(&format!("other{n}.rs"), "fn other() {}\n"));
@@ -74,13 +75,18 @@ fn a_file_the_model_was_unsure_of_is_read_again_where_it_names_a_kept_files_modu
             ("doctor.rs", (0.4, 0.8)),
             // Settled no: not read again.
             ("serve.rs", (0.05, 0.9)),
+            // Above 0.5, but too far below the best to be shown: read again too.
+            ("extras.rs", (0.6, 0.85)),
         ]),
         Mutex::new(BTreeMap::new()),
     );
     // The first round, as `grep` read them.
     let table = Table(
         table.0,
-        Mutex::new(BTreeMap::from([("doctor.rs".to_string(), 1)])),
+        Mutex::new(BTreeMap::from([
+            ("doctor.rs".to_string(), 1),
+            ("extras.rs".to_string(), 1),
+        ])),
     );
     let cli =
         <Cli as clap::Parser>::parse_from(["llx", "grep", "which files start a child process"]);
@@ -90,17 +96,17 @@ fn a_file_the_model_was_unsure_of_is_read_again_where_it_names_a_kept_files_modu
     let args: GrepArgs = *args;
     let terms = terms::terms(&args.query);
     let verdicts = judge::Verdicts {
-        yes: vec![Some(0.9), Some(0.4), Some(0.05)],
-        lead: vec![None, None, None],
+        yes: vec![Some(0.9), Some(0.4), Some(0.05), Some(0.6)],
+        lead: vec![None; 4],
         model: "jev".into(),
-        cost: 0.003,
+        cost: 0.004,
     };
     let (candidates, verdicts, second) =
-        second_round(&table, &args, &docs, &terms, vec![0, 1, 2], verdicts);
-    assert_eq!(candidates, [0, 1, 2]);
-    assert_eq!(second, [false, true, false]);
-    assert_eq!(verdicts.yes, [Some(0.9), Some(0.8), Some(0.05)]);
-    assert!((verdicts.cost - 0.004).abs() < 1e-9);
+        second_round(&table, &args, &docs, &terms, vec![0, 1, 2, 3], verdicts);
+    assert_eq!(candidates, [0, 1, 2, 3]);
+    assert_eq!(second, [false, true, false, true]);
+    assert_eq!(verdicts.yes, [Some(0.9), Some(0.8), Some(0.05), Some(0.85)]);
+    assert!((verdicts.cost - 0.006).abs() < 1e-9);
 }
 
 #[test]
@@ -114,4 +120,42 @@ fn a_file_the_second_round_kept_comes_after_those_the_first_did() {
     let outcome = picked(&[0, 1, 2], &verdicts, &[false, true, false], &[]);
     let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
     assert_eq!(order, [2, 0, 1]);
+}
+
+#[test]
+fn a_file_the_second_round_kept_is_shown_past_the_first_rounds_margin() {
+    let verdicts = judge::Verdicts {
+        yes: vec![Some(0.99), Some(0.7), Some(0.7), Some(0.4)],
+        lead: vec![None; 4],
+        model: "jev".into(),
+        cost: 0.0,
+    };
+    let outcome = picked(&[0, 1, 2, 3], &verdicts, &[false, false, true, true], &[]);
+    let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
+    // The first round's 0.7 is too far below its best: named as unsure. The second's comes after
+    // all the first kept, and is held to its own round's best.
+    assert_eq!(order, [0, 2]);
+    let unsure: Vec<usize> = outcome.maybe.iter().map(|(doc, _)| *doc).collect();
+    assert_eq!(unsure, [1, 3]);
+}
+
+#[test]
+fn a_second_round_file_far_below_that_rounds_best_is_named_as_unsure() {
+    let verdicts = judge::Verdicts {
+        yes: vec![Some(0.99), Some(0.91), Some(0.6)],
+        lead: vec![None; 3],
+        model: "jev".into(),
+        cost: 0.0,
+    };
+    let outcome = picked(&[0, 1, 2], &verdicts, &[false, true, true], &[]);
+    let order: Vec<usize> = outcome.found.iter().map(|found| found.doc).collect();
+    assert_eq!(order, [0, 1]);
+    assert_eq!(
+        outcome
+            .maybe
+            .iter()
+            .map(|(doc, _)| *doc)
+            .collect::<Vec<_>>(),
+        [2]
+    );
 }
