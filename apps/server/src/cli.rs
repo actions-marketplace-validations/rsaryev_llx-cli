@@ -13,7 +13,8 @@ const USAGE: &str = "llx [OPTIONS] [PROMPT]\n       \
     llx exec [OPTIONS] [PROMPT | -]\n       \
     llx <COMMAND>";
 
-const ABOUT: &str = "llx: an ultrafast, lightweight agent runtime: a minimal agent for the terminal, helpers on any model, and a decision step for scripts and CI";
+const ABOUT: &str = "llx: an ultrafast, lightweight agent runtime: a minimal agent for the \
+terminal, helpers on any model, and a decision step for scripts and CI";
 
 const LONG_ABOUT: &str = "llx: an ultrafast, lightweight agent runtime. A minimal agent for the \
 terminal (llx), one task for scripts and CI (llx exec), a search of the code by what a question \
@@ -23,54 +24,51 @@ says when it pays and how.
 
 It works in a directory (the current one, or -C DIR) with its tools: bash, the shell it reads \
 files and runs commands with (each run to its end), apply_patch, the patch it changes files with, \
-grep, the search `llx grep` runs, ask, a question to you (in a session only), agents: other agents it starts in parallel, each a session of its own (in a \
-session, a list under the prompt shows them: down arrow, then enter to see one), and jobs: \
-monitors (a background command whose lines come back) and schedules (a prompt at a time).
+grep, the search `llx grep` runs, ask, a question to you (in a session only), agents: other agents \
+it starts in parallel, each a session of its own (in a session, a list under the prompt shows \
+them: down arrow, then enter to see one), and jobs: monitors (a background command whose lines \
+come back) and schedules (a prompt at a time).
 
-With no command, llx opens a session at the terminal: PROMPT, when given, is its first message \
-(a /command in it is carried out), and each line you type goes on from the last. `llx exec` (or -p) runs one task without a session \
-and exits, with the answer alone on stdout: for scripts, CI and pipes. A task ends with the \
-agent's final message; with `--schema`, the data is then asked for as a `result` call, forced. \
-The exit code says how it ended.
+With no command, llx opens a session at the terminal: PROMPT, when given, is its first message (a \
+/command in it is carried out), and each line you type goes on from the last. `llx exec` (or -p) \
+runs one task without a session and exits, with the answer alone on stdout: for scripts, CI and \
+pipes. A task ends with the agent's final message; with `--schema`, the data is then asked for as \
+a `result` call, forced. The exit code says how it ended.
 
-To sign in, type /login in a session: choose a provider of the catalog, found by typing \
-(OpenAI signs in with ChatGPT in your browser or with a key, OpenRouter with a key or in the \
-browser, the others with a key), then one of its models and a reasoning level that model takes \
-(left/right in the model list, Enter confirms both). The choice is saved as the default for \
-later sessions and for exec. `llx decide`'s decision model runs on OpenRouter, so it \
-needs an OpenRouter key.
+To sign in, type /login in a session: choose a provider of the catalog, found by typing (OpenAI \
+signs in with ChatGPT in your browser or with a key, OpenRouter with a key or in the browser, the \
+others with a key), then one of its models and a reasoning level that model takes (left/right in \
+the model list, Enter confirms both). The choice is saved as the default for later sessions and \
+for exec. `llx decide`'s decision model runs on OpenRouter, so it needs an OpenRouter key.
 
 Rules decide what runs without asking: a deny refuses, an allow runs it as it is, and what the \
 mode's sandbox does not cover is asked at the terminal (1 yes, 2 always for this tool, 3 no; \
 outside a session y, a or n), or refused with no one to ask. A mode (--mode) is a named set of \
-rules: default (commands run without asking in the system's sandbox, which writes only inside \
-the workspace, never its .git (on Linux, in a workspace with a .git of its own, it only reads), \
-and opens no network; file changes there are made; a command the \
-model escalates, or a change inside .git, is asked), plan (read-only: commands run without \
-asking in the sandbox, where writing a file, opening a socket or reaching another program \
-fails), bypass (-y, everything allowed), or your own from \
-`modes` in ~/.config/llx/settings.json. --allow and --deny add rules for one run: \
+rules: default (commands run without asking in the system's sandbox, which writes only inside the \
+workspace, never its .git (on Linux, in a workspace with a .git of its own, it only reads), and \
+opens no network; file changes there are made; a command the model escalates, or a change inside \
+.git, is asked), plan (read-only: commands run without asking in the sandbox, where writing a \
+file, opening a socket or reaching another program fails), bypass (-y, everything allowed), or \
+your own from `modes` in ~/.config/llx/settings.json. --allow and --deny add rules for one run: \
 bash(cargo test *), jobs. In a session, /mode switches it and Shift+Tab goes round the modes \
-(after the task if working); the mode is always shown under the prompt, and /status shows it \
-too. Markdown tables wrap their cells \
-to the terminal width. Tab completes a slash command \
-(with a space for commands taking an argument); Enter runs the typed command when it is a whole \
-one, else the one marked. Pasted text \
-is shown as [Paste] until sent; pasted file paths become file or image marks.
+(after the task if working); the mode is always shown under the prompt, and /status shows it too. \
+Markdown tables wrap their cells to the terminal width. Tab completes a slash command (with a \
+space for commands taking an argument); Enter runs the typed command when it is a whole one, else \
+the one marked. Pasted text is shown as [Paste] until sent; pasted file paths become file or image \
+marks.
 
 Sessions run side by side: /new opens another and shows it while the one before goes on in the \
 background. The Left arrow on an empty prompt lists the sessions in this project (those open, a \
 new one, then the saved ones): Enter opens one, x stops its task, Esc closes the list. A question \
-from a session not shown names it. Quitting while a session works or a monitor or schedule \
-runs asks first, naming them: Exit and stop tasks stops them all.
+from a session not shown names it. Quitting while a session works or a monitor or schedule runs \
+asks first, naming them: Exit and stop tasks stops them all.
 
-Ctrl-C stops the task of the session shown (the command running is \
-killed, and an open question or approval ends); a second Ctrl-C quits.
+Ctrl-C stops the task of the session shown (the command running is killed, and an open question or \
+approval ends); a second Ctrl-C quits.
 
-A session runs in a daemon, `llx serve`, which the first `llx` starts and later ones \
-attach to: it keeps the sessions, and lives on when a terminal closes (whose \
-sessions' work then stops) until `llx serve stop`. --no-daemon runs the session in this process; \
-exec always does.";
+A session runs in a daemon, `llx serve`, which the first `llx` starts and later ones attach to: it \
+keeps the sessions, and lives on when a terminal closes (whose sessions' work then stops) until \
+`llx serve stop`. --no-daemon runs the session in this process; exec always does.";
 
 const EXAMPLES: &str = "Examples:
   llx                                              a session at the terminal
@@ -90,10 +88,9 @@ Exit codes: 0 done, 1 no data matched --schema, 2 out of turns, time or budget, 
 or usage, 130 interrupted.
 
 Environment: OPENROUTER_API_KEY (else the key /login saved), LLX_PROVIDER, LLX_MODEL,
-LLX_REASONING, LLX_DECISION_MODEL (decide, grep, doctor), LLX_MODELS_REFRESH (0: no background catalog refresh),
-LLX_NO_DAEMON (1: sessions in this process),
-LLX_SESSIONS (where sessions are kept, default
-~/.llx/sessions). Sign-ins and the /login choice are kept in ~/.config/llx/ (0600).";
+LLX_REASONING, LLX_DECISION_MODEL (decide, grep, doctor), LLX_MODELS_REFRESH (0: no background
+catalog refresh), LLX_NO_DAEMON (1: sessions in this process), LLX_SESSIONS (where sessions are
+kept, default ~/.llx/sessions). Sign-ins and the /login choice are kept in ~/.config/llx/ (0600).";
 
 #[derive(Parser, Debug)]
 #[command(
@@ -136,7 +133,8 @@ pub(crate) enum Command {
     /// sandbox), and stdout is its answer alone. Check what it says before you act on it.
     #[command(visible_alias = "e", args_conflicts_with_subcommands = true)]
     Exec(Box<ExecArgs>),
-    /// Ask the decision model one question about stdin, or each file; the option it picked goes to stdout.
+    /// Ask the decision model one question about stdin, or each file; the option it picked goes
+    /// to stdout.
     ///
     /// A small, fast model picks one of the choices (yes or no unless --choices says otherwise),
     /// in about a second, for a fraction of a cent, and gives each its probability: a gate in a
@@ -206,8 +204,8 @@ pub(crate) enum Command {
     /// The daemon that runs the sessions: `llx` at a terminal starts it, and attaches to it.
     ///
     /// One per config directory. It holds every session, with its agents, jobs and terminal
-    /// sessions; a closed terminal stops its sessions' work, and the daemon
-    /// lives on until `llx serve stop`.
+    /// sessions; a closed terminal stops its sessions' work, and the daemon lives on until
+    /// `llx serve stop`.
     Serve(ServeArgs),
 }
 
@@ -388,16 +386,15 @@ pub(crate) struct RunOptions {
     )]
     pub images: Vec<PathBuf>,
 
-    /// Allow commands and file changes without asking: --mode bypass. Also
-    /// accepted as --yolo and --dangerously-skip-permissions.
+    /// Allow commands and file changes without asking: --mode bypass. Also accepted as --yolo
+    /// and --dangerously-skip-permissions.
     #[arg(short = 'y', long, help_heading = "Approvals",
         aliases = ["yolo", "dangerously-skip-permissions"])]
     pub yes: bool,
     /// A named set of rules on what runs without asking: default (work in the workspace, in the
     /// sandbox; what reaches further is asked), plan (read-only: commands in the read-only
-    /// sandbox, file changes refused), bypass (everything
-    /// runs, as -y), or your own from `modes` in
-    /// ~/.config/llx/settings.json. Also accepted as --permission-mode.
+    /// sandbox, file changes refused), bypass (everything runs, as -y), or your own from `modes`
+    /// in ~/.config/llx/settings.json. Also accepted as --permission-mode.
     #[arg(
         long,
         value_name = "MODE",
@@ -407,10 +404,10 @@ pub(crate) struct RunOptions {
     )]
     pub mode: Option<String>,
     /// Run what RULE names without asking, where the mode would ask or, with no one to ask,
-    /// refuse: `bash(cargo test *)` (every part of the command must match), `apply_patch(docs/**)`, `jobs`.
-    /// Repeat it. An allowed command runs as it is, outside the sandbox, with the network; plan
-    /// mode keeps it read-only. The syntax is Claude Code's; what a pattern covers, and what it
-    /// never does, is in docs/modes.md#rules.
+    /// refuse: `bash(cargo test *)` (every part of the command must match),
+    /// `apply_patch(docs/**)`, `jobs`. Repeat it. An allowed command runs as it is, outside the
+    /// sandbox, with the network; plan mode keeps it read-only. The syntax is Claude Code's; what
+    /// a pattern covers, and what it never does, is in docs/modes.md#rules.
     #[arg(long, value_name = "RULE", help_heading = "Approvals")]
     pub allow: Vec<String>,
     /// Refuse what RULE names in every mode, -y included: `bash(git push *)`. Repeat it.
