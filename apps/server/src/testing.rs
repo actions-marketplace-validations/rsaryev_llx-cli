@@ -158,6 +158,7 @@ pub(crate) fn composed_with(
         chat,
         live: None,
         adviser: None,
+        searcher: None,
     };
     assemble(&shared, seat, models, &quiet(), &Interrupt::new(), work);
 }

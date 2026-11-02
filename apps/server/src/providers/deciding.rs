@@ -22,6 +22,12 @@ pub(crate) fn adviser(vars: Vars) -> Option<Box<dyn Decider>> {
     waiting(DECISION_DEFAULT, vars, Some(ADVICE_PATIENCE))
 }
 
+/// The decision model the agent's `grep` reads the files with (ARCHITECTURE.md B8): the default
+/// one, waited for as `llx grep` waits for it, its key read in the session's `vars`.
+pub(crate) fn searcher(vars: Vars) -> Option<Box<dyn Decider>> {
+    waiting(DECISION_DEFAULT, vars, None)
+}
+
 /// The decision model `model`, each decision waited for `patience` at most, OpenRouter's key read
 /// in `vars`: its variable as its package names it, not as the catalog does, so that `llx decide`
 /// reads no catalog (A4: the fact is the package's).

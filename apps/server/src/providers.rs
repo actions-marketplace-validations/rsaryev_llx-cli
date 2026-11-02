@@ -18,7 +18,7 @@ mod deciding;
 mod kept;
 mod login;
 
-pub(crate) use deciding::{adviser, decider};
+pub(crate) use deciding::{adviser, decider, searcher};
 
 /// Where a key's variables are read: a session's environment (its client's, in the daemon),
 /// else, for `None`, this process's.

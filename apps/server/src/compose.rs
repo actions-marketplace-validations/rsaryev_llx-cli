@@ -1,7 +1,7 @@
 //! The composition root: the one place that builds the packages and hands them to the agent
 //! through its ports. [`compose`] builds the chat model; [`assemble`] builds the rest around any
 //! model: the brake, the workspace, the mode's gate, the person, and the tools: `bash`,
-//! `apply_patch`, `ask` in a session, `agents`, `jobs`. What it starts (threads, monitors) is closed when `assemble` returns,
+//! `apply_patch`, `grep`, `ask` in a session, `agents`, `jobs`. What it starts (threads, monitors) is closed when `assemble` returns,
 //! before `main` exits (which would skip their `Drop`).
 
 mod lane;
@@ -99,6 +99,7 @@ pub(crate) fn assemble(
         stopped: &limited,
         live: models.live,
         adviser: models.adviser,
+        searcher: models.searcher,
     };
     equip(&base, seat, work)
 }
@@ -150,6 +151,8 @@ fn equip(base: &Base, seat: Seat, work: impl FnOnce(&mut Rig) -> i32) -> i32 {
         main: OnceLock::new(),
         forks: crate::agents::fork::Forks::default(),
         advice: advice.as_ref(),
+        searcher: base.searcher,
+        charge: &charge,
     };
     // The main session's tools are an agent's, on the session's own gate and stop.
     let main_tools = Tools::new(&kit, base.gate, base.stopped);
@@ -192,6 +195,7 @@ struct Base<'a> {
     stopped: &'a (dyn Fn() -> bool + Sync),
     live: Option<&'a LiveChat>,
     adviser: Option<&'a dyn contracts::model::Decider>,
+    searcher: Option<&'a dyn contracts::model::Decider>,
 }
 
 /// What [`equip`] made around the base: the tools, the agents, the jobs and the inbox.

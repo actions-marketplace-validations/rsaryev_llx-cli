@@ -396,3 +396,34 @@ fn a_pattern_that_matches_nothing_finds_nothing_and_a_broken_one_is_a_usage_erro
         text(&broken.stderr)
     );
 }
+
+#[test]
+fn the_agent_s_grep_runs_the_search_with_the_decision_model_and_hands_back_what_answers() {
+    let home = Home::new();
+    project(&home);
+    let model = Model::start(vec![
+        Reply::call(
+            "grep",
+            serde_json::json!({
+                "query": "where is a failed request sent again",
+                "paths": ["project/src/retry.rs"],
+            }),
+        ),
+        Reply::decided("yes", &[("yes", 0.9), ("no", 0.1)]),
+    ]);
+    let out = home.exec(&model, &["exec", "-y", "--no-advice", "find it"], "");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    // The decision model read the file the call named, in llx's process: its key is there.
+    let asked = model.advised();
+    assert_eq!(asked.len(), 1, "{asked:?}");
+    assert_eq!(asked[0]["state"]["path"], "project/src/retry.rs");
+    // The model got the file back with its lines, named from the workspace.
+    let result = (model.requests().iter())
+        .flat_map(|request| request["messages"].as_array().cloned().unwrap_or_default())
+        .find(|message| message["role"] == "tool")
+        .map(|message| message["content"].to_string())
+        .unwrap();
+    assert!(result.contains("project/src/retry.rs"), "{result}");
+    assert!(result.contains("pub fn retry"), "{result}");
+    assert!(result.contains("1 read by"), "{result}");
+}

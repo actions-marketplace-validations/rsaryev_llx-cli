@@ -18,6 +18,8 @@ pub(crate) struct Models<'a> {
     pub live: Option<&'a LiveChat>,
     /// The decision model that advises each task's edges (C9); `None`: no advice.
     pub adviser: Option<&'a dyn Decider>,
+    /// The decision model `grep` reads the files with (B8); `None`: the files' words alone.
+    pub searcher: Option<&'a dyn Decider>,
 }
 
 /// Build the agent from `setup` on the chosen provider's chat model, and run `work` with it; its
@@ -37,10 +39,13 @@ pub(crate) fn lane(shared: &Shared, seat: Seat, work: impl FnOnce(&mut Rig) -> i
     let adviser = (!shared.options.no_advice)
         .then(|| crate::providers::adviser(vars))
         .flatten();
+    // `--no-advice` turns off the advice alone: a search the model asks for is its own.
+    let searcher = crate::providers::searcher(vars);
     let models = Models {
         chat: &live,
         live: Some(&live),
         adviser: adviser.as_deref(),
+        searcher: searcher.as_deref(),
     };
     lane_with(shared, seat, models, work)
 }

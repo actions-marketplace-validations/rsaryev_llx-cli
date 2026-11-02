@@ -1,6 +1,6 @@
 # Tools
 
-llx has five tools, and with `--schema` a sixth, `result`, asked for once the work is done. The
+llx has six tools, and with `--schema` a seventh, `result`, asked for once the work is done. The
 set is deliberately minimal: a new capability goes into one of them (as an `action`), or is left
 to the shell. The model works as you do at a terminal: it reads with `cat`,
 `sed -n` and `rg` and runs the checks in the shell, and changes files with a patch, as free text with
@@ -11,6 +11,7 @@ those present) in a `Runtimes:` line.
 | --- | --- |
 | [`bash`](#bash) | Commands that run to their end: reading, searching, running checks |
 | [`apply_patch`](#apply_patch) | Files added, changed, deleted or moved, with a patch |
+| [`grep`](#grep) | A search of the code by what a question means |
 | [`ask`](#ask) | A question to you |
 | [`agents`](#agents) | Other agents, in parallel |
 | [`jobs`](#jobs) | Monitors and schedules |
@@ -39,6 +40,13 @@ the file the cut fell in ([`apply_patch`](#apply_patch)).
 - The model reads Codex's summary: `Success. Updated the following files:` and one line a file, `A path`, `M path` or `D path` (a move is `D old`, `A new`). The diff is shown to you in the terminal, never sent to the model; a failure says why and that no file was changed.
 - Writes are atomic (a new temporary file, then a rename) and keep CRLF line endings and permissions; a read-only file is refused, and a file with other hard links is written in place.
 - It asks the gate, refuses to write when the file changed while the question was open, and changes only files inside the workspace, never llx's own. In `default` it changes them without asking, but a file inside `.git` is asked; in a read-only mode (`plan`) a patch is refused: a file written cannot be sandboxed.
+
+## grep
+
+- The search [`llx grep`](reference.md#llx-grep) runs, as a tool: `query` (the question, in plain words with any names it knows), `paths` (files and directories, the workspace when none), `patterns` (regexes as `rg` takes them, with `fixed` and `ignore_case`), which keep only the files they match. The files are ranked by the question's words, then the decision model reads the best of them and keeps those that answer.
+- It runs in llx's own process, not in a command's sandbox, which has neither the network nor the decision model's key: so the agent never runs `llx grep` through `bash`. It reads the decision model's key as `llx grep` does (`OPENROUTER_API_KEY`, else the key `/login` saved), from the session's environment in the daemon; with none it ranks by the words alone and says so. `--no-advice` turns off the advice only, not the search.
+- The model reads up to 8 files with their parts (whole functions where they are short, line-numbered, 120 lines in all), then `also:` and `unsure, read to check:`, and a line with how many files answered, the decision model and the cost; no file answering reads `No file answers`.
+- It only reads, so it asks no gate and runs beside the turn's other calls. Every path goes through the workspace, and a file llx keeps to itself (its keys, its sessions) is never listed. The decision model's cost is the task's, under `--budget`. Agents have it too.
 
 ## ask
 

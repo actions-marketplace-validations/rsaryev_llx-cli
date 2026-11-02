@@ -23,18 +23,22 @@ const GIT_WAIT: Duration = Duration::from_secs(10);
 /// Directories a walk leaves out where git cannot say what is ignored.
 const BUILT: &[&str] = &["target", "node_modules", "__pycache__"];
 
-/// Every file to read under `paths` (`.` when none), each once, in a stable order.
-pub(super) fn listed(paths: &[PathBuf]) -> Result<Vec<String>, Failure> {
+/// Every file to read under `paths` (`.` when none), each once, in a stable order: each as it
+/// is reached from `base`, which a relative path is taken from (the current directory, or the
+/// workspace's root).
+pub(super) fn listed(base: &Path, paths: &[PathBuf]) -> Result<Vec<String>, Failure> {
     let here = [PathBuf::from(".")];
     let paths = if paths.is_empty() { &here[..] } else { paths };
     let mut files = vec![];
     for path in paths {
-        let meta = std::fs::metadata(path)
+        let full = base.join(path);
+        let meta = std::fs::metadata(&full)
             .map_err(|error| Failure::Usage(format!("{}: {error}", path.display())))?;
         if meta.is_dir() {
-            match tracked(path) {
+            let prefix = shown(path);
+            match tracked(&full, &prefix) {
                 Some(found) => files.extend(found),
-                None => walk(path, &mut files),
+                None => walk(&full, &prefix, &mut files),
             }
         } else {
             files.push(shown(path));
@@ -50,9 +54,10 @@ pub(super) fn listed(paths: &[PathBuf]) -> Result<Vec<String>, Failure> {
     Ok(files)
 }
 
-/// The text of `path`, unless it is too large, unreadable, or not text (a NUL in its start).
-pub(super) fn read(path: &str) -> Option<Doc> {
-    let file = std::fs::File::open(path).ok()?;
+/// The text of `path` (as reached from `base`), unless it is too large, unreadable, or not text
+/// (a NUL in its start).
+pub(super) fn read(base: &Path, path: &str) -> Option<Doc> {
+    let file = std::fs::File::open(base.join(path)).ok()?;
     if file.metadata().ok()?.len() > MOST_BYTES {
         return None;
     }
@@ -67,27 +72,22 @@ pub(super) fn read(path: &str) -> Option<Doc> {
     })
 }
 
-/// What git lists under `dir`, tracked or not yet but not ignored; `None` outside a repository.
-fn tracked(dir: &Path) -> Option<Vec<String>> {
+/// What git lists under `dir`, tracked or not yet but not ignored, each under `prefix`; `None`
+/// outside a repository.
+fn tracked(dir: &Path, prefix: &str) -> Option<Vec<String>> {
     let mut git = tools::shell::shell("git ls-files -z --cached --others --exclude-standard");
     git.current_dir(dir);
     let printed = tools::shell::query(git, GIT_WAIT).ok()?;
-    let prefix = shown(dir);
     let listed = (printed.split(|&byte| byte == 0))
         .filter(|name| !name.is_empty())
-        .map(|name| {
-            let name = String::from_utf8_lossy(name);
-            match prefix.as_str() {
-                "." | "" => name.into_owned(),
-                prefix => format!("{}/{name}", prefix.trim_end_matches('/')),
-            }
-        });
+        .map(|name| under(prefix, &String::from_utf8_lossy(name)));
     Some(listed.take(MOST_FILES).collect())
 }
 
-/// Every file under `dir` but hidden ones and build output, links not followed.
-fn walk(dir: &Path, files: &mut Vec<String>) {
-    let mut pending = vec![dir.to_path_buf()];
+/// Every file under `top` but hidden ones and build output, links not followed, each under
+/// `prefix`.
+fn walk(top: &Path, prefix: &str, files: &mut Vec<String>) {
+    let mut pending = vec![top.to_path_buf()];
     while let Some(dir) = pending.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;
@@ -104,12 +104,22 @@ fn walk(dir: &Path, files: &mut Vec<String>) {
             if kind.is_dir() {
                 pending.push(entry.path());
             } else if !kind.is_symlink() {
-                files.push(shown(&entry.path()));
+                let path = entry.path();
+                let inside = path.strip_prefix(top).unwrap_or(&path);
+                files.push(under(prefix, &inside.to_string_lossy()));
                 if files.len() >= MOST_FILES {
                     return;
                 }
             }
         }
+    }
+}
+
+/// `name` inside the directory shown as `prefix`.
+fn under(prefix: &str, name: &str) -> String {
+    match prefix {
+        "." | "" => name.to_string(),
+        prefix => format!("{}/{name}", prefix.trim_end_matches('/')),
     }
 }
 

@@ -14,7 +14,6 @@ use super::judge::{self, Parts};
 use super::listing::Doc;
 use super::terms::Term;
 use super::{JUDGED_LINES, MAYBE, asks_about_tests, bar, rank};
-use crate::cli::GrepArgs;
 
 /// A module more than this share of the files name links nothing: `std::fmt`, `crate::error`.
 const COMMON: f64 = 0.25;
@@ -188,7 +187,7 @@ pub(super) fn around(text: &str, modules: &[String], lines: usize) -> Parts {
 /// the first round as it is.
 pub(super) fn second_round(
     decider: &dyn Decider,
-    args: &GrepArgs,
+    query: &str,
     docs: &[Doc],
     terms: &[Term],
     mut candidates: Vec<usize>,
@@ -227,7 +226,7 @@ pub(super) fn second_round(
     if parts.is_empty() {
         return (candidates, verdicts, second);
     }
-    let Ok(again) = judge::judged(decider, &args.query, &parts) else {
+    let Ok(again) = judge::judged(decider, query, &parts) else {
         return (candidates, verdicts, second);
     };
     for (((doc, _), yes), lead) in reached.iter().zip(again.yes).zip(again.lead) {

@@ -34,7 +34,7 @@
   </a>
 </p>
 
-llx is a model in a loop over five tools, on any provider: `bash`, `apply_patch`, `ask`, `agents` and `jobs`. A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema. One binary, three uses:
+llx is a model in a loop over six tools, on any provider: `bash`, `apply_patch`, `grep` (a search of the code by what a question means, the one `llx grep` runs), `ask`, `agents` and `jobs`. A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema. One binary, three uses:
 
 | Who calls | Command | What they get |
 | --- | --- | --- |

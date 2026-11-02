@@ -241,6 +241,7 @@ pub fn served(
             chat: chats[n],
             live: None,
             adviser: None,
+            searcher: None,
         };
         lane_with(shared, seat, models, work)
     };

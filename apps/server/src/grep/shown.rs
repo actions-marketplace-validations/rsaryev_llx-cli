@@ -35,7 +35,18 @@ pub(super) fn print(
         error::note(&summary(outcome, read, took));
         return Ok(());
     }
-    for found in outcome.found.iter().take(args.limit) {
+    let out = text(outcome, docs, args.limit);
+    error::print(&out)?;
+    error::note(&summary(outcome, read, took));
+    Ok(())
+}
+
+/// Each of the first `limit` files found with its parts, line-numbered; then the rest and those
+/// the model was unsure of, by name.
+pub(super) fn text(outcome: &Outcome, docs: &[Doc], limit: usize) -> String {
+    let path = |doc: usize| docs.get(doc).map_or("", |doc| doc.path.as_str());
+    let mut out = String::new();
+    for found in outcome.found.iter().take(limit) {
         let _ = writeln!(out, "{}  {:.2}", path(found.doc), found.score);
         let lines: Vec<&str> = docs
             .get(found.doc)
@@ -55,7 +66,7 @@ pub(super) fn print(
         }
         out.push('\n');
     }
-    let more: Vec<String> = (outcome.found.iter().skip(args.limit))
+    let more: Vec<String> = (outcome.found.iter().skip(limit))
         .map(|found| format!("{} ({:.2})", path(found.doc), found.score))
         .collect();
     if !more.is_empty() {
@@ -67,13 +78,11 @@ pub(super) fn print(
     if !maybe.is_empty() {
         let _ = writeln!(out, "unsure, read to check: {}", maybe.join(", "));
     }
-    error::print(&out)?;
-    error::note(&summary(outcome, read, took));
-    Ok(())
+    out
 }
 
 /// The line on stderr: how many files, how they were picked, the time and the cost.
-fn summary(outcome: &Outcome, read: usize, took: Duration) -> String {
+pub(super) fn summary(outcome: &Outcome, read: usize, took: Duration) -> String {
     let found = outcome.found.len();
     let seconds = took.as_secs_f64();
     match &outcome.how {

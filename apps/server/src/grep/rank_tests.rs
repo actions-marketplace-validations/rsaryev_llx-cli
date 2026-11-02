@@ -1,6 +1,6 @@
 use super::{defines, hits, ranked};
-use crate::commands::grep::listing::Doc;
-use crate::commands::grep::terms::terms;
+use crate::grep::listing::Doc;
+use crate::grep::terms::terms;
 
 fn doc(path: &str, text: &str) -> Doc {
     Doc {

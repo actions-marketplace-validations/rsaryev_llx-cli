@@ -1,5 +1,5 @@
 use super::{around, linked, modules};
-use crate::commands::grep::listing::Doc;
+use crate::grep::listing::Doc;
 
 fn doc(path: &str, text: &str) -> Doc {
     Doc {

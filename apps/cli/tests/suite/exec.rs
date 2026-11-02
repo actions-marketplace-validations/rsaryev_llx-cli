@@ -353,7 +353,7 @@ fn an_agent_is_offered_the_tools_of_the_main_session() {
         requests.len()
     );
     let main = names(&requests[0]);
-    assert_eq!(main, ["bash", "apply_patch", "agents", "jobs"]);
+    assert_eq!(main, ["bash", "apply_patch", "grep", "agents", "jobs"]);
     for request in &requests {
         assert_eq!(names(request), main, "one list, one prompt cache");
     }

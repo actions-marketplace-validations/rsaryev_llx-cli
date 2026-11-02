@@ -86,6 +86,7 @@ fn compose_ending(
         chat: &chat,
         live: None,
         adviser: None,
+        searcher: None,
     };
     let out = Captured::default();
     let output = Output::with(

@@ -33,11 +33,17 @@ fn ask_is_offered_in_a_session_only() {
             .collect()
     };
     composed(crate::modes::built("default"), true, vec![], |rig| {
-        assert_eq!(names(rig), ["bash", "apply_patch", "ask", "agents", "jobs"]);
+        assert_eq!(
+            names(rig),
+            ["bash", "apply_patch", "grep", "ask", "agents", "jobs"]
+        );
         0
     });
     composed(crate::modes::built("bypass"), false, vec![], |rig| {
-        assert_eq!(names(rig), ["bash", "apply_patch", "agents", "jobs"]);
+        assert_eq!(
+            names(rig),
+            ["bash", "apply_patch", "grep", "agents", "jobs"]
+        );
         0
     });
 }
@@ -94,6 +100,7 @@ fn commands_never_see_the_key_of_the_provider_in_use() {
         chat: &chat,
         live: None,
         adviser: None,
+        searcher: None,
     };
     let output = Output::with(
         false,
@@ -179,6 +186,7 @@ fn two_lanes_over_one_shared_share_the_workspace_but_keep_their_own() {
         chat: &chat,
         live: None,
         adviser: None,
+        searcher: None,
     };
     let output = quiet();
     let names =
@@ -196,7 +204,10 @@ fn two_lanes_over_one_shared_share_the_workspace_but_keep_their_own() {
             assert!(!std::ptr::eq(a.jobs, b.jobs));
             assert_ne!(a.session.id, b.session.id);
             assert_eq!(names(a), names(b));
-            assert_eq!(names(b), ["bash", "apply_patch", "ask", "agents", "jobs"]);
+            assert_eq!(
+                names(b),
+                ["bash", "apply_patch", "grep", "ask", "agents", "jobs"]
+            );
             0
         })
     });

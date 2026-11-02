@@ -60,7 +60,7 @@ impl Workspace {
 
     /// Where `path` points, for reading: relative to the root, or absolute; `~` is the home
     /// directory. `.` and `..` are resolved by name, so the result is clean in reports.
-    pub(crate) fn readable(&self, path: &str) -> Result<PathBuf, ToolError> {
+    pub fn readable(&self, path: &str) -> Result<PathBuf, ToolError> {
         let path = path.trim();
         if path.is_empty() {
             return Err(ToolError::Failed("the path is empty".into()));
@@ -97,7 +97,7 @@ impl Workspace {
     }
 
     /// `path` as a report shows it: relative to the root when inside it, else as it is.
-    pub(crate) fn shown(&self, path: &Path) -> String {
+    pub fn shown(&self, path: &Path) -> String {
         match path.strip_prefix(&self.root) {
             Ok(inside) if inside.as_os_str().is_empty() => ".".into(),
             Ok(inside) => inside.display().to_string(),

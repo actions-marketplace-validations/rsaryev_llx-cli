@@ -5,7 +5,7 @@ use contracts::model::{Answer, DecideError, Decider, Decision, Question};
 use serde_json::Value;
 
 use super::{Parts, clipped, judged};
-use crate::commands::grep::listing::Doc;
+use crate::grep::listing::Doc;
 
 /// A decision model that says yes with the probability its table gives the file's path, and
 /// writes down what it read; a path not in the table fails.
