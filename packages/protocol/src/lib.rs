@@ -16,7 +16,7 @@ pub use frame::{ToClient, ToServer};
 /// The protocol's version: a breaking change is a new one (W3).
 pub const VERSION: u32 = 2;
 
-/// The input that switches plan mode, as Shift+Tab sends it.
+/// The input that switches to the next mode, as Shift+Tab sends it.
 pub const SHIFT_TAB: &str = "\u{1b}[Z";
 /// The inputs that raise and lower the reasoning level (Shift+Up, Shift+Down).
 pub const MORE_REASONING: &str = "\u{1b}[1;2A";

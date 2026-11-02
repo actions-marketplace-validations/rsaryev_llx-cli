@@ -2,8 +2,8 @@ use serde_json::json;
 
 use super::*;
 use crate::{
-    Adjustment, Answer, Approval, Group, Input, JobRow, Label, Outcome, Place, Question, Running,
-    Saved, Target, Turn,
+    Adjustment, Answer, Approval, Choice, Group, Input, JobRow, Label, Outcome, Place, Question,
+    Running, Saved, Status, Target, Total, Turn, Update, VERSION,
 };
 
 fn through_json<T: Serialize + for<'de> Deserialize<'de>>(frame: &T) -> T {
@@ -51,7 +51,7 @@ fn every_frame_to_the_interface_comes_back_the_same_through_json() {
             turns: 2,
             cost: 0.01,
         }),
-        event(Event::Total(crate::Total {
+        event(Event::Total(Total {
             input_tokens: 24_100,
             cached_tokens: 21_000,
             output_tokens: 1_200,
@@ -62,7 +62,7 @@ fn every_frame_to_the_interface_comes_back_the_same_through_json() {
             answer: "b".into(),
             status: "done".into(),
         }])),
-        event(Event::Updated(crate::Update {
+        event(Event::Updated(Update {
             title: Some("Fix".into()),
         })),
         event(Event::Saved(vec![Saved {
@@ -107,7 +107,7 @@ fn every_question_to_the_person_comes_back_the_same_through_json() {
                     id: "colour".into(),
                     header: "Colour".into(),
                     text: "Which?".into(),
-                    choices: vec![crate::Choice {
+                    choices: vec![Choice {
                         label: "Red".into(),
                         description: String::new(),
                         preview: "#f00\n  red".into(),
@@ -139,7 +139,7 @@ fn every_question_to_the_person_comes_back_the_same_through_json() {
         ToClient::Resolved { id: 7 },
         ToClient::Done {
             id: 3,
-            done: Done::Status(crate::Status {
+            done: Done::Status(Status {
                 build: "0.4.0+1".into(),
                 pid: 42,
                 attached: 2,
@@ -152,7 +152,7 @@ fn every_question_to_the_person_comes_back_the_same_through_json() {
         ToClient::Done {
             id: 1,
             done: Done::Initialized {
-                version: crate::VERSION,
+                version: VERSION,
                 max_lanes: 8,
                 commands: vec![("help".into(), "the commands".into())],
                 modes: vec![("plan".into(), "plan first".into())],
@@ -214,7 +214,7 @@ fn every_frame_to_the_server_comes_back_the_same_through_json() {
         ToServer::Call {
             id: 10,
             command: Command::Initialize {
-                version: crate::VERSION,
+                version: VERSION,
                 place: Some(Place {
                     cwd: "/work/a".into(),
                     env: vec![("PATH".into(), "/venv/bin:/usr/bin".into())],

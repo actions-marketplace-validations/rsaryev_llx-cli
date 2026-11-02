@@ -54,7 +54,7 @@ pub enum Reply {
 #[serde(tag = "type", content = "said", rename_all = "snake_case")]
 pub enum Approval {
     Yes,
-    /// Yes, and the same tool is not asked about again.
+    /// Yes, and the same tool is not asked about again in this mode.
     Always,
     /// No, and what the person said beside it.
     No(Option<String>),

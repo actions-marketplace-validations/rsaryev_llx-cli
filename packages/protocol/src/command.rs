@@ -20,7 +20,8 @@ pub enum Command {
     },
     /// What the person sent a session: its next task, words for the task running, or a command.
     Input(Input),
-    /// Ctrl-C: stop the session's task; asked again soon after, the person wants out.
+    /// Ctrl-C: stop the session's task; with none running, or once it was stopped, the person
+    /// wants out.
     Interrupt { session: String },
     /// Stop the task of a lane or an agent, and never quit for it.
     Halt { id: String },
@@ -70,6 +71,7 @@ pub struct Place {
     pub dir: String,
 }
 
+/// The lane [`Command::Open`] opens.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", content = "id", rename_all = "snake_case")]
 pub enum Target {
@@ -87,7 +89,9 @@ pub struct Running {
     pub name: String,
 }
 
-/// What a daemon says of itself.
+/// What a daemon says of itself: its build and process, the interfaces attached, the lanes open
+/// and working, the desks moved to the background (`kept`), and the monitors and schedules
+/// running.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Status {
     pub build: String,
@@ -95,7 +99,7 @@ pub struct Status {
     pub attached: usize,
     pub lanes: usize,
     pub working: usize,
-    /// Absent from an older daemon: its lanes open still say whether it is in use.
+    /// Absent from an older daemon, as `jobs` is: its lanes open still say whether it is in use.
     #[serde(default)]
     pub kept: usize,
     #[serde(default)]
@@ -133,7 +137,8 @@ pub enum Done {
         #[serde(default)]
         background: bool,
     },
-    /// The task was stopped; `again` when it was asked a second time in a row.
+    /// What an interrupt came to: `again` when no task ran or it was stopped already, so the
+    /// interface may quit.
     Interrupted {
         again: bool,
     },
@@ -142,8 +147,7 @@ pub enum Done {
         #[serde(default)]
         running: Vec<Running>,
     },
-    /// The daemon: its build and process, the interfaces attached, the lanes open and working,
-    /// the desks moved to the background, and the monitors and schedules running.
+    /// What the daemon says of itself.
     Status(Status),
     /// The command could not be done, and why.
     Failed {

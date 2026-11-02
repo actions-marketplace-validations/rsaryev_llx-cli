@@ -27,10 +27,13 @@ pub enum Event {
         label: Label,
         outcome: Outcome,
     },
-    /// One step under the call running (what an agent it started does). Live only: never replayed (W6).
+    /// One step under the call running (what an agent it started does). Live only: never
+    /// replayed (W6).
     Step(String),
     /// The model's answer.
     Answer(String),
+    /// The task ended: how (`status`), in how long, in how many model turns, at what cost (US
+    /// dollars).
     TaskEnded {
         status: String,
         millis: u64,
@@ -60,7 +63,7 @@ pub enum Event {
     },
     /// The agent was closed: it stays in the tree, dimmed.
     Closed,
-    /// Tokens a model turn of an agent used.
+    /// Tokens a model turn of the session (a lane or an agent) used, in and out.
     Spent(u64),
     /// What the session spent in all so far, its agents included: sent whole,
     /// never as a change, so a client that missed one is right at the next.
