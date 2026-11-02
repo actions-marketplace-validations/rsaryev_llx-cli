@@ -70,15 +70,56 @@ impl History for Sessions {
         let Ok(entries) = std::fs::read_dir(&self.dir) else {
             return vec![];
         };
-        let mut sessions: Vec<Session> = entries
-            .flatten()
-            .filter(|entry| entry.path().extension().is_some_and(|e| e == "json"))
-            .filter_map(|entry| std::fs::read_to_string(entry.path()).ok())
-            .filter_map(|text| serde_json::from_str::<Session>(&text).ok())
+        let paths: Vec<PathBuf> = (entries.flatten())
+            .map(|entry| entry.path())
+            .filter(|path| path.extension().is_some_and(|e| e == "json"))
             .collect();
+        let mut sessions = read_all(&paths);
         sessions.sort_by_key(|session| std::cmp::Reverse(session.updated));
         sessions
     }
+}
+
+/// Files read by one thread at least: below it, a thread costs more than it saves.
+const PER_THREAD: usize = 64;
+/// Threads that read at most: past them, the disk is the limit.
+const THREADS: usize = 8;
+
+/// The sessions of `paths` that read as sessions, read by a few threads at once: opening and
+/// parsing are each about half of a list's time, and a list of thousands is read whole each time
+/// the person opens it.
+fn read_all(paths: &[PathBuf]) -> Vec<Session> {
+    let read = |paths: &[PathBuf]| -> Vec<Session> {
+        (paths.iter())
+            .filter_map(|path| std::fs::read_to_string(path).ok())
+            .filter_map(|text| serde_json::from_str::<Session>(&text).ok())
+            .collect()
+    };
+    let threads = (paths.len() / PER_THREAD).clamp(1, THREADS);
+    if threads == 1 {
+        return read(paths);
+    }
+    let chunk = paths.len().div_ceil(threads);
+    std::thread::scope(|scope| {
+        let read = &read;
+        // Every thread started before the first is joined, so they read at once.
+        let mut started = Vec::with_capacity(threads);
+        for (n, part) in paths.chunks(chunk).enumerate() {
+            let spawned = std::thread::Builder::new()
+                .name(format!("sessions-{n}"))
+                .spawn_scoped(scope, move || read(part));
+            started.push((part, spawned));
+        }
+        let mut sessions = Vec::with_capacity(paths.len());
+        for (part, spawned) in started {
+            match spawned {
+                Ok(handle) => sessions.extend(handle.join().unwrap_or_default()),
+                // A thread the OS refused: its part is read here.
+                Err(_) => sessions.extend(read(part)),
+            }
+        }
+        sessions
+    })
 }
 
 #[cfg(test)]

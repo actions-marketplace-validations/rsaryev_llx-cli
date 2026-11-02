@@ -54,6 +54,23 @@ fn a_session_round_trips_and_the_newest_comes_first() {
 }
 
 #[test]
+fn a_list_of_hundreds_has_every_session_newest_first_and_skips_what_is_not_one() {
+    let scratch = Scratch::new("hundreds");
+    let sessions = Sessions {
+        dir: scratch.0.clone(),
+    };
+    for n in 0..300 {
+        let mut session = sessions.start();
+        session.id = format!("{n}-s");
+        session.updated = n;
+        sessions.save(&session).unwrap();
+    }
+    std::fs::write(scratch.0.join("1-odd.json"), "not json").unwrap();
+    let listed: Vec<u64> = sessions.list().iter().map(|s| s.updated).collect();
+    assert_eq!(listed, (0..300).rev().collect::<Vec<_>>());
+}
+
+#[test]
 fn the_newest_session_is_never_an_agent() {
     let scratch = Scratch::new("agent");
     let sessions = Sessions {
