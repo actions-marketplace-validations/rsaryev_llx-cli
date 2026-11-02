@@ -57,7 +57,8 @@ impl History for Sessions {
 
     fn load(&self, id: Option<&str>) -> Result<Session, HistoryError> {
         let Some(id) = id else {
-            // An agent's session goes on only through its parent; `list` has read it already.
+            // The newest of the list that is not an agent's: an agent's session goes on only
+            // through its parent.
             return (self.list().into_iter())
                 .find(|session| !session.is_agent())
                 .ok_or(HistoryError::Empty);
