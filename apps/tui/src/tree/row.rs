@@ -130,19 +130,38 @@ pub(super) fn row(row: Row, names: usize, width: usize) -> Line<'static> {
         Branch::Mid => "  ├ ",
         Branch::Last => "  └ ",
     };
-    let said = match row.right.is_empty() {
-        true => row.detail,
-        false => format!("{} · {}", row.detail, row.right),
-    };
     let taken = 2 + text_width(branch);
+    let room = width.saturating_sub(taken);
+    let right = printable(&row.right);
+    // Time and tokens, or how a job runs, end at the right edge, as the footer's spend does; a
+    // row too narrow for both says them after what it does.
+    let beside = names + 4 + MIN_DETAIL + 2 + text_width(&right);
+    let (said, right) = match right.is_empty() || beside > room {
+        true if right.is_empty() => (row.detail, String::new()),
+        true => (format!("{} · {right}", row.detail), String::new()),
+        false => (row.detail, right),
+    };
+    let left = match right.is_empty() {
+        true => room,
+        false => room.saturating_sub(text_width(&right) + 2),
+    };
     let mut spans = vec![pointer, Span::styled(branch, style::dim())];
     spans.extend(columns(
         (row.glyph, row.name, name_style),
         &said,
-        (names, width.saturating_sub(taken)),
+        (names, left),
     ));
+    if !right.is_empty() {
+        let drawn: usize = spans.iter().map(|span| text_width(&span.content)).sum();
+        let gap = width.saturating_sub(drawn + text_width(&right));
+        spans.push(Span::raw(" ".repeat(gap)));
+        spans.push(Span::styled(right, style::dim()));
+    }
     Line::from(spans)
 }
+
+/// The fewest columns of what a row does kept beside its right side.
+const MIN_DETAIL: usize = 12;
 
 /// A row after its pointer: a mark, the name in its column, and where it stands, dimmed. `room`
 /// is what is left of the width after the pointer (and a branch).

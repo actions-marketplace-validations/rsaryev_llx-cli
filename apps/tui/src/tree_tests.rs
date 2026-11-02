@@ -96,12 +96,15 @@ fn an_agent_shows_how_long_it_worked_and_its_tokens_after_what_it_does() {
     let spinner = |_| Span::raw("*");
     let later = now + std::time::Duration::from_secs(68);
     let row = style::plain(&render(&app, later, &spinner)[1]);
-    // The seconds in two digits, as every duration of the interface reads.
-    assert_eq!(row, "    └ * scout  thinking · 1m 08s · 54.1k tokens");
+    // The seconds in two digits, as every duration of the interface reads, at the right edge.
+    assert_eq!(
+        row,
+        "    └ * scout  thinking                1m 08s · 54.1k tokens"
+    );
 }
 
 #[test]
-fn wide_tree_keeps_names_readable_and_statistics_near_the_rows() {
+fn wide_tree_keeps_names_readable_and_statistics_at_the_right_edge() {
     let now = Instant::now();
     let mut app = App::new(160, 30, vec![]);
     app.event(Event::TaskStarted("polish session navigation".into()), now);
@@ -115,14 +118,12 @@ fn wide_tree_keeps_names_readable_and_statistics_near_the_rows() {
         .collect();
     assert!(shown[0].contains("polish session navigation"), "{shown:?}");
     assert!(shown[1].contains("inline-picker"), "{shown:?}");
+    // Each row's time ends where the footer's spend does, so the rows read as one table.
     for row in &shown[..2] {
+        assert_eq!(text_width(row), 160, "{row:?}");
         assert!(
-            text_width(row) <= 100,
-            "tree must not stretch across a wide terminal: {row:?}"
-        );
-        assert!(
-            row.find("13s").unwrap() < 80,
-            "statistics stay near the name: {row:?}"
+            row.trim_end().ends_with("13s") || row.contains("tokens"),
+            "{row:?}"
         );
     }
 }
@@ -180,8 +181,8 @@ fn tree_shows_lane_rows_with_time_and_tokens() {
         .map(style::plain)
         .collect();
     insta::assert_snapshot!(rows.join("\n"), @"
-    * fix the flaky  working · 1m 12s · 54.1k tokens
-      └ * scout  thinking · 1m 12s · 12.0k tokens
+    * fix the flaky  working                         1m 12s · 54.1k tokens
+      └ * scout  thinking                            1m 12s · 12.0k tokens
     ↓ manage · ← 1 other session (1 finished)
     ");
 }

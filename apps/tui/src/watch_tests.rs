@@ -124,3 +124,23 @@ fn a_command_that_ended_well_reads_as_done_not_failed() {
         "{screen}"
     );
 }
+
+#[test]
+fn how_a_command_runs_or_ended_ends_at_the_right_edge_as_the_footers_spend_does() {
+    let now = Instant::now();
+    let stopped = JobEnd {
+        how: "Stopped: by the person".into(),
+        failed: true,
+    };
+    let row = JobRow {
+        detail: "sleep 30".into(),
+        ..shell(Some(stopped))
+    };
+    let mut app = with(row, now);
+    let screen = Term::new(&app).draw(&mut app, now);
+    let row = screen.lines().find(|line| line.contains("✗ nap")).unwrap();
+    assert!(row.ends_with(" Stopped: by the person"), "{screen}");
+    assert_eq!(crate::wrap::width(row), 70, "{screen}");
+    // The command stays beside its name, then the room up to it.
+    assert!(row.contains("nap  sleep 30   "), "{screen}");
+}
