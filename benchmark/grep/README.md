@@ -35,9 +35,9 @@ model descriptions among them: a search must not drown in them.
 
 - `words`: `llx grep --lexical`, the ranking by the question's words alone;
 - `judged`: `llx grep`, the decision model reading the best of them (an OpenRouter key; about
-  $0.11 a run);
+  $0.13 a run);
 - `hybrid` and `hybrid-words`: `llx grep -i -e PATTERN` with the question, the pattern `rg` is given
-  (below), with the decision model and without;
+  (below), with the decision model (about $0.05 a run) and without;
 - `rg`: `rg -c -i PATTERN`, the files by their count of matches, `PATTERN` the one an agent would
   type first (`rg` in each question).
 
