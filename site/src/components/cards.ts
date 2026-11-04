@@ -175,7 +175,7 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'Five tools, one binary of 2.9–3.8 MB',
+    title: 'Five tools, one binary under 4 MB',
     text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. It takes no plugins, no skills and no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
     link: { href: DOCS, label: 'The docs' },
     panel: [

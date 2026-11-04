@@ -10,7 +10,7 @@ pick by what your workflow needs.
 
 | | llx | claude-code-action | codex-action |
 | --- | --- | --- | --- |
-| What runs | `llx exec`: one binary of 2.9–3.8 MB | Claude Code through its Agent SDK, on Bun | `codex exec`, from npm, on Node |
+| What runs | `llx exec`: one binary under 4 MB | Claude Code through its Agent SDK, on Bun | `codex exec`, from npm, on Node |
 | Install | The release archive, checked against `SHA256SUMS` and attested | `curl … install.sh \| bash` of a version pinned in the action | `npm install -g @openai/codex` (the latest, unless `codex-version`) |
 | Models | 1,000+ from 200+ providers: OpenRouter, OpenAI, Anthropic, DeepSeek, any key the [catalog](../MODELS.md) names | Claude: the Anthropic API, Bedrock, Vertex, Foundry, with OIDC | OpenAI's, or an Azure endpoint |
 | How it reaches GitHub | `gh` and `git` in its shell, with the job's token | MCP servers for comments, inline reviews, commits and CI logs, and wrappers around `git push` and `gh` | Its shell; the workflow posts |

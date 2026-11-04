@@ -7,7 +7,7 @@ That is why it is flexible and why it is safer:
 - **Flexible.** A task is whatever a person can do with a shell: review a diff, run the tests and say why one fails, triage an issue, write release notes, audit a repository. A new task is a new prompt, not a new tool, and the same prompt runs on GitHub, GitLab or any runner that has a shell.
 - **Safer.** The job that runs the model holds a read-only token. A second job, with write access and no model key, posts what the first one answered. The write token is never near the model, so nothing the model reads can make it push or comment. Some other actions give the model MCP tools and a token that can write; here the split between two jobs is the boundary, not a list of rules.
 
-`llx` is one binary (2.9 MB on macOS, 3.8 MB on Linux) that starts in about 5 ms, so a step does not wait on a runtime to install.
+`llx` is one binary under 4 MB that starts in about 5 ms, so a step does not wait on a runtime to install.
 
 - [The GitHub Action](#the-github-action)
 - [The two-job pattern](#the-two-job-pattern)

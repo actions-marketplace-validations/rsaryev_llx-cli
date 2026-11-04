@@ -16,7 +16,7 @@ export function Hero() {
         </h1>
         <p className="lede">
           <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One
-          binary of 2.9 MB on macOS and 3.8 MB on Linux, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. It is
+          binary under 4 MB, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. It is
           a minimal agent at your terminal, too.
         </p>
         <InstallCommand tabs={INSTALL} />

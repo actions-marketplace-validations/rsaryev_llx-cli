@@ -6,7 +6,7 @@ allowed-tools: Bash(llx --help) Bash(llx exec --help) Bash(llx doctor) Bash(llx 
 
 # llx
 
-An agent runtime in one native binary (2.9 MB on macOS, 3.8 MB on Linux): a coding agent for the terminal, one task for
+An agent runtime in one native binary under 4 MB: a coding agent for the terminal, one task for
 scripts and CI, helpers on any model for another agent, and a decision step. It runs on any provider and model of the models.dev catalog, a
 ChatGPT plan among them, with its commands in the operating system's sandbox.
 

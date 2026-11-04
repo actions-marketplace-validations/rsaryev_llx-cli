@@ -1,6 +1,6 @@
 # llx
 
-> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary: 2.9 MB on macOS, 3.8 MB on Linux.
+> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary under 4 MB.
 > `llx exec` runs one task and ends with the model's answer, and with `--schema` data matching
 > your JSON Schema, with an exit code and `--json` events as a contract. The same binary is a
 > minimal agent at the terminal (`llx`, five tools: `bash`, `apply_patch`, `ask`, `agents`,

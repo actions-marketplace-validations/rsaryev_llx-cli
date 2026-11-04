@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One binary of 2.9 MB on macOS and 3.8 MB on Linux, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. A minimal agent at your terminal, too.
+  <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One binary under 4 MB, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. A minimal agent at your terminal, too.
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
   <a href="https://github.com/rsaryev/llx-cli/releases/latest"><img src="https://img.shields.io/github/v/release/rsaryev/llx-cli?color=black&label=release" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-black" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-black" alt="macOS and Linux">
-  <img src="https://img.shields.io/badge/binary-2.9%20MB%20macOS%20%C2%B7%203.8%20MB%20Linux-black" alt="One binary: 2.9 MB on macOS, 3.8 MB on Linux">
+  <img src="https://img.shields.io/badge/binary-under%204%20MB-black" alt="One binary under 4 MB">
   <img src="https://img.shields.io/badge/Rust-black?logo=rust" alt="Written in Rust">
 </p>
 
