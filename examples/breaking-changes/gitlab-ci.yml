@@ -12,7 +12,7 @@ breaking changes:
     GIT_DEPTH: 0 # the base must be in the clone
   before_script:
     - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl git jq > /dev/null
-    - curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
+    - curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
     - git fetch -q origin "$CI_DEFAULT_BRANCH"
   script:

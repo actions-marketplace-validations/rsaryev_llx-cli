@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- The project is now `llx-cli`: the repository is `rsaryev/llx-cli` (the action `uses: rsaryev/llx-cli@v0`, the skill `npx skills add rsaryev/llx-cli`, the image `ghcr.io/rsaryev/llx-cli`), and the binary's package is `llx-cli` (`cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`). The command is still `llx`. GitHub redirects the old name. The README, the site and the docs give the binary's real size: 2.9 MB on macOS, 3.8 MB on Linux (v0.2.0), not "under 4 MB".
+
 - A monitor waits for one thing, as Localix's does: its command is a check run every `every` seconds (10 by default, at least 5) until it exits 0 or its time is up, and the agent is told once how it ended (`met after 4 checks (32 s)`, `timed out after …`, `could not run: Exit code: 127`) with what the last check printed. It no longer hands the agent each line a command prints: a monitor printing every second kept a task going for 22 turns in 32 s. In the list a monitor shows its checks (`≋ ready … 3 checks · 4m 28s left`), opens with Enter to what its last check printed, and stays listed with how it ended, as a command in the background does.
 - A job the agent stops says nothing more of it; one the person stops (`x`) opens no task of its own, and the agent reads it with the person's next task.
 - The list under the composer ends each row's time and tokens, or how a command in the background runs or ended, at the right edge, where the footer's spend ends: the rows read as one table, what a row does cut first when the room runs out.

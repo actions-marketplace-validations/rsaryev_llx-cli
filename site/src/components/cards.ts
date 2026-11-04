@@ -44,7 +44,7 @@ export const CARDS: Card[] = [
   },
   {
     title: 'A step your pipeline can branch on',
-    text: 'llx exec runs one task and prints JSON events; the last one holds the status, your data and the cost. On GitHub, uses: rsaryev/llx@v0 runs the same step and returns the answer, the status and the spend.',
+    text: 'llx exec runs one task and prints JSON events; the last one holds the status, your data and the cost. On GitHub, uses: rsaryev/llx-cli@v0 runs the same step and returns the answer, the status and the spend.',
     link: { href: EXAMPLES_DOCS, label: 'Ready-made workflows' },
     panel: [
       shell(
@@ -161,7 +161,7 @@ export const CARDS: Card[] = [
     text: 'One skill teaches Claude Code, Codex, Cursor and other agents what llx does and when it pays, with examples to run as they are and each command\'s help as the installed llx prints it. They hand reading to a helper and ask llx decide rather than read every file themselves.',
     link: { href: `${GITHUB}/tree/main/skills/llx`, label: 'The skill' },
     panel: [
-      shell('$ npx skills add rsaryev/llx'),
+      shell('$ npx skills add rsaryev/llx-cli'),
       shell('$ llx decide "Bug report or feature request?" \\\n    --choices bug,feature issues/*'),
       {
         grid: [
@@ -175,7 +175,7 @@ export const CARDS: Card[] = [
     ],
   },
   {
-    title: 'Five tools, one binary under 4 MB',
+    title: 'Five tools, one binary of 2.9–3.8 MB',
     text: 'bash reads, searches and runs the checks; apply_patch changes files; ask puts a question to you; agents and jobs do the rest. It takes no plugins, no skills and no MCP servers. At your terminal it is a minimal agent: sign in with /login, then give it a task.',
     link: { href: DOCS, label: 'The docs' },
     panel: [

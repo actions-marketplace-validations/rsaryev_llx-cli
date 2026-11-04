@@ -241,7 +241,7 @@ fn named_beyond(line: &str) -> Option<&'static str> {
 }
 
 /// The binary (`apps/cli`), the one crate that may depend on an app (L4).
-const BINARY: &str = "llx";
+const BINARY: &str = "llx-cli";
 /// The apps the binary composes (D7): the server and the interface.
 const COMPOSED: &[&str] = &["server", "tui"];
 

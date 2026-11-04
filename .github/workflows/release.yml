@@ -135,7 +135,7 @@ jobs:
     permissions:
       contents: write
       # A signed statement of which workflow and commit built each archive:
-      # `gh attestation verify llx-<target>.tar.gz --repo rsaryev/llx`.
+      # `gh attestation verify llx-<target>.tar.gz --repo rsaryev/llx-cli`.
       id-token: write
       attestations: write
     steps:
@@ -177,7 +177,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" dist/* \
             --verify-tag --title "llx $VERSION" --notes-file notes.md $prerelease
 
-  # The image of the release, ghcr.io/<owner>/llx:<version> (scripts/image/Dockerfile): each
+  # The image of the release, ghcr.io/<owner>/<repository>:<version> (scripts/image/Dockerfile): each
   # architecture built on its own runner from the archive the release ships, checked, pushed under
   # its own tag; `image` then joins them under the version (and `latest`, but for a prerelease).
   image-arch:
@@ -245,7 +245,7 @@ jobs:
           docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
           docker buildx imagetools inspect "$image:$VERSION"
 
-  # `uses: rsaryev/llx@v0` follows the releases: once the release exists, the major tag (v0 for
+  # `uses: rsaryev/llx-cli@v0` follows the releases: once the release exists, the major tag (v0 for
   # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving
   # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), so it releases
   # nothing again. The workflow's own token cannot point a tag at a commit whose .github/workflows

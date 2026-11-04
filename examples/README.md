@@ -4,12 +4,12 @@ Ready-made uses of llx, by where they run. Each was run for real before it was p
 
 | Where | Example |
 | --- | --- |
-| GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
+| GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx-cli@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
 | Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
 
 ## GitHub workflows
 
-Each runs llx through its action, `rsaryev/llx@v0`, and was run in a test repository first.
+Each runs llx through its action, `rsaryev/llx-cli@v0`, and was run in a test repository first.
 
 ### Install one
 
@@ -26,7 +26,7 @@ From a clone of your repository, with [`gh`](https://cli.github.com) signed in, 
 ```bash
 mkdir -p .github/workflows
 curl -fsSL -o .github/workflows/llx-review.yml \
-  https://raw.githubusercontent.com/rsaryev/llx/main/examples/github/review.yml
+  https://raw.githubusercontent.com/rsaryev/llx-cli/main/examples/github/review.yml
 gh secret set OPENROUTER_API_KEY   # paste a key made for CI
 git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requests" && git push
 ```

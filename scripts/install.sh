@@ -2,7 +2,7 @@
 # Installs the llx binary from a GitHub release:
 #
 #   curl -fsSL https://llx.sh/install | sh
-# (the same file as main has it: https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh)
+# (the same file as main has it: https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh)
 #
 # Environment:
 #   LLX_VERSION      a release such as 0.2.0 (default: the latest)
@@ -14,7 +14,7 @@
 # functions at most, and runs nothing.
 set -eu
 
-repo="rsaryev/llx"
+repo="rsaryev/llx-cli"
 install_dir=${LLX_INSTALL_DIR:-$HOME/.local/bin}
 version=${LLX_VERSION:-}
 

@@ -34,7 +34,7 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "range=${tag:+$tag..}HEAD" >> "$GITHUB_OUTPUT"
       - id: llx
-        uses: rsaryev/llx@v0
+        uses: rsaryev/llx-cli@v0
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           RANGE: ${{ steps.last.outputs.range }}

@@ -9,15 +9,15 @@
 </p>
 
 <p align="center">
-  <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One binary under 4 MB, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. A minimal agent at your terminal, too.
+  <code>llx exec</code> runs one task and ends with an answer and an exit code your pipeline can branch on. One binary of 2.9 MB on macOS and 3.8 MB on Linux, on 1,000+ models from 200+ providers: a ChatGPT sign-in, OpenRouter or your own key. A minimal agent at your terminal, too.
 </p>
 
 <p align="center">
-  <a href="https://github.com/rsaryev/llx/actions/workflows/ci.yml"><img src="https://github.com/rsaryev/llx/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
-  <a href="https://github.com/rsaryev/llx/releases/latest"><img src="https://img.shields.io/github/v/release/rsaryev/llx?color=black&label=release" alt="Latest release"></a>
+  <a href="https://github.com/rsaryev/llx-cli/actions/workflows/ci.yml"><img src="https://github.com/rsaryev/llx-cli/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/rsaryev/llx-cli/releases/latest"><img src="https://img.shields.io/github/v/release/rsaryev/llx-cli?color=black&label=release" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-black" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-black" alt="macOS and Linux">
-  <img src="https://img.shields.io/badge/binary-under%204%20MB-black" alt="One binary under 4 MB">
+  <img src="https://img.shields.io/badge/binary-2.9%20MB%20macOS%20%C2%B7%203.8%20MB%20Linux-black" alt="One binary: 2.9 MB on macOS, 3.8 MB on Linux">
   <img src="https://img.shields.io/badge/Rust-black?logo=rust" alt="Written in Rust">
 </p>
 
@@ -66,13 +66,13 @@ jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 curl -fsSL https://llx.sh/install | sh
 ```
 
-On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. `llx.sh/install` is [scripts/install.sh](scripts/install.sh) as `main` has it (the site serves it; `https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh` is the same file). To pin a release:
+On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. `llx.sh/install` is [scripts/install.sh](scripts/install.sh) as `main` has it (the site serves it; `https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh` is the same file). To pin a release:
 
 ```bash
 curl -fsSL https://llx.sh/install | LLX_VERSION=0.2.0 sh
 ```
 
-Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx llx`), or build it with Rust 1.89 or later: `cargo install --locked --git https://github.com/rsaryev/llx llx`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx:<version>` has llx with `git`, `jq` and `curl`.
+Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx-cli`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli`), or build it with Rust 1.89 or later: `cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx-cli:<version>` has llx with `git`, `jq` and `curl`.
 
 Then run `llx` in a project and type `/login`: a ChatGPT sign-in in the browser, an OpenRouter key, or a key for any other provider of the catalog. A provider's key in its variable (`OPENROUTER_API_KEY`) works too, and is what CI uses. `llx doctor` checks the sign-ins, the models and the shell.
 
@@ -82,7 +82,7 @@ In CI llx is the same agent as at your terminal, given one task. It works throug
 
 ```yaml
 # a step of a job, after actions/checkout
-- uses: rsaryev/llx@v0
+- uses: rsaryev/llx-cli@v0
   id: llx
   env:
     OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -130,10 +130,10 @@ Claude Code, Codex, another agent or a script of yours can call llx from its she
 A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
 ```bash
-npx skills add rsaryev/llx
+npx skills add rsaryev/llx-cli
 ```
 
-In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/llx`. The skill is a thin stub that points the agent at each command's `--help`, so what it reads always matches the installed llx. Everything else: [docs/agents.md](docs/agents.md).
+In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/llx-cli`. The skill is a thin stub that points the agent at each command's `--help`, so what it reads always matches the installed llx. Everything else: [docs/agents.md](docs/agents.md).
 
 ## Documentation
 

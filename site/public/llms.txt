@@ -1,6 +1,6 @@
 # llx
 
-> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary under 4 MB.
+> llx is an ultrafast, lightweight agent runtime for coding and CI, one binary: 2.9 MB on macOS, 3.8 MB on Linux.
 > `llx exec` runs one task and ends with the model's answer, and with `--schema` data matching
 > your JSON Schema, with an exit code and `--json` events as a contract. The same binary is a
 > minimal agent at the terminal (`llx`, five tools: `bash`, `apply_patch`, `ask`, `agents`,
@@ -10,7 +10,7 @@
 
 ## Install
 
-- `curl -fsSL https://llx.sh/install | sh` (macOS, Linux x86_64 and arm64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/llx llx`.
+- `curl -fsSL https://llx.sh/install | sh` (macOS, Linux x86_64 and arm64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`.
 - Sign in with `/login` in a session (`llx`), or set the provider's key (for example `OPENROUTER_API_KEY`).
 
 ## Use
@@ -26,7 +26,7 @@
 
 ## In CI
 
-- `uses: rsaryev/llx@v0` is a GitHub Action: it installs llx, runs `llx exec` once, and returns the answer, the exit code and the cost.
+- `uses: rsaryev/llx-cli@v0` is a GitHub Action: it installs llx, runs `llx exec` once, and returns the answer, the exit code and the cost.
 - The agent works through the shell (`gh`, `git`, `jq` and the project's own tools): no MCP server, no GitHub tool, no built-in prompt. The workflow owns the prompt and the posting.
 - The job that runs the model holds a read-only token; a second job, with write access and no model key, posts what it answered.
 - Guide: https://llx.sh/docs/ci. Recipes: https://llx.sh/docs/recipes. Ready-made workflows: https://llx.sh/docs/examples.
@@ -34,10 +34,10 @@
 ## From another agent
 
 - `llx exec` hands a task to a helper on any provider and model; `llx decide` answers a quick choice about stdin.
-- A skill for any agent that takes skills: `npx skills add rsaryev/llx` (in Claude Code also a plugin: `/plugin install llx --marketplace rsaryev/llx`). It points the agent at each command's `--help`.
+- A skill for any agent that takes skills: `npx skills add rsaryev/llx-cli` (in Claude Code also a plugin: `/plugin install llx --marketplace rsaryev/llx-cli`). It points the agent at each command's `--help`.
 - Guide: https://llx.sh/docs/agents.
 
 ## Links
 
 - Docs: https://llx.sh/docs (each page is listed below; all of them in one file: https://llx.sh/llms-full.txt)
-- Source: https://github.com/rsaryev/llx
+- Source: https://github.com/rsaryev/llx-cli

@@ -7,7 +7,7 @@ That is why it is flexible and why it is safer:
 - **Flexible.** A task is whatever a person can do with a shell: review a diff, run the tests and say why one fails, triage an issue, write release notes, audit a repository. A new task is a new prompt, not a new tool, and the same prompt runs on GitHub, GitLab or any runner that has a shell.
 - **Safer.** The job that runs the model holds a read-only token. A second job, with write access and no model key, posts what the first one answered. The write token is never near the model, so nothing the model reads can make it push or comment. Some other actions give the model MCP tools and a token that can write; here the split between two jobs is the boundary, not a list of rules.
 
-`llx` is one binary under 4 MB that starts in about 5 ms, so a step does not wait on a runtime to install.
+`llx` is one binary (2.9 MB on macOS, 3.8 MB on Linux) that starts in about 5 ms, so a step does not wait on a runtime to install.
 
 - [The GitHub Action](#the-github-action)
 - [The two-job pattern](#the-two-job-pattern)
@@ -24,7 +24,7 @@ That is why it is flexible and why it is safer:
 
 ## The GitHub Action
 
-`rsaryev/llx` is a GitHub Action. It installs llx, runs one task, and hands back the answer, the exit code and the spend. A pull request gate in one step:
+`rsaryev/llx-cli` is a GitHub Action. It installs llx, runs one task, and hands back the answer, the exit code and the spend. A pull request gate in one step:
 
 ```yaml
 name: llx
@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: rsaryev/llx@v0
+      - uses: rsaryev/llx-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -135,7 +135,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: rsaryev/llx@v0
+      - uses: rsaryev/llx-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -297,7 +297,7 @@ It prints the option it picked alone (`--json`: with each option's probability, 
 Install llx and run `llx exec` yourself. On a runner that is a script step:
 
 ```yaml
-- run: curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
+- run: curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | sh
 - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Review
   env:
@@ -310,7 +310,7 @@ Install llx and run `llx exec` yourself. On a runner that is a script step:
       </dev/null > review.json
 ```
 
-To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | LLX_VERSION=0.2.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
+To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | LLX_VERSION=0.2.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
 
 Two details matter on a runner:
 
@@ -331,7 +331,7 @@ Two details matter on a runner:
 
 ## GitLab
 
-The same two jobs. The release's image, `ghcr.io/rsaryev/llx:<version>` (Linux x86_64 and arm64), has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/llx:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
+The same two jobs. The release's image, `ghcr.io/rsaryev/llx-cli:<version>` (Linux x86_64 and arm64), has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/llx-cli:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
 
 ```yaml
 stages: [think, post]
@@ -348,7 +348,7 @@ llx-review:
     LLX_MODEL: anthropic/claude-haiku-5.5
   before_script:
     - apt-get update -qq && apt-get install -y -qq curl ca-certificates git jq
-    - curl -fsSL https://raw.githubusercontent.com/rsaryev/llx/main/scripts/install.sh | sh
+    - curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
   script:
     - |

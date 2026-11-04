@@ -1,5 +1,5 @@
 export const SITE = 'https://llx.sh';
-export const GITHUB = 'https://github.com/rsaryev/llx';
+export const GITHUB = 'https://github.com/rsaryev/llx-cli';
 /** The docs, on this site: each page prerendered from the repository's markdown (src/docs/). */
 export const DOCS = '/docs';
 /** The CI guide and its ready-made workflows. */

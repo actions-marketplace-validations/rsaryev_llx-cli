@@ -39,7 +39,7 @@ expect() {
   fi
 }
 
-core="-p agent -p contracts -p llx -p models -p openai -p openrouter -p server -p session -p tools"
+core="-p agent -p contracts -p llx-cli -p models -p openai -p openrouter -p server -p session -p tools"
 
 expect "a core crate: it and every dependent, tested" "" "fmt
 clippy $core
@@ -52,28 +52,28 @@ repo
 secrets" packages/contracts/src/tool.rs
 
 expect "the app: itself; its tests hold the rules" "" "fmt
-clippy -p llx
-test -p llx
+clippy -p llx-cli
+test -p llx-cli
 secrets" apps/cli/src/main.rs
 
 expect "the server: itself and the binary, which composes it" "" "fmt
-clippy -p llx -p server
-test -p llx -p server
+clippy -p llx-cli -p server
+test -p llx-cli -p server
 secrets" apps/server/src/commands.rs
 
 expect "the interface: itself and the binary, which composes it" "" "fmt
-clippy -p llx -p tui
-test -p llx -p tui
+clippy -p llx-cli -p tui
+test -p llx-cli -p tui
 secrets" apps/tui/src/app.rs
 
 expect "a leaf crate: it and its dependents" "" "fmt
-clippy -p llx -p queue -p server
-test -p llx -p queue -p server
+clippy -p llx-cli -p queue -p server
+test -p llx-cli -p queue -p server
 secrets" packages/queue/src/lib.rs
 
 expect "a file a crate includes is the crate's (and Markdown has links)" "" "fmt
-clippy -p agent -p llx -p server
-test -p agent -p llx -p server
+clippy -p agent -p llx-cli -p server
+test -p agent -p llx-cli -p server
 mdlinks
 secrets" packages/agent/src/prompt.md
 
@@ -89,8 +89,8 @@ repo
 secrets" clippy.toml
 
 expect "a crate's manifest: its crates, and the size" "" "fmt
-clippy -p llx -p server -p tools
-test -p llx -p server -p tools
+clippy -p llx-cli -p server -p tools
+test -p llx-cli -p server -p tools
 size
 secrets" packages/tools/Cargo.toml
 
@@ -156,8 +156,8 @@ skill
 secrets" .claude-plugin/marketplace.json
 
 expect "a file gone: its crate, and the links that may name it" "" "fmt
-clippy -p llx -p server -p tools
-test -p llx -p server -p tools
+clippy -p llx-cli -p server -p tools
+test -p llx-cli -p server -p tools
 mdlinks
 secrets" packages/tools/src/no-such-file.rs
 
