@@ -4,7 +4,7 @@
 # each built on its own runner, joined under one tag. For GitLab and any CI that runs a job in an
 # image, so a job installs nothing:
 #   image: ghcr.io/rsaryev/llx-cli:<version>
-# The build context holds `llx`, unpacked from llx-<target>.tar.gz.
+# The build context holds `llx`, unpacked from llx-cli-<target>.tar.gz.
 FROM debian:bookworm-slim
 
 RUN apt-get update -q \

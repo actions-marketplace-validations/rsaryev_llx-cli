@@ -98,5 +98,5 @@ not point llx at secrets you would not send there.
 
 Release archives are built by GitHub Actions from the tagged commit and published with a
 `SHA256SUMS` file; `install.sh` refuses an archive whose checksum does not match. Each archive's
-provenance is attested: `gh attestation verify llx-<target>.tar.gz --repo rsaryev/llx-cli` checks
+provenance is attested: `gh attestation verify llx-cli-<target>.tar.gz --repo rsaryev/llx-cli` checks
 which workflow and commit built it.

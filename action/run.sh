@@ -78,7 +78,7 @@ install_llx() {
     *) die "no llx build for $(uname -s) $(uname -m); build it and use version: system" ;;
   esac
   bin=${RUNNER_TEMP:-${TMPDIR:-/tmp}}/llx-bin/$version
-  archive=llx-$target.tar.gz
+  archive=llx-cli-$target.tar.gz
   base=https://github.com/rsaryev/llx-cli/releases/download/v$version
   if [ ! -x "$bin/llx" ]; then
     sums=$(mktemp -d)

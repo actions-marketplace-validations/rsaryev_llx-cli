@@ -9,7 +9,7 @@
 # Host targets: macOS builds aarch64 and x86_64, and joins them into universal-apple-darwin;
 # Linux builds its own architecture (glibc).
 #
-# Archives: llx-<target>.tar.gz holding llx, README.md and LICENSE at the top level.
+# Archives: llx-cli-<target>.tar.gz holding llx, README.md and LICENSE at the top level.
 set -eu
 
 cd "$(dirname "$0")/.."
@@ -47,7 +47,7 @@ package() {
   binary=$2
   stage=$(mktemp -d)
   cp "$binary" "$stage/llx"
-  archive="llx-$name.tar.gz"
+  archive="llx-cli-$name.tar.gz"
   cp README.md LICENSE "$stage/"
   rm -f "$dist/$archive"
   tar -C "$stage" -czf "$dist/$archive" llx README.md LICENSE
@@ -83,7 +83,7 @@ fi
 
 (
   cd "$dist"
-  for archive in llx-*; do sha256 "$archive"; done >SHA256SUMS
+  for archive in llx-cli-*; do sha256 "$archive"; done >SHA256SUMS
 )
 echo "llx $version -> dist/"
 ls -l "$dist"

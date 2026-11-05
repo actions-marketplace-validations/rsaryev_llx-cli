@@ -8,7 +8,7 @@
 #   LLX_VERSION      a release such as 0.2.0 (default: the latest)
 #   LLX_INSTALL_DIR  where the binary goes (default: $HOME/.local/bin)
 #
-# It downloads llx-<target>.tar.gz and SHA256SUMS from the release, refuses an archive whose
+# It downloads llx-cli-<target>.tar.gz and SHA256SUMS from the release, refuses an archive whose
 # SHA-256 does not match, and replaces the binary in one rename, so a running llx is not torn.
 # Everything runs from `main` on the last line: a download cut short by the network defines
 # functions at most, and runs nothing.
@@ -80,7 +80,7 @@ sha256_of() {
 
 main() {
   target=$(detect_target)
-  archive="llx-$target.tar.gz"
+  archive="llx-cli-$target.tar.gz"
   if [ -n "$version" ]; then
     base="https://github.com/$repo/releases/download/v${version#v}"
   else

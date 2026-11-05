@@ -36,12 +36,12 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
    - Linux (`ubuntu-22.04`, for an older glibc): `x86_64-unknown-linux-gnu`;
    - Linux arm64 (`ubuntu-22.04-arm`): `aarch64-unknown-linux-gnu`.
 
-   Each archive (`llx-<target>.tar.gz`) holds the binary, `README.md` and `LICENSE`. The binary
+   Each archive (`llx-cli-<target>.tar.gz`) holds the binary, `README.md` and `LICENSE`. The binary
    is run with `--version` before upload; on Linux it must also run `--version` in a plain
    `ubuntu:22.04` container with no network, and on macOS the universal archive must unpack, run
    and hold both architectures.
 4. **publish**: joins every platform's `SHA256SUMS`, checks them against the archives, attests
-   where each archive was built (`gh attestation verify llx-<target>.tar.gz --repo rsaryev/llx-cli`),
+   where each archive was built (`gh attestation verify llx-cli-<target>.tar.gz --repo rsaryev/llx-cli`),
    and runs `gh release create vX.Y.Z` with the archives, `SHA256SUMS` and `install.sh`, and the
    CHANGELOG section as the notes.
 5. **image-arch** and **image**: on each architecture's runner, the image of
@@ -61,7 +61,7 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
 `mise use -g github:rsaryev/llx-cli` picks the archive for the machine by its name, and
 `cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli` takes it by
 `[package.metadata.binstall]` in `apps/cli/Cargo.toml`: keep the archives' names
-`llx-<target>.tar.gz`, with `llx` at their top, or both break. After a release that changes the
+`llx-cli-<target>.tar.gz`, with `llx` at their top, or both break. After a release that changes the
 archives, their targets or the image, try each once (`mise`, `cargo binstall`, the image) on a
 clean machine.
 

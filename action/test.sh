@@ -363,16 +363,16 @@ case "$(uname -s)-$(uname -m)" in
   *) target='' ;;
 esac
 if [ -n "$target" ]; then
-  mkdir -p "$tmp/dl" && cp "$tmp/bin/llx" "$tmp/dl/llx" && tar -czf "$tmp/dl/llx-$target.tar.gz" -C "$tmp/dl" llx
-  sum=$( (sha256sum "$tmp/dl/llx-$target.tar.gz" 2>/dev/null || shasum -a 256 "$tmp/dl/llx-$target.tar.gz") | cut -d ' ' -f 1)
+  mkdir -p "$tmp/dl" && cp "$tmp/bin/llx" "$tmp/dl/llx" && tar -czf "$tmp/dl/llx-cli-$target.tar.gz" -C "$tmp/dl" llx
+  sum=$( (sha256sum "$tmp/dl/llx-cli-$target.tar.gz" 2>/dev/null || shasum -a 256 "$tmp/dl/llx-cli-$target.tar.gz") | cut -d ' ' -f 1)
   mkdir -p "$tmp/fake" # a curl that serves the files above and records what was asked
   cat >"$tmp/fake/curl" <<'CURL'
 #!/usr/bin/env bash
 while [ $# -gt 0 ]; do case "$1" in -o) out=$2; shift ;; http*) url=$1 ;; esac; shift; done
 echo "$url" >>"$STUB_DIR/urls"
 case "$url" in
-  */SHA256SUMS) printf '%s  llx-%s.tar.gz\n' "${STUB_SUM:?}" "${STUB_TARGET:?}" >"$out" ;;
-  *) cp "$STUB_DL/llx-$STUB_TARGET.tar.gz" "$out" ;;
+  */SHA256SUMS) printf '%s  llx-cli-%s.tar.gz\n' "${STUB_SUM:?}" "${STUB_TARGET:?}" >"$out" ;;
+  *) cp "$STUB_DL/llx-cli-$STUB_TARGET.tar.gz" "$out" ;;
 esac
 CURL
   chmod +x "$tmp/fake/curl"
@@ -382,7 +382,7 @@ CURL
   run_action "${install_env[@]}" GITHUB_ACTION_PATH="$tmp/actpath" STUB_ANSWER=installed
   eq "install: the run" "0 installed" "$rc $(output result)"
   eq "install: the binary that ran is the one unpacked" "$tmp/run/rt/llx-bin/9.9.9/llx" "$(cat "$tmp/run/which")"
-  has "install: the version of Cargo.toml's [workspace.package]" "$(cat "$tmp/run/urls")" "/releases/download/v9.9.9/llx-$target.tar.gz"
+  has "install: the version of Cargo.toml's [workspace.package]" "$(cat "$tmp/run/urls")" "/releases/download/v9.9.9/llx-cli-$target.tar.gz"
   has "install: the checksums too" "$(cat "$tmp/run/urls")" "/releases/download/v9.9.9/SHA256SUMS"
   has "install: on PATH for the next steps" "$(cat "$tmp/run/path")" "/llx-bin/9.9.9"
   run_action "${install_env[@]}" GITHUB_ACTION_PATH="$tmp/actpath" STUB_SUM=0000
