@@ -69,7 +69,7 @@ curl -fsSL https://llx.sh/install | sh
 On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. `llx.sh/install` is [scripts/install.sh](scripts/install.sh) as `main` has it (the site serves it; `https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh` is the same file). To pin a release:
 
 ```bash
-curl -fsSL https://llx.sh/install | LLX_VERSION=0.2.0 sh
+curl -fsSL https://llx.sh/install | LLX_VERSION=0.3.0 sh
 ```
 
 Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx-cli`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli`), or build it with Rust 1.89 or later: `cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx-cli:<version>` has llx with `git`, `jq` and `curl`.

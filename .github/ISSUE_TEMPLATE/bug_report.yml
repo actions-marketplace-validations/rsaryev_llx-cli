@@ -7,7 +7,7 @@ body:
     attributes:
       label: Version
       description: The output of `llx --version`.
-      placeholder: llx 0.2.0
+      placeholder: llx 0.3.0
     validations:
       required: true
   - type: input

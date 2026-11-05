@@ -310,7 +310,7 @@ Install llx and run `llx exec` yourself. On a runner that is a script step:
       </dev/null > review.json
 ```
 
-To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | LLX_VERSION=0.2.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
+To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | LLX_VERSION=0.3.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
 
 Two details matter on a runner:
 

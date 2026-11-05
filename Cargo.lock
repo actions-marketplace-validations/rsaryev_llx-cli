@@ -10,7 +10,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "contracts",
  "serde_json",
@@ -262,7 +262,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "contracts"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1002,7 +1002,7 @@ checksum = "4744e383959f0db86ede514b809b1c53251889093803c05267acc7d4e7030d70"
 
 [[package]]
 name = "llx-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crossterm",
  "insta",
@@ -1099,7 +1099,7 @@ dependencies = [
 
 [[package]]
 name = "models"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "contracts",
  "miniz_oxide",
@@ -1210,7 +1210,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openai"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "contracts",
@@ -1221,7 +1221,7 @@ dependencies = [
 
 [[package]]
 name = "openrouter"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "contracts",
  "log",
@@ -1492,11 +1492,11 @@ dependencies = [
 
 [[package]]
 name = "protocol"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "provider-kit"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -1527,7 +1527,7 @@ dependencies = [
 
 [[package]]
 name = "queue"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "quote"
@@ -1845,7 +1845,7 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "agent",
  "clap",
@@ -1866,7 +1866,7 @@ dependencies = [
 
 [[package]]
 name = "session"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "contracts",
  "getrandom 0.4.3",
@@ -2276,7 +2276,7 @@ dependencies = [
 
 [[package]]
 name = "tools"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "base64 0.23.1",
  "contracts",
@@ -2287,7 +2287,7 @@ dependencies = [
 
 [[package]]
 name = "tui"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "crossterm",
  "insta",

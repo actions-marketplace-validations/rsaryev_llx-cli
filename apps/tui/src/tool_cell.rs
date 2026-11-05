@@ -175,27 +175,7 @@ pub(crate) fn doing(label: &Label) -> String {
 /// when that was not 0; an edit the files it changed; the rest show their report's first row.
 fn output_rows(name: &str, report: &str) -> Vec<(String, Style)> {
     match name {
-        "bash" if let Some(said) = backgrounded(report) => {
-            let printed = report
-                .lines()
-                .skip_while(|line| *line != "Output so far:")
-                .skip(1);
-            let mut out: Vec<_> = rows(printed).collect();
-            out.push((said, style::dim()));
-            out
-        }
-        "bash" => {
-            // The header's lines (`Exit code: 1`, `Wall time: …`) end at `Output:`.
-            let head = report.lines().next().unwrap_or_default();
-            let printed = report.lines().skip_while(|line| *line != "Output:").skip(1);
-            let mut out: Vec<_> = rows(printed).collect();
-            if !exit_zero(report) {
-                out.push((printable(head), style::failed()));
-            } else if out.is_empty() {
-                out.push(("(no output)".into(), style::dim()));
-            }
-            out
-        }
+        "bash" => bash_rows(report),
         // The files as the model reads them (`M src/a.rs`), without the line that says success.
         "apply_patch" => (report.lines().skip(1))
             .map(|line| (printable(line), style::dim()))
@@ -208,6 +188,30 @@ fn output_rows(name: &str, report: &str) -> Vec<(String, Style)> {
             .collect(),
         _ => rows(report.lines()).take(1).collect(),
     }
+}
+
+/// What a command printed: under it its exit when that was not 0, or how it went on in the
+/// background.
+fn bash_rows(report: &str) -> Vec<(String, Style)> {
+    if let Some(said) = backgrounded(report) {
+        let printed = report
+            .lines()
+            .skip_while(|line| *line != "Output so far:")
+            .skip(1);
+        let mut out: Vec<_> = rows(printed).collect();
+        out.push((said, style::dim()));
+        return out;
+    }
+    // The header's lines (`Exit code: 1`, `Wall time: …`) end at `Output:`.
+    let head = report.lines().next().unwrap_or_default();
+    let printed = report.lines().skip_while(|line| *line != "Output:").skip(1);
+    let mut out: Vec<_> = rows(printed).collect();
+    if !exit_zero(report) {
+        out.push((printable(head), style::failed()));
+    } else if out.is_empty() {
+        out.push(("(no output)".into(), style::dim()));
+    }
+    out
 }
 
 /// The non-blank `lines`, each as a dim row.
