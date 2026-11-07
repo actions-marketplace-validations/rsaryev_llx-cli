@@ -69,6 +69,19 @@ fn instructions_run_from_the_repository_root_down_to_the_workspace() {
 }
 
 #[test]
+fn a_workspace_with_no_instruction_file_says_so_and_no_search_for_one_is_needed() {
+    let scratch = Scratch::new();
+    std::fs::create_dir_all(scratch.path().join("repo/.git")).unwrap();
+    let found = instructions(&scratch.path().join("repo"));
+    assert!(
+        found.contains(NONE_FOUND),
+        "the model is told, rather than left to walk the disk for one: {found}"
+    );
+    scratch.file("repo/AGENTS.md", "root rules");
+    assert!(!instructions(&scratch.path().join("repo")).contains(NONE_FOUND));
+}
+
+#[test]
 fn outside_a_repository_only_the_workspace_counts() {
     // Inside a repository the walk rightly finds it, so this needs a directory outside any.
     let Some(scratch) = Scratch::outside_repository() else {
@@ -83,7 +96,7 @@ fn outside_a_repository_only_the_workspace_counts() {
     let found = instructions(&scratch.path().join("work"));
     assert!(found.contains("work rules"));
     assert!(!found.contains("parent rules"));
-    assert_eq!(instructions(&scratch.path().join("nowhere")), "");
+    assert_eq!(instructions(&scratch.path().join("nowhere")), NONE_FOUND);
 }
 
 #[test]
@@ -118,7 +131,7 @@ fn the_environment_says_where_when_and_how() {
     assert!(text.contains(&format!("Working directory: {}", scratch.path().display())));
     assert!(text.contains("Date: 2026-10-22 (UTC)"));
     assert!(text.contains("Mode: default: the person approves each command"));
-    assert!(text.trim_end().ends_with("</environment>"));
+    assert!(text.contains("</environment>"));
 }
 
 #[test]

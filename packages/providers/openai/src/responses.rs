@@ -332,6 +332,7 @@ fn usage(response: &Value, model: &str) -> Usage {
         millis: 0,
         input_tokens: tokens("/usage/input_tokens"),
         cached_tokens: tokens("/usage/input_tokens_details/cached_tokens"),
+        written_tokens: 0,
         output_tokens: tokens("/usage/output_tokens"),
     }
 }

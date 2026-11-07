@@ -10,7 +10,7 @@ const TRIES: usize = 3;
 /// `raw` with the string it stops in closed, then every object and array still open; `None` when
 /// it does not stop inside a string, or is not JSON even then. An escape the cut fell in (`\`,
 /// `\u12`, half a surrogate pair) is left out: its character was not written whole.
-pub(crate) fn closed(raw: &str) -> Option<Value> {
+pub fn closed(raw: &str) -> Option<Value> {
     let mut open = Vec::new();
     let (mut in_string, mut escaped) = (false, false);
     for c in raw.chars() {

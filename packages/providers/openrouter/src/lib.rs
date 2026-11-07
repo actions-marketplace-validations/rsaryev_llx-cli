@@ -7,7 +7,6 @@
 pub mod auth;
 pub mod chat;
 pub mod client;
-mod cut;
 mod stream;
 pub mod system_one;
 

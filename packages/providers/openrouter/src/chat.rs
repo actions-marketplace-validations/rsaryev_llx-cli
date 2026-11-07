@@ -45,7 +45,7 @@ fn arrived(mut completion: Completion, tools: &[ToolSpec]) -> Completion {
         && let Some(call) = completion.calls.last_mut()
         && let Value::String(raw) = &call.arguments
         && (tools.iter()).any(|spec| spec.name == call.name && matches!(spec.input, Input::Text(_)))
-        && let Some(closed) = crate::cut::closed(raw)
+        && let Some(closed) = provider_kit::cut::closed(raw)
     {
         call.arguments = closed;
     }
@@ -103,6 +103,7 @@ fn read(value: &Value, model: &str, millis: u64) -> Result<Completion, ChatError
             millis,
             input_tokens: tokens("/usage/prompt_tokens"),
             cached_tokens: tokens("/usage/prompt_tokens_details/cached_tokens"),
+            written_tokens: tokens("/usage/prompt_tokens_details/cache_write_tokens"),
             output_tokens: tokens("/usage/completion_tokens"),
         },
         // `length`: the host's output limit stopped it, a call's arguments maybe midway.

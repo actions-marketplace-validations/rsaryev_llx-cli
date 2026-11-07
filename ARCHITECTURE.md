@@ -48,7 +48,7 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 | Seam | `protocol` | no crate at all |
 | Core | `agent` | `contracts` |
 | Adapters | `tools`, `session` | `contracts` |
-| Adapters | `providers/{models,openai,openrouter}` | `contracts`, `kit` |
+| Adapters | `providers/{models,anthropic,openai,openrouter}` | `contracts`, `kit` |
 | Server | `apps/server` (library `llx`) | every package |
 | Interface | `apps/tui` (its client to the server a module, `client.rs`) | `protocol` |
 | Binary | `apps/cli` | `server`, `tui`, `protocol` (the frames and the offer it hands over, P7) |

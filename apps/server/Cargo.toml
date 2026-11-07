@@ -25,6 +25,7 @@ agent.workspace = true
 contracts.workspace = true
 protocol.workspace = true
 queue.workspace = true
+anthropic.workspace = true
 openai.workspace = true
 models.workspace = true
 openrouter.workspace = true

@@ -12,6 +12,8 @@ use crate::fs::diff::{self, Line};
 /// The most lines, and characters, of a file given back whole when a hunk is not found in it.
 const WHOLE_LINES: usize = 300;
 const WHOLE_CHARS: usize = 12_000;
+/// Lines shown before and after the nearest ones of a long file.
+const AROUND: usize = 6;
 
 /// A run of the file's lines replaced by others.
 struct Edit<'a> {
@@ -162,14 +164,21 @@ fn missed(lines: &[&str], why: &str, old: &[String], shown: &str) -> String {
     }
     match nearest(lines, old) {
         Some(at) => {
-            let near = lines.iter().skip(at).take(old.len());
-            let near: Vec<&str> = near.copied().collect();
-            format!(
-                "{why}The nearest lines in {shown}, from line {}:\n{}\nCopy the file's lines \
-                 exactly, indentation included",
-                at + 1,
-                near.join("\n")
-            )
+            // With the lines around them: a blank or a heading the patch guessed at shows what
+            // really comes before and after.
+            let from = at.saturating_sub(AROUND);
+            let to = (at + old.len() + AROUND).min(lines.len());
+            let mut out = format!(
+                "{why}The nearest lines in {shown}, from line {}:\n",
+                from + 1
+            );
+            for (number, line) in lines.iter().enumerate().take(to).skip(from) {
+                let _ = writeln!(out, "{:>6}\t{line}", number + 1);
+            }
+            out.push_str(
+                "Copy the file's lines exactly, indentation included, without the numbers",
+            );
+            out
         }
         None => format!("{why}Read the file again and copy them exactly, indentation included"),
     }

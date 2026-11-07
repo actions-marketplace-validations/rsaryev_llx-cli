@@ -95,11 +95,20 @@ fn instructions(root: &Path) -> String {
     if let Some(own) = instructions::personal(home.as_deref()) {
         blocks.push(instructions::block("personal_instructions", &own));
     }
-    for found in instructions::project(root) {
+    let project = instructions::project(root);
+    if project.is_empty() {
+        // Said, so the model does not walk the disk for a file that is not there.
+        blocks.push(NONE_FOUND.to_string());
+    }
+    for found in project {
         blocks.push(instructions::block("project_instructions", &found));
     }
     blocks.join("\n\n")
 }
+
+/// What the context says when no project instruction file applies.
+const NONE_FOUND: &str = "No project instructions: no AGENTS.md or CLAUDE.md from the repository's \
+    root down to the working directory.";
 
 /// What an earlier session asked and how each task ended, newest kept when it is long, and where
 /// it ran when that is not `root`.

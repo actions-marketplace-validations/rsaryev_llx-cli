@@ -154,8 +154,8 @@ impl Agent<'_> {
             conversation,
             used: 0,
         };
-        // Real tokens per estimated one, from the last answer's usage.
-        let mut ratio = 1.0;
+        // Real tokens per estimated one, from the last answer's usage, an earlier task's too.
+        let mut ratio = run.conversation.ratio();
         // The specs go with every request: they count in the usage the ratio is taken from, and
         // against the limit, but no stage can elide them.
         let fixed = history::specs(&specs);
@@ -188,6 +188,7 @@ impl Agent<'_> {
             if completion.usage.input_tokens > 0 && estimate > 0 {
                 let input = completion.usage.input_tokens as f64;
                 ratio = (input / (estimate + fixed) as f64).clamp(0.3, 4.0);
+                run.conversation.measured(ratio);
             }
             // A reply cut off with no call is not the answer: what it wrote stays, and the model
             // goes on from it, as Claude Code's does, where Codex and opencode end the task.

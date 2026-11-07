@@ -52,7 +52,7 @@ fn a_request_with_no_billed_amount_is_priced_from_the_catalog() {
     let expected = catalog()
         .model("openai", "gpt-6-luna")
         .unwrap()
-        .price(100_000, 60_000, 1_000)
+        .price(100_000, 60_000, 0, 1_000)
         .unwrap();
     assert!(cost > 0.0 && (cost - expected).abs() < 1e-12, "{cost}");
 }

@@ -260,12 +260,10 @@ Output:
 
 Limits:
       --max-turns <N>
-          Model turns for one task (1 to 10000). None by default: the time limit bounds a task
+          Model turns for one task (1 to 10000). None by default: the time limit bounds a task in `llx exec`
 
       --timeout <SECONDS>
-          Seconds one task may take, up to a day; at the limit a command or agent running is killed, and the task stops at its next model turn, or while it waits on its monitors or agents
-          
-          [default: 1800]
+          Seconds one task may take, up to a day; at the limit a command or agent running is killed, and the task stops at once, or while it waits on its monitors or agents. Default: 1800 in `llx exec`; none in a session, where you stop a task yourself
 
       --budget <USD>
           Dollars one task may spend (more than 0, e.g. 0.50); it stops at the next model turn once its turns, its agents' and the decision model's advice have cost that. A turn the provider reports no cost for is priced from the catalog (a ChatGPT sign-in's at its API price); a model the catalog has no price for counts nothing. The first of --max-turns, --timeout and --budget reached ends the task with exit 2

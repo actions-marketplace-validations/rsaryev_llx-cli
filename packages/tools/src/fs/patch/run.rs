@@ -38,8 +38,18 @@ pub(super) fn run(
 fn carry_out(workspace: &Workspace, gate: &dyn Gate, patch: &str) -> Result<ToolOutput, ToolError> {
     let hunks = parse(patch).map_err(ToolError::Failed)?;
     let (mut files, mut steps) = (vec![], vec![]);
+    // Every hunk is tried, so each file whose lines do not match is named at once: a patch of
+    // many files is mended in one retry, not one file a turn.
+    let mut missed: Vec<String> = Vec::new();
     for hunk in hunks {
-        plan(workspace, &mut files, &mut steps, hunk)?;
+        match plan(workspace, &mut files, &mut steps, hunk) {
+            Ok(()) => {}
+            Err(ToolError::Failed(why)) => missed.push(why.trim_end().to_string()),
+            Err(fatal @ ToolError::Fatal(_)) => return Err(fatal),
+        }
+    }
+    if !missed.is_empty() {
+        return Err(ToolError::Failed(missed.join("\n\n")));
     }
     for step in &steps {
         // No sandbox keeps a change inside a `.git` safe, the workspace's or a nested
@@ -172,7 +182,14 @@ fn update(
             error.utf8_error()
         ))
     })?;
-    let (new, diff) = apply::update(&old, chunks, &shown).map_err(ToolError::Failed)?;
+    let (new, diff) = match apply::update(&old, chunks, &shown) {
+        Ok(changed) => changed,
+        Err(why) => {
+            // As it was, for a later hunk of the same file and for what is reported.
+            file.now = Some(old.into_bytes());
+            return Err(ToolError::Failed(why));
+        }
+    };
     let moved = match to {
         Some(to) => move_to(workspace, files, to, &source, new)?,
         None => {

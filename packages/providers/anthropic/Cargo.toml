@@ -1,0 +1,18 @@
+[package]
+name = "anthropic"
+description = "A model provider: the Messages API (Anthropic's models), with its prompt cache, levels and thinking"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The chat port and the provider kit only (rule L3); HTTP and TLS are the kit's (A7).
+[dependencies]
+contracts.workspace = true
+log.workspace = true
+provider-kit.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

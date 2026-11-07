@@ -509,6 +509,33 @@ fn the_tool_specs_count_in_the_ratio_and_against_the_ceiling() {
     );
 }
 
+#[test]
+fn a_follow_up_task_sizes_its_first_request_by_what_the_last_one_measured() {
+    let strategy = Measured::default();
+    // The model counts far fewer tokens than the estimate (sealed reasoning, say): a third.
+    let measured = |completion: Completion| Completion {
+        usage: Usage {
+            input_tokens: 3,
+            ..Usage::default()
+        },
+        ..completion
+    };
+    let chat = Scripted::new(vec![measured(done("One.")), measured(done("Two."))]);
+    let agent = Agent {
+        window: 128_000,
+        strategy: &strategy,
+        ..agent(&chat, &[], None, &Silent)
+    };
+    let first = agent.run(None, "First", &[]);
+    agent.run(Some(first.conversation), "Second", &[]);
+    let seen = strategy.0.into_inner().unwrap();
+    assert!(
+        seen[1].1 < 1.0,
+        "the follow-up's first request is not sized as if nothing were known: ratio {}",
+        seen[1].1
+    );
+}
+
 /// A reply the model's output limit cut off, with what it had written so far.
 fn cut(text: Option<&str>) -> Completion {
     Completion {

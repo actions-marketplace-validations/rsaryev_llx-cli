@@ -30,16 +30,43 @@ pub(crate) enum Halt {
 /// the same brake, so their spend counts.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Limits {
-    pub time: Duration,
+    /// `None` is no bound.
+    pub time: Option<Duration>,
     /// Dollars; `None` is no bound.
     pub budget: Option<f64>,
 }
 
+/// Whether a person watches the task: one who does stops it when they will.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Attended {
+    /// A session: the person stops a task, which is never cut off at a time of its own.
+    Yes,
+    /// `llx exec`: nobody is there, and a task that hangs must end.
+    No,
+}
+
+/// How long an unattended task may take when no time is given.
+const UNATTENDED: Duration = Duration::from_secs(1800);
+
 impl Limits {
+    /// The limits of a task: `seconds` and `budget` as the command line gives them, else no time
+    /// limit for a task a person watches and half an hour for one nobody does.
+    pub(crate) fn of(seconds: Option<u64>, budget: Option<f64>, attended: Attended) -> Self {
+        let time = match (seconds, attended) {
+            (Some(seconds), _) => Some(Duration::from_secs(seconds)),
+            (None, Attended::Yes) => None,
+            (None, Attended::No) => Some(UNATTENDED),
+        };
+        Self { time, budget }
+    }
+
     /// Bounded in time alone.
     #[cfg(test)]
     pub(crate) fn time(time: Duration) -> Self {
-        Self { time, budget: None }
+        Self {
+            time: Some(time),
+            budget: None,
+        }
     }
 }
 
@@ -80,6 +107,16 @@ impl Armed {
     }
 }
 
+/// Why the brake let no request out, as the model's error.
+fn halted(halt: Halt) -> ChatError {
+    ChatError::Unavailable(match halt {
+        Halt::TimedOut => "the time limit ran out".into(),
+        Halt::OverBudget => "the budget ran out".into(),
+        Halt::Closed => "the output was closed".into(),
+        Halt::Interrupted => STOPPED.into(),
+    })
+}
+
 impl<'a> Brake<'a> {
     pub(crate) fn new(
         chat: &'a dyn Chat,
@@ -97,7 +134,7 @@ impl<'a> Brake<'a> {
     /// Start a task within `limits`; what it spent before is forgotten.
     pub(crate) fn arm(&self, limits: Limits) {
         *lock(&self.armed) = Armed {
-            deadline: Instant::now().checked_add(limits.time),
+            deadline: (limits.time).and_then(|time| Instant::now().checked_add(time)),
             budget: limits.budget,
             spent: 0.0,
             halt: None,
@@ -147,22 +184,27 @@ impl Chat for Brake<'_> {
             armed.halt = halt.or(armed.halt);
             (halt, armed.deadline)
         };
-        match halt {
-            Some(halt) => Err(ChatError::Unavailable(match halt {
-                Halt::TimedOut => "the time limit ran out".into(),
-                Halt::OverBudget => "the budget ran out".into(),
-                Halt::Closed => "the output was closed".into(),
-                Halt::Interrupted => STOPPED.into(),
-            })),
-            None => {
-                // The request is not waited for past the task's time (C2: a value, not a timer).
-                let deadline = [request.deadline, until].into_iter().flatten().min();
-                let done = self.chat.complete(Request {
-                    deadline,
-                    ..request
-                })?;
+        if let Some(halt) = halt {
+            return Err(halted(halt));
+        }
+        // The request is not waited for past the task's time (C2: a value, not a timer).
+        let deadline = [request.deadline, until].into_iter().flatten().min();
+        match self.chat.complete(Request {
+            deadline,
+            ..request
+        }) {
+            Ok(done) => {
                 self.charge(done.usage.cost);
                 Ok(done)
+            }
+            // A request the time limit cut off: the task ran out of time, whatever the host's
+            // words for the cut were, and ends so (with the limit named), not as a failure.
+            Err(error) => {
+                let due = lock(&self.armed).due();
+                match due {
+                    Some(Halt::TimedOut) => Err(halted(Halt::TimedOut)),
+                    Some(Halt::OverBudget | Halt::Closed | Halt::Interrupted) | None => Err(error),
+                }
             }
         }
     }

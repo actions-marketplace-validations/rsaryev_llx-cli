@@ -365,14 +365,14 @@ fn a_request_is_priced_from_the_catalog_with_its_long_context_band() {
             "overrides": [{"when": {"context": {"gt": 272000}}, "price": 15.0}]}}}}))
     .unwrap();
     // 100k in, 60k of it cached, 1k out: 40k × $2 + 60k × $0.2 + 1k × $10, per million.
-    let small = model.price(100_000, 60_000, 1_000).unwrap();
+    let small = model.price(100_000, 60_000, 0, 1_000).unwrap();
     assert!((small - (0.08 + 0.012 + 0.01)).abs() < 1e-9, "{small}");
     // Past 272k of input, the long-context prices.
-    let large = model.price(300_000, 0, 1_000).unwrap();
+    let large = model.price(300_000, 0, 0, 1_000).unwrap();
     assert!((large - (1.2 + 0.015)).abs() < 1e-9, "{large}");
     let free: Model = serde_json::from_value(json!({"name": "F"})).unwrap();
     assert_eq!(
-        free.price(10, 0, 10),
+        free.price(10, 0, 0, 10),
         None,
         "no price in the catalog: none estimated"
     );
@@ -380,7 +380,36 @@ fn a_request_is_priced_from_the_catalog_with_its_long_context_band() {
         .model("openai", "gpt-6-luna")
         .cloned()
         .unwrap();
-    assert!(luna.price(10_000, 0, 1_000).unwrap() > 0.0);
+    assert!(luna.price(10_000, 0, 0, 1_000).unwrap() > 0.0);
+}
+
+#[test]
+fn input_written_to_the_cache_is_priced_at_the_write_price_of_the_shortest_keep() {
+    let model: Model = serde_json::from_value(json!({"name": "M", "cost": {"text": {
+        "input": {"price": 2.0, "cache": {"read": 0.2, "write": {"1h": 4.0, "5m": 2.5}}},
+        "output": {"price": 10.0}}}}))
+    .unwrap();
+    // 100k in: 10k new, 60k read, 30k written; no output.
+    let cost = model.price(100_000, 60_000, 30_000, 0).unwrap();
+    assert!((cost - (0.02 + 0.012 + 0.075)).abs() < 1e-9, "{cost}");
+    let sonnet = Catalog::built_in()
+        .model("anthropic", "claude-sonnet-5-5")
+        .cloned()
+        .unwrap();
+    let (cold, warm) = (
+        sonnet.price(150_000, 0, 150_000, 0).unwrap(),
+        sonnet.price(150_000, 150_000, 0, 0).unwrap(),
+    );
+    assert!(
+        warm * 10.0 < cold,
+        "a cached turn: {warm}, a cold one: {cold}"
+    );
+    assert!(!sonnet.thinks_by_budget());
+    let older = Catalog::built_in()
+        .model("anthropic", "claude-haiku-4-5")
+        .cloned()
+        .unwrap();
+    assert!(older.thinks_by_budget());
 }
 
 #[test]

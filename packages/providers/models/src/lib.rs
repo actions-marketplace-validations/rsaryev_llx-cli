@@ -44,6 +44,9 @@ pub const POPULAR: [&str; 18] = [
 pub const CHAT_COMPLETIONS: &str = "chat-completions";
 /// The protocol of OpenAI's own backend, which some of its models are served over alone.
 pub const RESPONSES: &str = "responses";
+/// Anthropic's own protocol: where a model is served over it too, it is called over it, as its
+/// prompt cache and its levels are only there.
+pub const MESSAGES: &str = "messages";
 
 /// Every provider llx knows, by id.
 #[derive(Debug, Clone)]

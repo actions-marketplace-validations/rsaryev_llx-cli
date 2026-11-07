@@ -10,7 +10,7 @@ use std::time::Duration;
 
 use contracts::catalog::{Effort, ModelEntry, Selection};
 use contracts::chat::{Chat, ChatError, Completion, Request};
-use models::{CHAT_COMPLETIONS, Catalog, RESPONSES};
+use models::{CHAT_COMPLETIONS, Catalog, MESSAGES, RESPONSES};
 
 use crate::compose::APP;
 
@@ -285,13 +285,30 @@ impl Provider {
             id => {
                 let catalog = catalog();
                 let model = catalog.model(id, &selection.model().id);
+                let name = catalog.provider(id).map_or(id, |p| p.name());
+                // Its own protocol where the model is served over it: chat completions there
+                // (Anthropic's) cache no prompt, so each turn would pay its whole history again.
+                if let Some(model) = model
+                    && let Some(address) = model.address(MESSAGES)
+                {
+                    let thinking = match model.thinks_by_budget() {
+                        true => anthropic::chat::Thinking::Budget,
+                        false => anthropic::chat::Thinking::Adaptive,
+                    };
+                    let client = anthropic::client::Messages::new(address, key, APP, name);
+                    let model = anthropic::chat::ChatModel {
+                        client,
+                        selection,
+                        thinking,
+                    };
+                    return Some(Box::new(model));
+                }
                 let address = model
                     .and_then(|m| m.address(CHAT_COMPLETIONS))
                     .or_else(|| {
                         let mut models = catalog.provider(id)?.models();
                         models.find_map(|(_, m)| m.address(CHAT_COMPLETIONS))
                     })?;
-                let name = catalog.provider(id).map_or(id, |p| p.name());
                 openrouter::client::OpenRouter::at(address, key, APP, name)
             }
         };
@@ -326,9 +343,13 @@ impl Chat for Priced {
         if usage.cost == 0.0
             && let Some(model) = catalog().model(&self.provider, &self.model)
         {
-            let (input, cached, output) =
-                (usage.input_tokens, usage.cached_tokens, usage.output_tokens);
-            usage.cost = model.price(input, cached, output).unwrap_or(0.0);
+            let (input, cached, written, output) = (
+                usage.input_tokens,
+                usage.cached_tokens,
+                usage.written_tokens,
+                usage.output_tokens,
+            );
+            usage.cost = model.price(input, cached, written, output).unwrap_or(0.0);
         }
         Ok(completion)
     }

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- **Anthropic's models are called over its own Messages API**, with the prompt cache marked: a session on `claude-sonnet-5-5` paid its whole conversation again at every turn (0 tokens read from the cache, about $0.33 a turn at 150k tokens of context, $2.94 in two minutes), as Anthropic's OpenAI-compatible endpoint caches no prompt and ignores the reasoning level. Now the system prompt and the tools, the context, and the conversation up to the last turn are read from the cache, the level goes out as the model's effort (a budget of thinking tokens for the older models), and the model's signed thinking goes back with its turn. Any provider of the catalog whose model is served over `messages` is called so; a reply is streamed, so a patch the output limit cut off keeps its whole files (B7).
+- What a request writes to a prompt cache is priced at the catalog's cache-write price (Anthropic's is 1.25 times the input's): `--budget` and the spend no longer count it as plain input.
+- **A session has no time limit by default**: a task you watch is stopped by you, not cut off after 30 minutes. `llx exec` keeps 1800 seconds; `--timeout` sets one for either. A request the time limit cuts off now ends the task as out of time (exit 2, the limit named) instead of an error of the provider's with no answer (exit 3).
+- A follow-up task no longer rewrites the start of the conversation at its first request: the history's gate measured it as if nothing were known of how the model counts tokens, and an estimate that ran high (a model's sealed reasoning) elided older outputs the prompt cache held, so the task began with a full cache miss. The measure is kept from task to task.
+- `apply_patch` names every file whose lines it did not find, not only the first, so a patch of many files is mended in one retry; and a long file's nearest lines come with six lines on each side, numbered as a read shows them.
+- The context says when the project has no `AGENTS.md` or `CLAUDE.md`, so the model does not search the disk for one (a `find ..` over a home folder took a minute).
+- A command moved to the background tells the model not to change or check the files it writes until it ends: a formatter still running rewrote files the model was patching.
+
 ## 0.3.0
 
 - The project is now `llx-cli`: the repository is `rsaryev/llx-cli` (the action `uses: rsaryev/llx-cli@v0`, the skill `npx skills add rsaryev/llx-cli`, the image `ghcr.io/rsaryev/llx-cli`), and the binary's package is `llx-cli` (`cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`). The command is still `llx`, inside the release's archives too, now `llx-cli-<target>.tar.gz`. GitHub redirects the old name.

@@ -28,6 +28,10 @@ pub struct Conversation {
     /// The level it thinks at, where it is not the model's chosen one: chosen as it opened, kept
     /// as it goes on, so the prompt cache stays whole (C9).
     effort: Option<Effort>,
+    /// Real tokens per estimated one, as the model's last usage measured them: kept from task to
+    /// task, so a follow-up's first request is not sized as if nothing were known (an estimate
+    /// that runs high would open the history's gate and rewrite a prefix the cache holds).
+    ratio: f64,
 }
 
 impl Conversation {
@@ -37,7 +41,17 @@ impl Conversation {
             sizes: vec![fit::tokens(&system)],
             messages: vec![system],
             effort: None,
+            ratio: 1.0,
         }
+    }
+
+    /// Real tokens per estimated one, as last measured.
+    pub(crate) fn ratio(&self) -> f64 {
+        self.ratio
+    }
+
+    pub(crate) fn measured(&mut self, ratio: f64) {
+        self.ratio = ratio;
     }
 
     /// A conversation that goes on from `messages` (another's, as its last request sent them):
@@ -47,6 +61,7 @@ impl Conversation {
             sizes: messages.iter().map(fit::tokens).collect(),
             messages,
             effort: None,
+            ratio: 1.0,
         };
         for id in conversation.open_calls() {
             conversation.push(Message::ToolResult {
