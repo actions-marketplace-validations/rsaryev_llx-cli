@@ -35,7 +35,7 @@ does is known above the server.
                 │                 │        packages/agent                  the core
                 │                 │        packages/tools, session, providers/*   adapters
                 │                 │
-          packages/protocol                 packages/contracts, queue, providers/kit
+          packages/protocol                 packages/contracts, queue, schema, providers/kit
           the seam's types only             vocabulary: ports, primitives
 ```
 
@@ -44,7 +44,7 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 | Layer | Crates | Knows |
 |---|---|---|
-| Vocabulary | `contracts` (ports, no logic), `queue`, `providers/kit` | no workspace crate |
+| Vocabulary | `contracts` (ports, no logic), `queue`, `schema`, `providers/kit` | no workspace crate |
 | Seam | `protocol` | no crate at all |
 | Core | `agent` | `contracts` |
 | Adapters | `tools`, `session` | `contracts` |
@@ -57,8 +57,8 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 - **L1** _checked_: `contracts` depends on no workspace crate.
 - **L2** _checked_: `agent` depends only on `contracts`.
-- **L3** _checked_: tools and stores depend only on `contracts`; primitives (`queue`) and the
-  provider kit on nothing; providers on `contracts` and the kit. A tool knows nothing of the
+- **L3** _checked_: tools and stores depend only on `contracts`; primitives (`queue`, and
+  `schema`: data checked against a JSON Schema given at run time) and the provider kit on nothing; providers on `contracts` and the kit. A tool knows nothing of the
   agent, the models or the other tools; a provider nothing of tools or other providers.
 - **L4** _checked_: only apps compose packages. Nothing depends on an app, but the binary on the
   server and the interface; the server and the interface depend on no app in any section (the
@@ -130,6 +130,9 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 - **P6**: `map_err` keeps the cause (a variant's field, or the source); rewording an error never
   drops it (_checked_: `map_err_ignore`).
 - **P7**: a crate does not re-export another crate's types, and never a glob (`pub use x::*`).
+- **P8**: what `--schema` asks for reaches the agent as a port, `contracts::shape::Shape` (the
+  schema the model is told, and every way data does not match it): the app builds it from the
+  `schema` primitive, so the core holds no JSON Schema of its own and a test fakes it.
 
 ## Adapter rules (tools, stores, providers)
 
