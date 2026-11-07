@@ -6,7 +6,7 @@ use contracts::chat::Message;
 use contracts::tool::Tool;
 
 use super::super::{Agent, Status};
-use crate::fakes::{Echo, Keep, Scripted, Silent, calls, done, ok};
+use crate::fakes::{Echo, Keep, Scripted, Silent, calls, data, done, ok};
 
 /// An advisor that says what it was set to, and writes down what it was asked.
 #[derive(Default)]
@@ -110,4 +110,26 @@ fn an_answer_on_the_last_turn_stands() {
     let run = agent(&chat, &[], Some(&pushing), 2).run(None, "Do it", &[]);
     assert_eq!((run.status, run.answer.as_str()), (Status::Done, "B."));
     assert_eq!(pushing.reviewed.lock().unwrap().as_slice(), ["A."]);
+}
+
+#[test]
+fn data_returned_before_a_push_on_is_not_kept_when_the_work_then_runs_out() {
+    // The advisor found the answer unfinished: the data it came with is not the task's.
+    let schema = serde_json::json!({"type": "object"});
+    let chat = Scripted::new(vec![
+        data(&serde_json::json!({"early": true})),
+        calls("echo", serde_json::json!({})),
+    ]);
+    let echo = Echo::new(vec![ok("ran")]);
+    let told = Told {
+        review: Some("Check the tests too.".into()),
+        ..Told::default()
+    };
+    let run = Agent {
+        schema: Some(&schema),
+        ..agent(&chat, &[&echo], Some(&told), 2)
+    }
+    .run(None, "Do it", &[]);
+    assert_eq!(run.status, Status::Exhausted);
+    assert_eq!(run.data, None);
 }

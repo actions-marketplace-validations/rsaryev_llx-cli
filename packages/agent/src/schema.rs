@@ -1,9 +1,9 @@
-//! The `result` call of `--schema`: once the work has ended, the model is asked once more, on the
-//! same conversation, for `data` matching the schema, with the call forced (`Calling::Only`), so
-//! the data comes as a call, deterministically. Data that does not match goes back to be fixed,
-//! and what is returned always matches or the run says it has no data. While the work goes on,
-//! no such tool is offered: the task ends with the model's final message, and nothing invites it
-//! to stop early.
+//! The `result` call of `--schema`: offered with every request of the task, so the tools, the
+//! start of every prompt, never change and the prompt cache holds to the end. A `result` alone,
+//! its data matching, ends the task (`agent/returned.rs`); an answer in words is followed by one
+//! more request on the same conversation, the call forced (`Calling::Only`), so the data comes
+//! as a call, deterministically. Data that does not match goes back to be fixed, and what is
+//! returned always matches or the run says it has no data.
 
 use contracts::tool::{Input, ToolSpec};
 use serde_json::{Value, json};
@@ -16,7 +16,8 @@ pub(crate) fn spec(schema: &Value) -> ToolSpec {
         name: TOOL.into(),
         description: "The result of the task as `data`, matching its schema exactly: copy \
             numbers, names and dates from what the tools showed, null only where the schema \
-            allows it and no value was shown."
+            allows it and no value was shown. Call it alone, once the work is done: it ends \
+            the task."
             .into(),
         input: Input::Json(json!({
             "type": "object",

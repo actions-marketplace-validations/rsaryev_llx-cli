@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use provider_kit::App;
 use provider_kit::http::{Http, HttpError, Web};
-use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, retried};
+use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, after, retried};
 use serde_json::Value;
 
 /// The version of the API the requests are written for.
@@ -78,25 +78,32 @@ impl Messages {
         }
     }
 
-    /// POST `body` to `/messages`, asked again on an answer a moment's wait may mend; the message
-    /// it answered and how long it took. One that went out unanswered is never sent again: a reply
-    /// being written is billed, and asking again would pay for it twice.
+    /// POST `body` to `/messages`, with the `beta` it needs, asked again on an answer a moment's
+    /// wait may mend; the message it answered and how long it took. One that went out unanswered
+    /// is never sent again: a reply being written is billed, and asking again would pay for it
+    /// twice.
     pub(crate) fn post(
         &self,
         body: &Value,
         deadline: Option<Instant>,
+        beta: Option<&str>,
     ) -> Result<(Value, u64), ApiError> {
         let started = Instant::now();
         let url = format!("{}/messages", self.base);
-        let headers = [
+        let mut headers = vec![
             ("x-api-key", self.key.as_str()),
             ("anthropic-version", VERSION),
             ("content-type", "application/json"),
         ];
+        headers.extend(beta.map(|beta| ("anthropic-beta", beta)));
         let body = body.to_string();
         retried(self.pause, deadline, Resend::Never, || {
-            let (status, text) = match self.http.post(&url, &headers, &body, deadline) {
-                Ok(reply) => (reply.status, reply.body),
+            let (status, text, asked) = match self.http.post(&url, &headers, &body, deadline) {
+                // With the wait a rate limit or an overload asks for.
+                Ok(reply) => {
+                    let asked = after(reply.header("retry-after"));
+                    (reply.status, reply.body, asked)
+                }
                 Err(HttpError::Unanswered(why)) => {
                     return Attempt::Unanswered(ApiError::Network(why));
                 }
@@ -106,9 +113,10 @@ impl Messages {
                 (serde_json::from_str(&text).ok()).or_else(|| crate::stream::assembled(&text));
             let failed = |code: u16, message: String| {
                 let error = ApiError::Http(code, message);
-                match transient(code) {
-                    true => Attempt::Again(error),
-                    false => Attempt::Done(Err(error)),
+                match (transient(code), asked) {
+                    (true, Some(wait)) => Attempt::After(error, wait),
+                    (true, None) => Attempt::Again(error),
+                    (false, _) => Attempt::Done(Err(error)),
                 }
             };
             if status == 200 {
@@ -132,8 +140,9 @@ impl Messages {
                 .and_then(|value| value.get("error"))
                 .map(message_of)
                 .unwrap_or_else(|| text.chars().take(300).collect());
+            // 403 is a permission the key lacks for this request, not a key refused.
             match status {
-                401 | 403 => Attempt::Done(Err(ApiError::Auth(message))),
+                401 => Attempt::Done(Err(ApiError::Auth(message))),
                 _ => failed(status, message),
             }
         })

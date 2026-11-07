@@ -7,6 +7,7 @@
 
 mod provider;
 pub mod source;
+pub mod switch;
 mod types;
 
 use std::collections::BTreeMap;
@@ -198,13 +199,16 @@ fn entry(id: &str, model: &Model) -> ModelEntry {
     }
 }
 
-/// Whether model `id` caches a prompt only where told to: Anthropic, Gemini and Qwen take
+/// Whether model `id` caches a prompt only where told to: Anthropic and Qwen take
 /// `cache_control` breakpoints (OpenRouter's prompt-caching guide); OpenAI, DeepSeek, Grok,
-/// Moonshot and the rest cache a repeated start on their own. The catalog's `cache.explicit` also
+/// Moonshot, Gemini (2.5 and later, where OpenRouter keeps only the last mark and bills each as a
+/// write) and the rest cache a repeated start on their own. The catalog's `cache.explicit` also
 /// covers other mechanisms (OpenAI's own breakpoint field), so it cannot say this; ids name the
 /// vendor first, and that is what is read, here beside the data, not in a provider (A4).
 pub fn takes_marks(id: &str) -> bool {
-    ["anthropic/", "google/gemini", "qwen/"]
+    // `~vendor/…-latest`: OpenRouter's alias of the vendor's newest model.
+    let id = id.trim_start_matches('~');
+    ["anthropic/", "qwen/"]
         .iter()
         .any(|vendor| id.starts_with(vendor))
 }

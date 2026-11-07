@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 
 use provider_kit::App;
 use provider_kit::http::{Http, HttpError, Web};
-use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, retried};
+use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, after, retried};
 use serde_json::Value;
 
 const BASE_URL: &str = "https://openrouter.ai/api/v1";
@@ -153,8 +153,12 @@ impl OpenRouter {
         }
         let body = body.to_string();
         retried(self.pause, deadline, self.resend, || {
-            let (status, text) = match self.http.post(&url, &headers, &body, deadline) {
-                Ok(reply) => (reply.status, reply.body),
+            let (status, text, asked) = match self.http.post(&url, &headers, &body, deadline) {
+                // With the wait a rate limit or an overload asks for.
+                Ok(reply) => {
+                    let asked = after(reply.header("retry-after"));
+                    (reply.status, reply.body, asked)
+                }
                 Err(HttpError::Unanswered(why)) => {
                     return Attempt::Unanswered(ApiError::Network(why));
                 }
@@ -166,10 +170,12 @@ impl OpenRouter {
                 (serde_json::from_str(&text).ok()).or_else(|| crate::stream::assembled(&text));
             let failed = |code: u16, message: String| {
                 let error = ApiError::Http(code, message);
-                if transient(code) {
-                    Attempt::Again(error)
-                } else {
-                    Attempt::Done(Err(error))
+                // A 402 with a wait is OpenRouter's in-flight budget, of a moment; one with none,
+                // the account's credits.
+                match (transient(code) || (code == 402 && asked.is_some()), asked) {
+                    (true, Some(wait)) => Attempt::After(error, wait),
+                    (true, None) => Attempt::Again(error),
+                    (false, _) => Attempt::Done(Err(error)),
                 }
             };
             if status == 200 {
@@ -200,7 +206,8 @@ impl OpenRouter {
                 .map(message_of)
                 .unwrap_or_else(|| text.chars().take(300).collect());
             match status {
-                401 | 403 => Attempt::Done(Err(ApiError::Auth(message))),
+                // 403 is a permission, a guardrail or a moderation flag, not a key refused.
+                401 => Attempt::Done(Err(ApiError::Auth(message))),
                 _ => failed(status, message),
             }
         })

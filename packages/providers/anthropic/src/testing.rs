@@ -48,15 +48,19 @@ impl Http for Scripted {
 
 /// A scripted `Http` answering `answers` (a status and a body each) in order; what it was sent.
 pub(crate) fn scripted(answers: Vec<(u16, String)>) -> (Box<dyn Http>, Arc<Mutex<Vec<Sent>>>) {
-    let answers = (answers.into_iter().rev())
-        .map(|(status, body)| {
-            Ok(Reply {
-                status,
-                headers: vec![],
-                body,
-            })
+    let replies = (answers.into_iter())
+        .map(|(status, body)| Reply {
+            status,
+            headers: vec![],
+            body,
         })
         .collect();
+    replying(replies)
+}
+
+/// The same, with whole replies: their headers too.
+pub(crate) fn replying(replies: Vec<Reply>) -> (Box<dyn Http>, Arc<Mutex<Vec<Sent>>>) {
+    let answers = replies.into_iter().rev().map(Ok).collect();
     let sent = Arc::new(Mutex::new(vec![]));
     let http = Scripted {
         answers: Mutex::new(answers),

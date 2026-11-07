@@ -26,6 +26,8 @@ pub(crate) struct Scripted {
     pub(crate) sent: Mutex<Vec<(Vec<Message>, Option<Effort>)>>,
     /// The task each request named.
     pub(crate) tasks: Mutex<Vec<TaskId>>,
+    /// The names of the tools each request offered.
+    pub(crate) offered: Mutex<Vec<Vec<String>>>,
 }
 
 impl Scripted {
@@ -36,6 +38,7 @@ impl Scripted {
             last_user: Mutex::new(vec![]),
             sent: Mutex::new(vec![]),
             tasks: Mutex::new(vec![]),
+            offered: Mutex::new(vec![]),
         }
     }
 }
@@ -52,6 +55,8 @@ impl Chat for Scripted {
     fn complete(&self, request: Request) -> Result<Completion, ChatError> {
         (self.sent.lock().unwrap()).push((request.conversation.to_vec(), request.effort));
         self.tasks.lock().unwrap().push(request.task);
+        let names = request.tools.iter().map(|spec| spec.name.clone()).collect();
+        self.offered.lock().unwrap().push(names);
         self.calling.lock().unwrap().push(match request.calling {
             Calling::Any => "any".into(),
             Calling::Nothing => "nothing".into(),

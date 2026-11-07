@@ -1,6 +1,6 @@
 # Tools
 
-llx has five tools, and with `--schema` a sixth, `result`, asked for once the work is done. The
+llx has five tools, and with `--schema` a sixth, `result`, offered from the first request and called once the work is done. The
 set is deliberately minimal: a new capability goes into one of them (as an `action`), or is left
 to the shell. The model works as you do at a terminal: it reads with `cat`,
 `sed -n` and `rg` and runs the checks in the shell, and changes files with a patch, as free text with

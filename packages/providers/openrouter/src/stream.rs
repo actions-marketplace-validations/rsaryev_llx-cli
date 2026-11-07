@@ -108,8 +108,13 @@ impl Whole {
         let Some(fields) = part.as_object() else {
             return;
         };
-        let same =
-            |kept: &&mut Value| kept["index"] == part["index"] && kept["type"] == part["type"];
+        // Parts are one only by their index: two with none (signed parts of parallel calls) are
+        // two, and joined their data would be one corrupt value.
+        let same = |kept: &&mut Value| {
+            !part["index"].is_null()
+                && kept["index"] == part["index"]
+                && kept["type"] == part["type"]
+        };
         let Some(kept) = self
             .details
             .iter_mut()

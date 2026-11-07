@@ -1,5 +1,8 @@
-use contracts::chat::TaskId;
+use contracts::catalog::Selection;
+use contracts::chat::{Chat, ChatError, Completion, Request, TaskId};
+use models::MESSAGES;
 
+use super::chat::Priced;
 use super::*;
 
 #[test]
@@ -87,20 +90,24 @@ fn the_decision_default_is_a_decision_model_of_the_catalog() {
 }
 
 #[test]
-fn a_chatgpt_sign_in_offers_the_models_the_backend_serves_alone() {
-    let ids = |chatgpt| -> Vec<String> {
-        let models = Provider::openai().served(chatgpt);
-        models.into_iter().map(|m| m.id).collect()
-    };
-    let (backend, completions) = (ids(true), ids(false));
-    assert!(
-        backend.contains(&"gpt-5.3-codex".to_string()),
-        "{backend:?}"
+fn openai_is_called_over_responses_signed_in_or_with_a_key() {
+    // Chat completions refuse function tools with a level for the newest models (gpt-6.1-sol)
+    // and keep no reasoning between turns: a key goes over Responses as a sign-in does.
+    let ids: Vec<String> = (Provider::openai().models().into_iter())
+        .map(|m| m.id)
+        .collect();
+    assert!(ids.contains(&"gpt-5.3-codex".to_string()), "{ids:?}");
+    assert!(ids.contains(&"gpt-6.1-sol".to_string()), "{ids:?}");
+    assert_eq!(
+        Provider::openai()
+            .responses_address("gpt-6.1-sol")
+            .as_deref(),
+        Some("https://api.openai.com/v1")
     );
-    assert!(backend.contains(&"gpt-6-luna".to_string()), "{backend:?}");
-    assert!(!completions.contains(&"gpt-5.3-codex".to_string()));
-    let openrouter = Provider::openrouter();
-    assert_eq!(openrouter.served(true), openrouter.served(false));
+    assert_eq!(
+        Provider::openrouter().responses_address("openai/gpt-6.1-sol"),
+        None
+    );
 }
 
 #[test]
@@ -154,4 +161,20 @@ fn openrouters_address_is_read_from_the_sessions_environment() {
     // Wakes the stand-in when nothing reached it.
     drop(std::net::TcpStream::connect(address));
     assert!(asked.join().unwrap(), "the stand-in was called");
+}
+
+#[test]
+fn only_anthropics_own_models_are_called_over_the_messages_api() {
+    let over = |provider: &str, id: &str| Provider(provider.into()).messages_address(id);
+    assert_eq!(
+        over("anthropic", "claude-sonnet-5-5").as_deref(),
+        Some("https://api.anthropic.com/v1")
+    );
+    // Served over Messages too, but its thinking is not Anthropic's: chat completions.
+    let deepseek = (catalog().served("deepseek", CHAT_COMPLETIONS).into_iter()).find(|m| {
+        (catalog().model("deepseek", &m.id)).is_some_and(|m| m.address(MESSAGES).is_some())
+    });
+    let model = deepseek.unwrap();
+    assert_eq!(over("deepseek", &model.id), None, "{}", model.id);
+    assert_eq!(over("anthropic", "no-such-model"), None);
 }

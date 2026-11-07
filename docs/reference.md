@@ -6,7 +6,7 @@ How a task ends, the exit codes, the `--json` events and `llx decide`. Both the 
 
 A task ends when the model replies with a message and no tool call: that message is the `answer`. A reply the output limit cut off is not one: the model goes on from it, and a fourth in a row that did nothing ends the task with `error` (exit 3). An answer given while an agent's answer, or in `exec` a monitor's lines, is still to come waits for it.
 
-With `--schema`, llx then asks the same model once more, on the same conversation, for the `result` call (`tool_choice` forced to it). Its data is what stdout and `-o` get, and `run.completed`'s `data`; the answer goes to stderr. Data that does not match the schema goes back to be fixed, up to two times; then the run ends `no_data`.
+With `--schema`, the model is offered a `result` call with every request, and may end the task with it; when it answers in words instead, llx asks it once more, on the same conversation and with the same tools (so the prompt cache holds), for the `result` call: forced over OpenAI's APIs, asked for in words elsewhere (hosts refuse a forced call while their model thinks), and asked again when the model answers in words. Its data is what stdout and `-o` get, and `run.completed`'s `data`; the answer goes to stderr. Data that does not match the schema goes back to be fixed, up to two times; then the run ends `no_data`.
 
 | Code | Meaning |
 | --- | --- |

@@ -103,8 +103,10 @@ long-context price band; the reason llx's default request ceiling is 272k);
   else medium or the nearest below, else the lowest it takes. A provider is called over
   `chat-completions` (any host), but over `messages` where the model is served over it too
   (Anthropic's: chat completions there cache no prompt and ignore the level), thinking within a
-  budget when its reasoning has one (`budget`), else at the level as an effort; and OpenAI with a
-  ChatGPT sign-in over `responses`, which also offers the models served over it alone. A `decision` model that is not `deprecated` is kept for
+  budget when its reasoning has one (`budget`), else at the level as an effort; and OpenAI over
+  `responses`, the ChatGPT backend with a sign-in and the API with a key (its chat completions
+  refuse function tools with a level for the newest models, and keep no reasoning between
+  turns), which also offers the models served over it alone. A `decision` model that is not `deprecated` is kept for
   `llx decide`: the app's default one (`DECISION_DEFAULT`) must be among them.
 - **Free-text tools:** whether a model takes a tool of free text held to a Lark grammar (how
   `apply_patch` is offered over the Responses API) is the API's `capabilities.tools.freeform`,

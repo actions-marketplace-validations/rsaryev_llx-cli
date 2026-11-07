@@ -1,10 +1,10 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use contracts::catalog::{Effort, ModelEntry, Selection};
 use provider_kit::http::Reply;
 use serde_json::{Value, json};
 
-use contracts::chat::{Calling, Message, TaskId};
+use contracts::chat::{Calling, Ending, Message, TaskId, ToolCall};
 use contracts::tool::{Input, ToolSpec};
 
 use super::offer::Offer;
@@ -277,6 +277,33 @@ fn a_failed_or_cut_stream_is_an_error() {
 }
 
 #[test]
+fn a_reply_failed_for_load_is_asked_again_and_one_past_the_window_is_not() {
+    let failed = |code: &str| {
+        streamed(&[json!({"type": "response.failed",
+            "response": {"error": {"code": code, "message": "no"}}})])
+    };
+    let replies = vec![
+        (200, failed("server_is_overloaded")),
+        (200, streamed(&[completed()])),
+    ];
+    let (chat, http, _) = model(replies, tokens(LATER));
+    let conversation = conversation();
+    chat.complete(asking(&conversation, Calling::Nothing))
+        .unwrap();
+    assert_eq!(http.sent().len(), 2);
+
+    let (chat, http, _) = model(
+        vec![(200, failed("context_length_exceeded"))],
+        tokens(LATER),
+    );
+    let error = chat
+        .complete(asking(&conversation, Calling::Nothing))
+        .unwrap_err();
+    assert_eq!(http.sent().len(), 1);
+    assert!(format!("{error:?}").contains("window"), "{error:?}");
+}
+
+#[test]
 fn a_request_names_the_account_and_the_token() {
     let (model, http, _) = model(vec![(200, streamed(&[completed()]))], tokens(LATER));
     let conversation = conversation();
@@ -294,6 +321,36 @@ fn a_request_names_the_account_and_the_token() {
     );
     assert_eq!(sent.header("originator"), Some("llx"));
     assert_eq!(sent.header("accept"), Some("text/event-stream"));
+}
+
+#[test]
+fn with_a_key_the_apis_own_responses_are_called_with_the_key_alone() {
+    let http = Arc::new(Scripted::new(vec![
+        (429, json!({"error": {"message": "slow down"}}).to_string()),
+        (200, streamed(&[completed()])),
+    ]));
+    let model = ChatModel::keyed(
+        Box::new(Shared(Arc::clone(&http))),
+        APP,
+        "sk-key".into(),
+        "https://api.openai.com/v1/",
+        Selection::new(entry("gpt-6-sol")),
+        Texts::Functions,
+    );
+    let model = ChatModel {
+        pause: Duration::ZERO,
+        ..model
+    };
+    let conversation = conversation();
+    let completion = model.complete(asking(&conversation, Calling::Any)).unwrap();
+    assert_eq!(completion.usage.cached_tokens, 4);
+    let sent = http.sent();
+    assert_eq!(sent.len(), 2, "a key's rate limit is asked again");
+    assert_eq!(sent[1].address, "https://api.openai.com/v1/responses");
+    assert_eq!(sent[1].header("authorization"), Some("Bearer sk-key"));
+    for backend_only in ["chatgpt-account-id", "originator", "session-id"] {
+        assert_eq!(sent[1].header(backend_only), None, "{backend_only}");
+    }
 }
 
 #[test]
@@ -319,12 +376,15 @@ fn a_token_about_to_lapse_is_refreshed_and_kept_first() {
 fn threads_that_find_the_token_stale_refresh_it_once() {
     let refreshed = json!({"access_token": access("acct-1", LATER), "refresh_token": "r2"});
     let (model, http, _) = model(vec![(200, refreshed.to_string())], tokens(1));
+    let Access::SignIn(signin) = &model.access else {
+        panic!("signed in");
+    };
     let got: Vec<Tokens> = std::thread::scope(|scope| {
         let handles: Vec<_> = (0..4)
             .map(|i| {
                 std::thread::Builder::new()
                     .name(format!("refresh-{i}"))
-                    .spawn_scoped(scope, || model.tokens(Renew::IfStale, None).unwrap())
+                    .spawn_scoped(scope, || signin.tokens(Renew::IfStale, None).unwrap())
                     .unwrap()
             })
             .collect();

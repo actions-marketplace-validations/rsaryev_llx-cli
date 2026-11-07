@@ -3,7 +3,7 @@ use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 use contracts::chat::{Completion, Ending, Message, TaskId, ToolCall, Usage};
 use contracts::inbox::Inbox;
-use contracts::tool::{Input, Tool, ToolError};
+use contracts::tool::{Input, Tool, ToolError, ToolOutput};
 use serde_json::{Value, json};
 
 use super::*;
@@ -202,11 +202,19 @@ fn with_a_schema_the_data_is_asked_for_after_the_answer_with_the_call_forced() {
         data(&json!({"price": 93})),
     ]);
     let recorder = Recorder::default();
-    let run = agent(&chat, &[], Some(&schema), &recorder).run(None, "Find the price", &[]);
-    // The work's requests offer no `result`; the data's requests force it.
+    let echo = Echo::new(vec![]);
+    let tools: [&dyn Tool; 1] = [&echo];
+    let run = agent(&chat, &tools, Some(&schema), &recorder).run(None, "Find the price", &[]);
     assert_eq!(
         *chat.calling.lock().unwrap(),
         ["any", schema::TOOL, schema::TOOL]
+    );
+    // Every request offers the same tools, `result` among them from the first: a tool list that
+    // changed would cost the whole prompt cache at the data's request.
+    let offered = chat.offered.lock().unwrap().clone();
+    assert!(
+        offered.iter().all(|names| *names == ["echo", schema::TOOL]),
+        "{offered:?}"
     );
     assert_eq!(chat.last_user.lock().unwrap()[1], DATA_NOW);
     assert!(results(&run)[0].0.contains("data.price must be number"));
@@ -222,6 +230,53 @@ fn with_a_schema_the_data_is_asked_for_after_the_answer_with_the_call_forced() {
         "{events:?}"
     );
     assert_eq!(events[6], format!("ok result: {RETURNED}"));
+}
+
+#[test]
+fn a_result_called_once_the_work_is_done_ends_the_task_with_no_request_more() {
+    let schema = json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}});
+    let chat = Scripted::new(vec![
+        calls("echo", json!({})),
+        data(&json!({"price": "93"})),
+        Completion {
+            text: Some("Found it.".into()),
+            ..data(&json!({"price": 93}))
+        },
+    ]);
+    let echo = Echo::new(vec![ok("93 EUR")]);
+    let tools: [&dyn Tool; 1] = [&echo];
+    let run = agent(&chat, &tools, Some(&schema), &Silent).run(None, "Find the price", &[]);
+    assert_eq!(run.data, Some(Ok(json!({"price": 93}))));
+    let results = results(&run);
+    assert_eq!(
+        (run.status, run.answer.as_str()),
+        (Status::Done, "Found it.")
+    );
+    assert_eq!(*chat.calling.lock().unwrap(), ["any", "any", "any"]);
+    assert!(results[1].0.contains("data.price must be number") && results[1].1);
+    assert_eq!(results[2], (RETURNED.to_string(), false));
+}
+
+#[test]
+fn a_result_beside_other_calls_is_not_taken_and_the_work_goes_on() {
+    let schema = json!({"type": "object"});
+    let mut both = calls("echo", json!({}));
+    both.calls.push(ToolCall {
+        id: "c2".into(),
+        name: schema::TOOL.into(),
+        arguments: json!({"data": {}}),
+    });
+    let chat = Scripted::new(vec![both, data(&json!({"done": true}))]);
+    let echo = Echo::new(vec![ok("ran")]);
+    let tools: [&dyn Tool; 1] = [&echo];
+    let run = agent(&chat, &tools, Some(&schema), &Silent).run(None, "Do it", &[]);
+    assert_eq!(run.data, Some(Ok(json!({"done": true}))));
+    let results = results(&run);
+    assert!(results.contains(&("ran".to_string(), false)), "{results:?}");
+    assert!(
+        (results.iter()).any(|(said, failed)| *failed && said.contains("alone")),
+        "{results:?}"
+    );
 }
 
 #[test]
@@ -249,9 +304,28 @@ fn a_result_that_keeps_breaking_its_schema_leaves_the_run_without_data() {
 }
 
 #[test]
+fn a_reply_in_words_to_the_data_request_is_asked_again() {
+    // Where the host takes no forced call, the model may answer in words: asked once more.
+    let schema = json!({"type": "object"});
+    let chat = Scripted::new(vec![
+        says("93."),
+        says("It is 93."),
+        data(&json!({"price": 93})),
+    ]);
+    let run = agent(&chat, &[], Some(&schema), &Silent).run(None, "Find the price", &[]);
+    assert_eq!(run.data, Some(Ok(json!({"price": 93}))));
+    assert_eq!(chat.last_user.lock().unwrap()[2], DATA_NOW);
+}
+
+#[test]
 fn with_a_schema_a_reply_that_is_not_the_call_leaves_the_run_without_data() {
     let schema = json!({"type": "object"});
-    let chat = Scripted::new(vec![says("93."), says("Here it is.")]);
+    let chat = Scripted::new(vec![
+        says("93."),
+        says("Here it is."),
+        says("93."),
+        says("93."),
+    ]);
     let run = agent(&chat, &[], Some(&schema), &Silent).run(None, "Find the price", &[]);
     assert_eq!(
         run.data,
@@ -897,4 +971,98 @@ fn an_answer_on_the_last_turn_is_kept_and_nothing_is_waited_for() {
     assert_eq!(mail.waits.load(Ordering::SeqCst), 0, "no wait");
     assert_eq!(run.answer, "Here is what I have.");
     assert_eq!(run.status, Status::Done);
+}
+
+#[test]
+fn the_data_request_refuses_any_other_call_and_asks_again() {
+    // Offered every tool (the cache holds), the model may call another one when the data is
+    // asked for: it is answered unrun, so no call is left open, and the data asked again.
+    let schema = json!({"type": "object"});
+    let chat = Scripted::new(vec![
+        says("Done."),
+        calls("echo", json!({})),
+        data(&json!({"ok": true})),
+    ]);
+    let echo = Echo::new(vec![]);
+    let run = agent(&chat, &[&echo], Some(&schema), &Silent).run(None, "Do it", &[]);
+    assert_eq!(run.data, Some(Ok(json!({"ok": true}))));
+    let results = results(&run);
+    assert!(
+        results[0].1 && results[0].0.contains("only `result`"),
+        "{results:?}"
+    );
+}
+
+#[test]
+fn a_cut_result_leaves_the_whole_calls_before_it_to_run_as_they_are() {
+    let schema = json!({"type": "object"});
+    let mut cut = calls("echo", json!({}));
+    cut.calls.push(ToolCall {
+        id: "c2".into(),
+        name: schema::TOOL.into(),
+        arguments: json!("{\"data\": {"),
+    });
+    cut.ending = Ending::Cut;
+    let chat = Scripted::new(vec![cut, data(&json!({}))]);
+    let echo = Echo::new(vec![ok("ran")]);
+    let run = agent(&chat, &[&echo], Some(&schema), &Silent).run(None, "Do it", &[]);
+    let results = results(&run);
+    assert!(results.contains(&("ran".to_string(), false)), "{results:?}");
+    assert_eq!(run.data, Some(Ok(json!({}))));
+}
+
+#[test]
+fn a_result_waits_for_what_is_still_to_come() {
+    // As an answer in words does: an agent's answer or a job's end comes before the data.
+    let mail = Mail::default();
+    mail.waiting.store(true, Ordering::SeqCst);
+    mail.later
+        .lock()
+        .unwrap()
+        .push("<agent_result>42</agent_result>".into());
+    let schema = json!({"type": "object"});
+    let chat = Scripted::new(vec![data(&json!({"n": 1})), data(&json!({"n": 42}))]);
+    let run = Agent {
+        inbox: Some(&mail),
+        ..agent(&chat, &[], Some(&schema), &Silent)
+    }
+    .run(None, "Count", &[]);
+    assert_eq!(mail.waits.load(Ordering::SeqCst), 1);
+    assert_eq!(run.data, Some(Ok(json!({"n": 42}))));
+    assert!(
+        users(run.conversation.messages()).contains(&"<agent_result>42</agent_result>".to_string())
+    );
+}
+
+#[test]
+fn a_result_that_keeps_breaking_its_schema_in_the_work_ends_it_without_data() {
+    let schema = json!({"type": "object", "required": ["price"]});
+    let wrong = || data(&json!({}));
+    let chat = Scripted::new(vec![wrong(), wrong(), wrong(), wrong(), wrong()]);
+    let run = agent(&chat, &[], Some(&schema), &Silent).run(None, "Find the price", &[]);
+    assert_eq!(run.status, Status::Done);
+    assert!(
+        matches!(&run.data, Some(Err(why)) if why.contains("price")),
+        "{:?}",
+        run.data
+    );
+    assert_eq!(
+        chat.replies.lock().unwrap().len(),
+        2,
+        "two fixes, then no more"
+    );
+}
+
+#[test]
+fn the_words_beside_a_result_are_shown_once() {
+    let schema = json!({"type": "object"});
+    let chat = Scripted::new(vec![Completion {
+        text: Some("Found it.".into()),
+        ..data(&json!({}))
+    }]);
+    let run = agent(&chat, &[], Some(&schema), &Silent).run(None, "Find", &[]);
+    assert!(
+        run.shown,
+        "said as the turn came: the interface is not sent it again"
+    );
 }

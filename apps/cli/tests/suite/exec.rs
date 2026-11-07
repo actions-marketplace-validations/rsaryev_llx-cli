@@ -147,15 +147,14 @@ fn o_writes_the_answer_and_schema_prints_the_data_alone() {
     assert_eq!(written, "{\"version\":\"1.2\"}\n");
     let requests = model.requests();
     assert_eq!(requests.len(), 2);
-    assert!(
-        requests[0]["tool_choice"] == "auto"
-            && !names(&requests[0]).iter().any(|name| name == "result")
-    );
-    assert_eq!(names(&requests[1]), ["result"]);
-    assert_eq!(
-        requests[1]["tool_choice"],
-        json!({"type": "function", "function": {"name": "result"}})
-    );
+    // `result` is offered from the first request, and the data's request offers the same tools:
+    // the prompt cache holds to the end.
+    assert_eq!(requests[0]["tool_choice"], "auto");
+    assert!(names(&requests[0]).iter().any(|name| name == "result"));
+    assert_eq!(names(&requests[1]), names(&requests[0]));
+    // Over chat completions the call is asked for in words, not forced: hosts refuse a named
+    // choice while their model thinks.
+    assert_eq!(requests[1]["tool_choice"], "auto");
 }
 
 #[test]

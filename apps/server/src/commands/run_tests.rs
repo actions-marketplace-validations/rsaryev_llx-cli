@@ -174,7 +174,8 @@ fn a_failed_answer_file_is_in_the_exit_code_the_report_gives() {
 
 #[test]
 fn with_a_schema_and_no_data_the_answer_file_holds_no_prose() {
-    // The model answers, then answers the forced `result` request with prose again: no data.
+    // The model answers, then answers each `result` request with prose again (asked three
+    // times): no data.
     let prose = Completion {
         text: Some("Done.".into()),
         ..Completion::default()
@@ -183,7 +184,7 @@ fn with_a_schema_and_no_data_the_answer_file_holds_no_prose() {
         crate::modes::built("bypass"),
         false,
         Some(json!({"type": "object"})),
-        vec![prose.clone(), prose],
+        vec![prose.clone(), prose.clone(), prose.clone(), prose],
     );
     assert_eq!(
         done.last, "",

@@ -4,7 +4,7 @@
 //! take them, and streams its reply; the others take `reasoning_effort`, and OpenAI's own API a
 //! prompt cache's key per conversation and its own name for the output limit.
 
-use contracts::catalog::{Effort, Selection};
+use contracts::catalog::Selection;
 use contracts::chat::{
     Calling, Chat, ChatError, Completion, Ending, Message, Request, ToolCall, Usage,
 };
@@ -12,18 +12,21 @@ use contracts::tool::{Image, Input, ToolSpec};
 use serde_json::{Value, json};
 
 use crate::client::{ApiError, OpenRouter, Wire};
+use crate::level::{self, Switch};
 
 /// A model `selection` names, over the chat completions `client` reaches.
 pub struct ChatModel {
     pub client: OpenRouter,
     pub selection: Selection,
+    /// How its level goes out where the host takes no `reasoning` object of OpenRouter's.
+    pub switch: Switch,
 }
 
 impl Chat for ChatModel {
     fn complete(&self, request: Request) -> Result<Completion, ChatError> {
         let selection = self.selection.or_at(request.effort);
         let model = &selection.model().id;
-        let body = body(self.client.wire(), &selection, &request);
+        let body = body(self.client.wire(), &selection, &request, self.switch);
         let (value, millis) = self
             .client
             .post("/chat/completions", &body, request.deadline)
@@ -82,63 +85,65 @@ fn read(value: &Value, model: &str, millis: u64) -> Result<Completion, ChatError
         .and_then(Value::as_array)
         .map(|calls| calls.iter().filter_map(read_call).collect())
         .unwrap_or_default();
-    let text = message
-        .get("content")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|text| !text.is_empty())
-        .map(String::from);
+    let content = message.get("content").unwrap_or(&Value::Null);
+    let text = (content.as_str().map(str::to_string))
+        .or_else(|| crate::carry::words(content))
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty());
+    let finish = value
+        .pointer("/choices/0/finish_reason")
+        .and_then(Value::as_str);
+    if finish == Some("content_filter") {
+        return Err(ChatError::Invalid(
+            "the host withheld the reply (content filter)".into(),
+        ));
+    }
     let tokens = |pointer: &str| value.pointer(pointer).and_then(Value::as_u64).unwrap_or(0);
     Ok(Completion {
         text,
         calls,
-        carried: thought(message, model).into_iter().collect(),
+        carried: crate::carry::carried(message, model).into_iter().collect(),
         thought: readable(message),
         usage: Usage {
             model: value["model"].as_str().unwrap_or(model).to_string(),
-            cost: value
-                .pointer("/usage/cost")
-                .and_then(Value::as_f64)
-                .unwrap_or(0.0),
+            cost: cost(value),
             millis,
             input_tokens: tokens("/usage/prompt_tokens"),
-            cached_tokens: tokens("/usage/prompt_tokens_details/cached_tokens"),
+            // Where most hosts say it, else at the top of the usage (Together's).
+            cached_tokens: (value.pointer("/usage/prompt_tokens_details/cached_tokens"))
+                .or_else(|| value.pointer("/usage/cached_tokens"))
+                .and_then(Value::as_u64)
+                .unwrap_or(0),
             written_tokens: tokens("/usage/prompt_tokens_details/cache_write_tokens"),
             output_tokens: tokens("/usage/completion_tokens"),
         },
         // `length`: the host's output limit stopped it, a call's arguments maybe midway.
-        ending: match value
-            .pointer("/choices/0/finish_reason")
-            .and_then(Value::as_str)
-        {
+        ending: match finish {
             Some("length") => Ending::Cut,
             _ => Ending::Whole,
         },
     })
 }
 
+/// What a reply cost: OpenRouter's charge, and on the person's own provider key (BYOK) what that
+/// provider charged too, which OpenRouter's `cost` leaves out.
+fn cost(value: &Value) -> f64 {
+    let at = |pointer: &str| {
+        value
+            .pointer(pointer)
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0)
+    };
+    let upstream = match value.pointer("/usage/is_byok") == Some(&Value::Bool(true)) {
+        true => at("/usage/cost_details/upstream_inference_cost"),
+        false => 0.0,
+    };
+    at("/usage/cost") + upstream
+}
+
 /// The fields a host says its model's reasoning in, the first that holds some taken: a host may
 /// say it twice, in two of them.
 pub(crate) const THOUGHT: [&str; 3] = ["reasoning_content", "reasoning", "reasoning_text"];
-
-/// The reasoning a message holds, as it goes back: OpenRouter's `reasoning_details` whole (signed
-/// or sealed parts a model checks), else the text with the field it came in; tagged with the model
-/// that wrote it, which alone may read it.
-fn thought(message: &Value, model: &str) -> Option<Value> {
-    if let Some(details) = message
-        .get("reasoning_details")
-        .filter(|details| details.as_array().is_some_and(|parts| !parts.is_empty()))
-    {
-        return Some(json!({"model": model, "fields": {"reasoning_details": details}}));
-    }
-    THOUGHT.iter().find_map(|field| {
-        let text = message
-            .get(*field)?
-            .as_str()
-            .filter(|text| !text.is_empty())?;
-        Some(json!({"model": model, "fields": {*field: text}}))
-    })
-}
 
 /// The reasoning a message holds as text, from the first field that has some: none when it is only
 /// sealed.
@@ -149,21 +154,15 @@ fn readable(message: &Value) -> Option<String> {
     })
 }
 
-/// The most a reply may write, in tokens, or the model's own limit when it is smaller.
-const MAX_OUTPUT: u64 = 32_000;
-
 /// The request's body: OpenRouter's own fields, OpenAI's, or the plain ones any host takes.
-fn body(host: Wire, selection: &Selection, request: &Request) -> Value {
+fn body(host: Wire, selection: &Selection, request: &Request, switch: Switch) -> Value {
     let model = &selection.model().id;
     let messages: Vec<Value> = (request.conversation.iter())
         .map(|message| wire(message, model, request.tools))
         .collect();
     // An output limit as opencode's and Claude Code's: room for a whole file in one call, and
     // a bound on a budgeted model's thinking, which OpenRouter sizes from it.
-    let limit = match selection.model().output {
-        0 => MAX_OUTPUT,
-        own => own.min(MAX_OUTPUT),
-    };
+    let limit = level::output(selection);
     // OpenAI's reasoning models refuse `max_tokens`; every chat model of its takes this one.
     let cap = match host {
         Wire::OpenAi => "max_completion_tokens",
@@ -180,7 +179,7 @@ fn body(host: Wire, selection: &Selection, request: &Request) -> Value {
             messages
         });
         if levels {
-            body["reasoning"] = reasoning(selection.effort());
+            body["reasoning"] = level::reasoning(selection.effort());
         }
         body["usage"] = json!({"include": true});
         // One session a conversation: OpenRouter's logs show its requests together, and it
@@ -191,7 +190,7 @@ fn body(host: Wire, selection: &Selection, request: &Request) -> Value {
     } else {
         body["messages"] = Value::Array(messages);
         if levels {
-            body["reasoning_effort"] = json!(selection.effort().wire_name());
+            level::switched(&mut body, switch, selection.effort());
         }
     }
     // OpenAI routes by the key: one per conversation sends its requests to where its own start
@@ -204,7 +203,12 @@ fn body(host: Wire, selection: &Selection, request: &Request) -> Value {
         body["tool_choice"] = match request.calling {
             Calling::Any => json!("auto"),
             Calling::Nothing => json!("none"),
-            Calling::Only(name) => json!({"type": "function", "function": {"name": name}}),
+            // Forced where OpenAI's own API takes it; elsewhere `auto`, the call asked for in
+            // words (hosts refuse a named choice while their model thinks, or take only `auto`).
+            Calling::Only(name) if host == Wire::OpenAi => {
+                json!({"type": "function", "function": {"name": name}})
+            }
+            Calling::Only(_) => json!("auto"),
         };
         // Several calls in one turn: independent reads and searches cost one turn, not many.
         // The agent runs together only the calls whose tools allow it, the rest in order.
@@ -220,21 +224,6 @@ fn session(conversation: &[Message]) -> String {
     provider_kit::cache::key(conversation.iter().filter_map(Message::said).take(2))
 }
 
-/// The level as OpenRouter's `reasoning` takes it. Off is no thinking at all: it costs seconds
-/// per turn, and the agent reasons in its tool calls instead.
-fn reasoning(effort: Effort) -> Value {
-    match effort {
-        Effort::Off => json!({"enabled": false}),
-        effort @ (Effort::Minimal
-        | Effort::Low
-        | Effort::Medium
-        | Effort::High
-        | Effort::XHigh
-        | Effort::Max
-        | Effort::Ultra) => json!({"effort": effort.name()}),
-    }
-}
-
 /// A message in the chat-completions wire format, for `model`: the reasoning another model wrote
 /// stays out.
 fn wire(message: &Message, model: &str, tools: &[ToolSpec]) -> Value {
@@ -247,11 +236,6 @@ fn wire(message: &Message, model: &str, tools: &[ToolSpec]) -> Value {
             carried,
         } => {
             let mut out = json!({"role": "assistant", "content": text});
-            // Only what this provider kept: another's (a Responses reasoning) has no "fields".
-            let kept = carried.iter().filter(|kept| kept["model"] == model);
-            for (field, value) in kept.filter_map(|kept| kept["fields"].as_object()).flatten() {
-                out[field.as_str()] = value.clone();
-            }
             if !calls.is_empty() {
                 out["tool_calls"] = calls
                     .iter()
@@ -266,6 +250,7 @@ fn wire(message: &Message, model: &str, tools: &[ToolSpec]) -> Value {
                     })
                     .collect();
             }
+            crate::carry::restore(&mut out, carried, model);
             out
         }
         // The wire has no failure flag for a tool result: the text says it.

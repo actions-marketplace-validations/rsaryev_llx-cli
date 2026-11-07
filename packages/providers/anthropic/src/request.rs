@@ -2,6 +2,8 @@
 //! user and assistant turns of content blocks, the tools, the level and the thinking, and the
 //! marks that say where the prompt cache ends.
 
+use std::collections::HashSet;
+
 use contracts::catalog::{Effort, Selection};
 use contracts::chat::{Calling, Message, Request, ToolCall};
 use contracts::tool::{Image, ToolSpec};
@@ -10,7 +12,10 @@ use serde_json::{Value, json};
 /// The most a reply may write, in tokens, or the model's own limit when it is smaller: room for a
 /// whole file in one call, and a bound on its thinking.
 const MAX_OUTPUT: u64 = 32_000;
-/// Where `carried` keeps this wire's thinking blocks: another provider's has no such field.
+/// The same at the deepest levels, whose thinking takes much of it (the API's advice: 64k).
+const DEEP_OUTPUT: u64 = 64_000;
+/// Where `carried` keeps this wire's turn as the model wrote it: its signed thinking, its words
+/// and its calls in their order. Another provider's has no such field.
 pub(crate) const BLOCKS: &str = "anthropic";
 
 /// How the model is told to think, as the catalog says it takes it.
@@ -22,27 +27,25 @@ pub enum Thinking {
     Budget,
 }
 
-/// Whether the thinking blocks of earlier turns go back.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Thoughts {
-    Kept,
-    /// Left out: the API refused them as bound to a history that changed since.
-    Dropped,
-}
-
-/// The body for `request` to the model `selection` names, streamed.
+/// The body for `request` to the model `selection` names, streamed: it thinks as `thinking` says
+/// (`None`: no thinking asked for), and the earlier thinking blocks `forgotten` names (by their
+/// signature) stay out.
 pub(crate) fn body(
     selection: &Selection,
-    thinking: Thinking,
+    thinking: Option<Thinking>,
     request: &Request,
-    thoughts: Thoughts,
+    forgotten: &HashSet<String>,
 ) -> Value {
     let model = &selection.model().id;
-    let limit = match selection.model().output {
-        0 => MAX_OUTPUT,
-        own => own.min(MAX_OUTPUT),
+    let most = match selection.effort() {
+        Effort::XHigh | Effort::Max | Effort::Ultra => DEEP_OUTPUT,
+        Effort::Off | Effort::Minimal | Effort::Low | Effort::Medium | Effort::High => MAX_OUTPUT,
     };
-    let (system, mut messages) = conversation(request, model, thoughts);
+    let limit = match selection.model().output {
+        0 => most,
+        own => own.min(most),
+    };
+    let (system, mut messages) = conversation(request, model, forgotten);
     marked(&mut messages);
     let mut body = json!({"model": model, "max_tokens": limit, "stream": true});
     if let Some(system) = system {
@@ -52,17 +55,36 @@ pub(crate) fn body(
     body["messages"] = Value::Array(messages);
     if !request.tools.is_empty() {
         body["tools"] = request.tools.iter().map(tool).collect();
-        // The current models refuse a forced call; the request that wants one offers it alone
-        // and asks for it in its last message.
+        // The current models refuse a forced call: the request that wants one asks for it in
+        // its last message, and `auto` keeps the messages' cache, which a changed choice drops.
         body["tool_choice"] = match request.calling {
             Calling::Any | Calling::Only(_) => json!({"type": "auto"}),
             Calling::Nothing => json!({"type": "none"}),
         };
     }
-    if !selection.model().efforts.is_empty() {
+    if let Some(thinking) = thinking
+        && !selection.model().efforts.is_empty()
+    {
         think(&mut body, thinking, selection.effort(), limit);
     }
     body
+}
+
+/// The signature of each thinking block `body` sends: what a refusal of them names.
+pub(crate) fn signatures(body: &Value) -> Vec<String> {
+    let turns = body["messages"].as_array().into_iter().flatten();
+    let blocks = turns.flat_map(|turn| turn["content"].as_array().into_iter().flatten());
+    blocks.filter_map(signature).map(str::to_string).collect()
+}
+
+/// What a thinking block is known by: its signature, or a redacted one's sealed data.
+pub(crate) fn signature(block: &Value) -> Option<&str> {
+    match block["type"].as_str() {
+        Some("thinking") => block["signature"].as_str(),
+        Some("redacted_thinking") => block["data"].as_str(),
+        _ => None,
+    }
+    .filter(|known| !known.is_empty())
 }
 
 /// The level as the model takes it: the effort it decides its thinking by, or a budget of tokens.
@@ -95,7 +117,7 @@ fn think(body: &mut Value, thinking: Thinking, effort: Effort, limit: u64) {
 fn conversation(
     request: &Request,
     model: &str,
-    thoughts: Thoughts,
+    forgotten: &HashSet<String>,
 ) -> (Option<String>, Vec<Value>) {
     let mut system = None;
     let mut turns: Vec<Value> = Vec::new();
@@ -132,7 +154,7 @@ fn conversation(
                     calls,
                     carried,
                     model,
-                    thoughts,
+                    forgotten,
                     request.tools,
                 ),
             ),
@@ -152,27 +174,19 @@ fn conversation(
     (system, turns)
 }
 
-/// An assistant turn's blocks: its thinking first, as the model wrote it and signed it, then its
-/// words, then its calls.
+/// An assistant turn's blocks: as the model wrote them (its signed thinking, its words and its
+/// calls in their order, which the API checks thinking against), its calls as the conversation
+/// holds them now; else, for another model's turn or words changed since, its words, then its
+/// calls.
 fn said(
     text: Option<&str>,
     calls: &[ToolCall],
     carried: &[Value],
     model: &str,
-    thoughts: Thoughts,
+    forgotten: &HashSet<String>,
     tools: &[ToolSpec],
 ) -> Vec<Value> {
-    let mut blocks: Vec<Value> = Vec::new();
-    if thoughts == Thoughts::Kept {
-        let own = carried.iter().filter(|kept| kept["model"] == model);
-        for kept in own.filter_map(|kept| kept[BLOCKS].as_array()) {
-            blocks.extend(kept.iter().cloned());
-        }
-    }
-    if let Some(text) = text.filter(|text| !text.trim().is_empty()) {
-        blocks.push(text_block(text));
-    }
-    for call in calls {
+    let call_block = |call: &ToolCall| {
         // A patch's text goes back in the one argument it was offered with; a call cut off and
         // never run has no object to give, and goes back empty.
         let input = match tools.iter().find(|spec| spec.name == call.name) {
@@ -180,9 +194,50 @@ fn said(
             None => call.arguments.clone(),
         };
         let input = if input.is_object() { input } else { json!({}) };
-        blocks.push(json!({"type": "tool_use", "id": call.id, "name": call.name, "input": input}));
+        json!({"type": "tool_use", "id": call.id, "name": call.name, "input": input})
+    };
+    let mut blocks: Vec<Value> = Vec::new();
+    let written = (carried.iter())
+        .find(|kept| kept["model"] == model)
+        .and_then(|kept| kept[BLOCKS].as_array())
+        .filter(|layout| words(layout) == text.unwrap_or_default());
+    let mut placed = HashSet::new();
+    for block in written.into_iter().flatten() {
+        match block["type"].as_str() {
+            Some("tool_use") => {
+                let id = block["id"].as_str().unwrap_or_default();
+                if let Some(call) = calls.iter().find(|call| call.id == id) {
+                    blocks.push(call_block(call));
+                    placed.insert(id);
+                }
+            }
+            Some("text") => blocks.push(block.clone()),
+            _ => {
+                if signature(block).is_some_and(|known| !forgotten.contains(known)) {
+                    blocks.push(block.clone());
+                }
+            }
+        }
+    }
+    if written.is_none()
+        && let Some(text) = text.filter(|text| !text.trim().is_empty())
+    {
+        blocks.push(text_block(text));
+    }
+    for call in calls
+        .iter()
+        .filter(|call| !placed.contains(call.id.as_str()))
+    {
+        blocks.push(call_block(call));
     }
     blocks
+}
+
+/// A turn's words as the completion gives them: its text blocks, joined.
+pub(crate) fn words(blocks: &[Value]) -> String {
+    let texts = blocks.iter().filter(|block| block["type"] == "text");
+    let texts: Vec<&str> = texts.filter_map(|block| block["text"].as_str()).collect();
+    texts.join("\n").trim().to_string()
 }
 
 /// A mark: the prompt up to here is written to the cache, or read from it.

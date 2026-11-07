@@ -462,12 +462,17 @@ fn a_fetched_catalog_keeps_the_grammar_its_api_does_not_publish() {
 fn only_the_vendors_that_take_cache_breakpoints_are_marked() {
     for id in [
         "anthropic/claude-x",
-        "google/gemini-x",
         "qwen/qwen3-coder-plus",
+        // OpenRouter's alias of a vendor's latest model.
+        "~anthropic/claude-sonnet-latest",
     ] {
         assert!(takes_marks(id), "{id}");
     }
+    // Gemini caches a repeated start on its own; a mark there is a write paid at every turn, and
+    // OpenRouter keeps only the last one.
     for id in [
+        "google/gemini-x",
+        "~google/gemini-pro-latest",
         "openai/gpt-x",
         "deepseek/deepseek-x",
         "google/gemma-x",
@@ -475,4 +480,30 @@ fn only_the_vendors_that_take_cache_breakpoints_are_marked() {
     ] {
         assert!(!takes_marks(id), "{id}");
     }
+}
+
+#[test]
+fn a_hosts_own_toggle_turns_thinking_off_where_it_names_no_off() {
+    // Z.ai, Kimi K2.x and DeepSeek switch thinking with `thinking.type`, Qwen at DashScope with
+    // `enable_thinking`: a toggle-only model is sent the toggle alone, a model with named levels
+    // and no `none` its levels by name and off by the toggle; any other host its levels by name.
+    use crate::switch::{Switch, Toggle};
+    let catalog = Catalog::built_in();
+    let switch = |provider: &str, id: &str| catalog.switch(provider, id);
+    assert_eq!(switch("zai", "glm-4.6"), Switch::Toggled(Toggle::Thinking));
+    assert_eq!(
+        switch("moonshotai", "kimi-k2.6"),
+        Switch::Toggled(Toggle::Thinking)
+    );
+    assert_eq!(
+        switch("zai", "glm-5.2"),
+        Switch::NamedOrOff(Toggle::Thinking)
+    );
+    assert_eq!(switch("zai", "glm-5.3"), Switch::Named);
+    assert_eq!(
+        switch("alibaba", "qwen3.5-27b"),
+        Switch::Toggled(Toggle::EnableThinking)
+    );
+    assert_eq!(switch("mistral", "magistral-medium-latest"), Switch::Named);
+    assert_eq!(switch("zai", "no-such-model"), Switch::Named);
 }

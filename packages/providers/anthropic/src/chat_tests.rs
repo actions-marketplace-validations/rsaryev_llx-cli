@@ -1,25 +1,22 @@
 use contracts::catalog::Effort;
 use contracts::chat::{Calling, Chat, ChatError, Completion, Ending, Message, Request, TaskId};
 use contracts::tool::{Input, ToolSpec};
+use std::sync::{Arc, Mutex};
+
 use serde_json::json;
 
 use super::*;
 use crate::testing::{scripted, selection, stream};
 
-fn model(
-    answers: Vec<(u16, String)>,
-) -> (
-    ChatModel,
-    std::sync::Arc<std::sync::Mutex<Vec<crate::testing::Sent>>>,
-) {
+fn model(answers: Vec<(u16, String)>) -> (ChatModel, Arc<Mutex<Vec<crate::testing::Sent>>>) {
     let (http, sent) = scripted(answers);
     let client =
         Messages::over(http, "https://api.example.com/v1", "sk".into(), "Anthropic").unpaused();
-    let model = ChatModel {
+    let model = ChatModel::new(
         client,
-        selection: selection("claude-x", vec![Effort::Low, Effort::High], Effort::High),
-        thinking: Thinking::Adaptive,
-    };
+        selection("claude-x", vec![Effort::Low, Effort::High], Effort::High),
+        Thinking::Adaptive,
+    );
     (model, sent)
 }
 
@@ -91,7 +88,8 @@ fn a_turn_comes_back_with_its_calls_its_signed_thinking_and_what_the_cache_read_
     ];
     let (again, sent) = self::model(vec![(
         200,
-        json!({"content": [{"type": "text", "text": "Done."}]}).to_string(),
+        json!({"content": [{"type": "text", "text": "Done."}], "stop_reason": "end_turn"})
+            .to_string(),
     )]);
     assert_eq!(
         ask(&again, &next, &patch_tool()).unwrap().text.as_deref(),
@@ -128,7 +126,8 @@ fn thinking_bound_to_a_history_that_changed_is_dropped_and_the_turn_asked_once_m
             text: Some("ok".into()),
             calls: vec![],
             carried: vec![json!({"model": "claude-x", "anthropic": [
-                {"type": "thinking", "thinking": "", "signature": "old"}]})],
+                {"type": "thinking", "thinking": "", "signature": "old"},
+                {"type": "text", "text": "ok"}]})],
         },
         Message::User("more".into()),
     ];
@@ -138,26 +137,77 @@ fn thinking_bound_to_a_history_that_changed_is_dropped_and_the_turn_asked_once_m
         (400, refused.to_string()),
         (
             200,
-            json!({"content": [{"type": "text", "text": "fine"}]}).to_string(),
+            json!({"content": [{"type": "text", "text": "fine"}], "stop_reason": "end_turn"})
+                .to_string(),
+        ),
+        (
+            200,
+            json!({"content": [{"type": "text", "text": "again"}], "stop_reason": "end_turn"})
+                .to_string(),
         ),
     ]);
     assert_eq!(
         ask(&model, &conversation, &[]).unwrap().text.as_deref(),
         Some("fine")
     );
+    assert!(sent.lock().unwrap()[0].body.to_string().contains("old"));
+    assert!(!sent.lock().unwrap()[1].body.to_string().contains("old"));
+    // The next request leaves the refused block out at once: no refusal at every turn after.
+    assert_eq!(
+        ask(&model, &conversation, &[]).unwrap().text.as_deref(),
+        Some("again")
+    );
+    assert_eq!(sent.lock().unwrap().len(), 3);
+    assert!(!sent.lock().unwrap()[2].body.to_string().contains("old"));
+}
+
+#[test]
+fn a_budgeted_model_thinks_between_calls_and_is_asked_once_without_thinking_when_refused() {
+    let (http, sent) = scripted(vec![
+        (
+            400,
+            json!({"type": "error", "error": {"type": "invalid_request_error",
+            "message": "Expected `thinking` or `redacted_thinking`, but found `tool_use`."}})
+            .to_string(),
+        ),
+        (
+            200,
+            json!({"content": [{"type": "text", "text": "ok"}], "stop_reason": "end_turn"})
+                .to_string(),
+        ),
+    ]);
+    let client =
+        Messages::over(http, "https://api.example.com/v1", "sk".into(), "Anthropic").unpaused();
+    let older = ChatModel::new(
+        client,
+        selection("claude-old", vec![Effort::Low, Effort::High], Effort::High),
+        Thinking::Budget,
+    );
+    assert!(ask(&older, &[Message::User("go".into())], &[]).is_ok());
     let sent = sent.lock().unwrap();
-    assert!(sent[0].body.to_string().contains("old"));
-    assert!(!sent[1].body.to_string().contains("old"));
+    let beta = (sent[0].headers.iter()).find(|(name, _)| name == "anthropic-beta");
+    assert_eq!(
+        beta.map(|(_, v)| v.as_str()),
+        Some("interleaved-thinking-2025-05-14")
+    );
+    assert_eq!(sent[0].body["thinking"]["type"], "enabled");
+    assert!(sent[1].body.get("thinking").is_none());
 }
 
 #[test]
 fn a_declined_request_is_an_error_that_says_why() {
-    let declined = json!({"content": [], "stop_reason": "refusal",
-        "stop_details": {"type": "refusal", "explanation": "not this"}});
-    let (model, _) = model(vec![(200, declined.to_string())]);
-    let error = ask(&model, &[Message::User("go".into())], &[]).unwrap_err();
+    // Midway, with words written before it: still no answer to keep.
+    let declined = json!({"content": [{"type": "text", "text": "Sure, here"}],
+        "stop_reason": "refusal", "stop_details": {"type": "refusal", "explanation": "not this"}});
+    let (declining, _) = model(vec![(200, declined.to_string())]);
+    let error = ask(&declining, &[Message::User("go".into())], &[]).unwrap_err();
     assert_eq!(
         error,
         ChatError::Invalid("the model declined to answer: not this".into())
     );
+    let (unfinished, _) = model(vec![(
+        200,
+        json!({"content": [{"type": "text", "text": "Hal"}]}).to_string(),
+    )]);
+    assert!(ask(&unfinished, &[Message::User("go".into())], &[]).is_err());
 }
