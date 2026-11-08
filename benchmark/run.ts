@@ -14,7 +14,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { parseArgs } from "node:util";
-import { type Agent, KINDS, type Options, agent, command, did, extraLogs } from "./lib/agents";
+import { type Agent, KINDS, type Options, agent, command, did, environment, extraLogs } from "./lib/agents";
 import { type Request, pricer } from "./lib/price";
 import { type Result, type Run, history, summary } from "./lib/report";
 import { check, prepare, restore, score, sh, tampered } from "./lib/task";
@@ -66,7 +66,7 @@ async function one(a: Agent, i: number, o: Options, project: string, scratch: st
   const t0 = performance.now();
   // The agent's own limit, and this one past it for an agent that has none (Codex).
   const p = Bun.spawn(command(a, work, o, PROMPT), {
-    stdin: "ignore", stdout: Bun.file(events), stderr: Bun.file(stderr), timeout: (o.timeout + 60) * 1000,
+    cwd: work, env: { ...process.env, ...environment(a) }, stdin: "ignore", stdout: Bun.file(events), stderr: Bun.file(stderr), timeout: (o.timeout + 60) * 1000,
   });
   const exit = await p.exited;
   const wall_s = Math.round((performance.now() - t0) / 100) / 10;

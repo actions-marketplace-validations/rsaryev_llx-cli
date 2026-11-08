@@ -29,11 +29,12 @@ bun benchmark/run.ts --note "after the prompt change"      # evalkit, llx, one r
 bun benchmark/run.ts --task shopkit
 bun benchmark/run.ts --agent codex                          # Codex on the same task
 bun benchmark/run.ts --agent llx --agent codex              # both, at the same time
+bun benchmark/run.ts --task shopkit --provider anthropic --model claude-sonnet-5-5 --agent llx --agent claude
 bun benchmark/run.ts --agent base=llx:/path/to/old/llx --agent llx   # two builds of llx
 ```
 
 `--agent [label=]kind[:path]` names an agent: `llx` (this repository's `target/release/llx`) or
-`codex` (the `codex` on the `PATH`, signed in to ChatGPT), with a label where two of a kind run
+`codex` (the `codex` on the `PATH`, signed in to ChatGPT) or `claude` (Claude Code on the `PATH`), with a label where two of a kind run
 together. Each run copies `project/` into a fresh git repository in a temporary directory (outside
 this one) and starts the agent there, every effect allowed:
 
@@ -44,6 +45,12 @@ this one) and starts the agent there, every effect allowed:
 - Codex: `codex exec --dangerously-bypass-approvals-and-sandbox --ignore-user-config` (the
   person's `config.toml` left out, the sign-in kept). It has no deny rule; the prompt says the
   same to both.
+- Claude Code: `claude -p --bare --dangerously-skip-permissions` in the task's directory, with
+  `--model` and `--effort` the run's (`--reasoning`); `--bare` leaves out the person's hooks,
+  plugins, memory and CLAUDE.md files, and reads the key from `ANTHROPIC_API_KEY` alone, which is
+  given llx's own Anthropic key (`<config>/key-anthropic`) where unset, so both are billed alike.
+  It has no deny rule either. Its stream counts a reply's output tokens as the reply began: the
+  run's total is taken from its last event.
 
 What the agents think with, and how a run is bounded:
 

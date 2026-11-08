@@ -8,8 +8,8 @@ import * as path from "node:path";
 import type { Request } from "./price";
 import { sh } from "./task";
 
-export type Kind = "llx" | "codex";
-export const KINDS: Kind[] = ["llx", "codex"];
+export type Kind = "llx" | "codex" | "claude";
+export const KINDS: Kind[] = ["llx", "codex", "claude"];
 
 /** What a run asks of every agent. */
 export type Options = { provider: string; model: string; reasoning: string; timeout: number; advice: boolean };
@@ -42,7 +42,7 @@ function lines(file: string) {
   });
 }
 
-/** The agent `spec` names: `[label=]kind[:path]` (`llx`, `codex`, `base=llx:/tmp/old/llx`). */
+/** The agent `spec` names: `[label=]kind[:path]` (`llx`, `codex`, `claude`, `base=llx:/tmp/old/llx`). */
 export function agent(spec: string): Agent {
   const eq = spec.indexOf("="), rest = eq < 0 ? spec : spec.slice(eq + 1);
   const colon = rest.indexOf(":");
@@ -50,7 +50,7 @@ export function agent(spec: string): Agent {
   if (!KINDS.includes(kind)) throw new Error(`--agent ${spec}: the agent is one of ${KINDS.join(", ")}`);
   const label = eq < 0 ? kind : spec.slice(0, eq);
   const given = colon < 0 ? null : path.resolve(rest.slice(colon + 1));
-  const binary = given ?? (kind === "llx" ? BUILT : Bun.which("codex"));
+  const binary = given ?? (kind === "llx" ? BUILT : Bun.which(kind));
   if (!binary) throw new Error(`${kind}: none on the PATH`);
   if (!fs.existsSync(binary)) throw new Error(`${kind}: no binary at ${binary}${given ? "" : " (cargo build --release?)"}`);
   const version = sh([binary, "--version"]).stdout.trim();
@@ -84,7 +84,23 @@ export function command(a: Agent, work: string, o: Options, prompt: string): str
       return [a.path, "exec", "--json", "--ignore-user-config", "-m", o.model,
         "-c", `model_reasoning_effort=${o.reasoning}`, "--dangerously-bypass-approvals-and-sandbox",
         "--skip-git-repo-check", "-C", work, prompt];
+    case "claude":
+      // Claude Code as llx's -y: no permission asked; --bare leaves out the person's hooks,
+      // plugins, memory and CLAUDE.md files, as Codex's --ignore-user-config does. It runs in the
+      // task's directory (the spawn's cwd); like Codex, no deny rule, the fixed files restored.
+      return [a.path, "-p", "--bare", "--output-format", "stream-json", "--verbose", "--model", o.model,
+        "--effort", o.reasoning, "--dangerously-skip-permissions", "--no-session-persistence", prompt];
   }
+}
+
+/** What `a`'s process needs in its environment beside the runner's: Claude Code under --bare
+ * reads its key from `ANTHROPIC_API_KEY` alone, so it is given llx's own Anthropic key, and both
+ * agents are billed alike. */
+export function environment(a: Agent): Record<string, string> {
+  if (a.kind !== "claude" || process.env.ANTHROPIC_API_KEY) return {};
+  const config = process.env.XDG_CONFIG_HOME ?? path.join(os.homedir(), ".config");
+  const file = path.join(config, "llx", "key-anthropic");
+  return fs.existsSync(file) ? { ANTHROPIC_API_KEY: fs.readFileSync(file, "utf8").trim() } : {};
 }
 
 /** The logs of a run beyond its events and stderr: Codex's session file, which alone has each
@@ -92,6 +108,7 @@ export function command(a: Agent, work: string, o: Options, prompt: string): str
 export function extraLogs(a: Agent, events: string): { name: string; from: string }[] {
   switch (a.kind) {
     case "llx":
+    case "claude":
       return [];
     case "codex": {
       const thread = lines(events).find((e) => e.type === "thread.started")?.thread_id;
@@ -157,5 +174,48 @@ export function did(kind: Kind, events: string, stderr: string, extra: Record<st
         answer: String(of("agent_message").at(-1)?.text ?? ""),
       };
     }
+    case "claude":
+      return claude(ev);
   }
+}
+
+/** What Claude Code's stream-json says it did. A reply comes as one event a content block, each
+ * with the message's usage as its stream began: its input is whole there, its output is not. The
+ * output in all is the result's; what the replies' own counts miss of it goes to the last. */
+function claude(ev: any[]): Did {
+  const usage = new Map<string, any>();
+  const uses: { id: string; name: string }[] = [];
+  const failed = new Set<string>();
+  for (const e of ev) {
+    if (e.type === "assistant" && e.message?.id) {
+      usage.set(e.message.id, e.message.usage ?? {});
+      for (const block of e.message.content ?? []) {
+        if (block.type === "tool_use" && !uses.some((u) => u.id === block.id)) uses.push({ id: block.id, name: block.name });
+      }
+    }
+    if (e.type === "user") {
+      for (const block of e.message?.content ?? []) {
+        if (block.type === "tool_result" && block.is_error) failed.add(block.tool_use_id);
+      }
+    }
+  }
+  const requests: Request[] = [...usage.values()].map((u) => {
+    const cached = u.cache_read_input_tokens ?? 0;
+    return { input: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + cached, cached, output: u.output_tokens ?? 0 };
+  });
+  const edits = uses.filter((u) => ["Edit", "MultiEdit", "Write", "NotebookEdit"].includes(u.name));
+  const result = ev.filter((e) => e.type === "result").at(-1);
+  const missed = (result?.usage?.output_tokens ?? 0) - requests.reduce((sum, r) => sum + r.output, 0);
+  const last = requests.at(-1);
+  if (last && missed > 0) last.output += missed;
+  return {
+    status: result ? (result.subtype === "success" && !result.is_error ? "done" : "failed") : null,
+    requests,
+    calls: uses.length,
+    failed_commands: uses.filter((u) => u.name === "Bash" && failed.has(u.id)).length,
+    patches: edits.length,
+    failed_patches: edits.filter((u) => failed.has(u.id)).length,
+    model_s: null, advised: null,
+    answer: String(result?.result ?? ""),
+  };
 }

@@ -21,3 +21,5 @@ A row per agent per run of `run.ts`, its medians over the runs: whether it solve
 | [2026-11-08 03:45](results/2026-11-08_0345-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 45.9 | 3 | 0.1131 | 46 | 7934 | 4.5 |
 | [2026-11-08 03:49](results/2026-11-08_0349-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 52.5 | 7 | 0.0051 | 80 | 5598 | 2.7 |
 | [2026-11-08 03:53](results/2026-11-08_0353-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 92.9 | 6 | 0.0045 | 74 | 4761 | 3.7 |
+| [2026-11-08 04:00](results/2026-11-08_0400-shopkit/summary.md) | shopkit | llx | b2f8ce14 | on, 0 | 1 | 1/1 | 69, 69 of 69 | 48.2 | 5 | 0.1162 | 66 | 7954 | 6.1 |
+| [2026-11-08 04:00](results/2026-11-08_0400-shopkit/summary.md) | shopkit | claude | 2.1.319 (Claude Code) | — | 1 | 1/1 | 69, 69 of 69 | 52.3 | 6 | 0.1149 | 69 | 8380 | 6.1 |
