@@ -178,8 +178,19 @@ impl Chat for ChatModel {
                     return Attempt::Unanswered(error);
                 }
             };
+            if reply.status == 200
+                && let Some(error) = failed_for_load(&reply.body)
+            {
+                return Attempt::Again(error);
+            }
+            if let (401, false, Access::SignIn(signin)) = (reply.status, renewed, &self.access) {
+                renewed = true;
+                return match signin.tokens(Renew::Now, request.deadline) {
+                    Ok(_) => Attempt::Again(ChatError::Unavailable(refusal(401, &reply.body))),
+                    Err(error) => Attempt::Done(Err(error)),
+                };
+            }
             match reply.status {
-                200 if let Some(error) = failed_for_load(&reply.body) => Attempt::Again(error),
                 200 => Attempt::Done({
                     route::trace(&session, routed.as_deref(), &reply);
                     self.routes.keep(&task, &reply);
@@ -192,13 +203,6 @@ impl Chat for ChatModel {
                         completion
                     })
                 }),
-                401 if !renewed && let Access::SignIn(signin) = &self.access => {
-                    renewed = true;
-                    match signin.tokens(Renew::Now, request.deadline) {
-                        Ok(_) => Attempt::Again(ChatError::Unavailable(refusal(401, &reply.body))),
-                        Err(error) => Attempt::Done(Err(error)),
-                    }
-                }
                 // A 429 is a key's rate limit of a moment; with a sign-in it is the plan's usage
                 // limit, hours away: not worth a second try.
                 429 if matches!(self.access, Access::Key(_)) => {

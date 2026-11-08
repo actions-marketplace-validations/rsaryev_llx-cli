@@ -40,11 +40,11 @@ pub(crate) fn hash(value: &Value) -> u64 {
 /// An integer's two words, low first.
 fn halves(i: i128) -> [u64; 2] {
     let bytes = i.to_le_bytes();
-    let mut words = [[0; 8]; 2];
-    for (word, chunk) in words.iter_mut().zip(bytes.chunks_exact(8)) {
-        word.copy_from_slice(chunk);
+    let mut words = [0; 2];
+    for (word, chunk) in words.iter_mut().zip(bytes.as_chunks::<8>().0) {
+        *word = u64::from_le_bytes(*chunk);
     }
-    words.map(u64::from_le_bytes)
+    words
 }
 
 fn mix(h: u64, word: u64) -> u64 {
@@ -55,15 +55,12 @@ fn mix(h: u64, word: u64) -> u64 {
 }
 
 fn bytes(seed: u64, text: &[u8]) -> u64 {
-    let mut chunks = text.chunks_exact(8);
+    let (chunks, rest) = text.as_chunks::<8>();
     let mut h = mix(seed, text.len() as u64);
-    for chunk in &mut chunks {
-        let mut word = [0; 8];
-        word.copy_from_slice(chunk);
-        h = mix(h, u64::from_le_bytes(word));
+    for chunk in chunks {
+        h = mix(h, u64::from_le_bytes(*chunk));
     }
     let mut tail = [0; 8];
-    let rest = chunks.remainder();
     if let Some(room) = tail.get_mut(..rest.len()) {
         room.copy_from_slice(rest);
     }
