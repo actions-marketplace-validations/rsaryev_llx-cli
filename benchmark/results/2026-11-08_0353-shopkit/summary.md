@@ -1,0 +1,15 @@
+# shopkit, 2026-11-08 03:53
+
+gpt-6-luna, edits through python3 (no apply_patch)
+
+69 tests; gpt-6-luna (openai), reasoning low; llx's advisor (Jev) on; 1200 s a run, runs an agent: 1; Darwin arm64 26.6.2, load 3.7.
+
+| agent | kind | version | bytes | sha256 |
+|---|---|---|---|---|
+| llx | llx | 6d592d08-dirty | 2740848 | 7c52fbb31d86 |
+
+| agent | run | solved | pass | wall s | model s | the rest s | turns | Jev | cost $ | cache % | input tokens | output tokens | calls | failed commands | patches | failed patches | tampered |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| llx | 0 | yes | 69/69 | 92.9 | 91.6 | 1.3 | 6 | 0 | 0.0045 | 74 | 65462 | 4761 | 6 | 2 | 0 | 0 | 0 |
+
+Each run's logs are in its directory: `events.jsonl.gz` (the agent's own events), `stderr.txt.gz`, `session.jsonl.gz` (Codex's session), `test.txt.gz` (`bun test` after the fixed files were restored), `src.tar.gz` (the code it wrote) and `answer.md` (its last words).

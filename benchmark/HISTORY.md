@@ -18,3 +18,6 @@ A row per agent per run of `run.ts`, its medians over the runs: whether it solve
 | [2026-11-02 22:37](results/2026-11-02_2237-shopkit/summary.md) | shopkit | llx | 55514bfe | on, 0 | 1 | 1/1 | 69, 69 of 69 | 30 | 6 | 0.0049 | 54 | 3649 | 1.3 |
 | [2026-11-02 22:38](results/2026-11-02_2238-evalkit/summary.md) | evalkit | llx | 55514bfe | on, 1 | 1 | 1/1 | 238, 238 of 238 | 1094.7 | 83 | 0.1108 | 98 | 32397 | 1.7 |
 | [2026-11-02 23:55](results/2026-11-02_2355-evalkit/summary.md) | evalkit | llx | bd01149d | on, 2 | 1 | 1/1 | 238, 238 of 238 | 802.8 | 191 | 0.3017 | 99 | 61035 | 2 |
+| [2026-11-08 03:45](results/2026-11-08_0345-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 45.9 | 3 | 0.1131 | 46 | 7934 | 4.5 |
+| [2026-11-08 03:49](results/2026-11-08_0349-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 52.5 | 7 | 0.0051 | 80 | 5598 | 2.7 |
+| [2026-11-08 03:53](results/2026-11-08_0353-shopkit/summary.md) | shopkit | llx | 6d592d08-dirty | on, 0 | 1 | 1/1 | 69, 69 of 69 | 92.9 | 6 | 0.0045 | 74 | 4761 | 3.7 |
