@@ -18,6 +18,8 @@ pub enum Message {
         calls: Vec<ToolCall>,
         /// What the provider asked to have sent back with this turn, as it gave it, opaque to
         /// everyone else: a model's reasoning, sealed, that it would otherwise lose between turns.
+        /// Each value names, in its `model` field, the model it goes back to: no provider sends
+        /// another model's, so after a switch of model the agent lets them go.
         carried: Vec<Value>,
     },
     /// What a tool call returned, for the call with `id`; `failed` when it did nothing useful.

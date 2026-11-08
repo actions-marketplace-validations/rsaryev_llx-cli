@@ -252,6 +252,13 @@ impl Provider {
 
 /// OpenRouter's client for `key`, at the address the session's environment names for a server
 /// standing in for it, else at its own.
+/// What of a value an old turn carried back may go (the history's `Shed`): each provider that
+/// takes it knows its own; chat completions' hosts let none go (DeepSeek and Kimi ask for their
+/// reasoning back through a task's calls, Gemini for its signatures).
+pub(crate) fn shed(kept: &mut serde_json::Value) -> bool {
+    openai::responses::shed(kept) || anthropic::chat::shed(kept)
+}
+
 pub(crate) fn openrouter_client(key: String, vars: Vars) -> openrouter::client::OpenRouter {
     match var(vars, "OPENROUTER_BASE_URL") {
         Some(base) => openrouter::client::OpenRouter::standing_in(&base, key, APP),

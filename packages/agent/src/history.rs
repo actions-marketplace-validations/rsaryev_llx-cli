@@ -3,14 +3,19 @@
 //! and is fitted to its own model, so one strategy serves them all.
 //!
 //! [`Pipeline`] is the strategy llx uses: named `Stage`s, least valuable first, each eliding
-//! what it owns (outputs, arguments) for pointers that say how to get it back. No summary. Made
-//! for the prompt cache:
+//! what it owns (old reasoning, outputs, arguments), outputs and arguments for pointers that say
+//! how to get them back. No summary. Made for the prompt cache:
 //! - nothing runs while the conversation is under `HIGH` of the model's limit (a pruned prefix
 //!   trades cheap cached tokens for a rewrite of everything after it);
 //! - once it is, the stages run until `LOW`, so one cache miss buys many stable turns;
+//! - a pass that could not get down to `LOW` (what no stage elides, a model's reasoning carried
+//!   back, its words, came to more) opens again only once the conversation has grown by
+//!   `HIGH - LOW` since: else every request would elide the one output just past the tail, and
+//!   miss the cache from there;
 //! - an elision is made in the conversation itself, so it is never undone (a ratchet);
 //! - the recent tail, `tail` tokens and at least `MIN_TAIL` messages, is left alone unless the
-//!   limit itself is passed;
+//!   model's own limit is passed (not llx's ceiling, `AUTO`, under it: past that, a conversation
+//!   the stages cannot bring down goes on whole rather than lose what it just read);
 //! - so is the newest output of each call the app keeps ([`Lasting`]): what is still in force once
 //!   read, as the rules of a directory are.
 
@@ -67,6 +72,12 @@ pub(crate) enum Pass {
 /// app knows which outputs are still in force once read. Given the call and its output.
 pub type Lasting = dyn Fn(&ToolCall, &str) -> bool + Send + Sync;
 
+/// What of one value a turn carried back may go once the turn is old: its model's reasoning,
+/// which the provider that sealed it knows (C3: the agent knows no provider's format). Takes it
+/// out of the value, or leaves the value null when nothing else was in it; whether it changed.
+/// A value it does not know it leaves as it is.
+pub type Shed = dyn Fn(&mut Value) -> bool + Send + Sync;
+
 impl Frame {
     /// `estimate` tokens, estimated, in real tokens, as far as the ratio tells.
     fn real(&self, estimate: u64) -> u64 {
@@ -82,18 +93,48 @@ impl Frame {
 /// What a preparation did: each stage that changed something, and how much.
 pub type Report = Vec<(&'static str, usize)>;
 
+/// What a request may hold, in real tokens: `ceiling`, what llx keeps it under (the gate opens at
+/// `HIGH` of it, a pass stops at `LOW`), and `limit`, what the model itself takes, less a reserve
+/// for the answer: past it, the tail gives way too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Limits {
+    pub ceiling: u64,
+    pub limit: u64,
+}
+
+impl Limits {
+    /// Both less `tokens`: what goes with every request and no stage can elide (the specs).
+    #[must_use]
+    pub fn less(self, tokens: u64) -> Self {
+        Self {
+            ceiling: self.ceiling.saturating_sub(tokens),
+            limit: self.limit.saturating_sub(tokens),
+        }
+    }
+}
+
 pub trait Strategy: Send + Sync {
     /// The most a request to a model with a `window` of tokens may hold.
     fn ceiling(&self, window: u64) -> u64 {
+        self.limits(window).ceiling
+    }
+
+    /// What a request to a model with a `window` of tokens may hold: llx's ceiling, and the
+    /// model's own limit.
+    fn limits(&self, window: u64) -> Limits {
         let window = if window == 0 { FALLBACK } else { window };
         // A reserve for the answer and the growth within a run.
         let reserve = (window / 5).min(16_384).max(window / 10);
-        (window - reserve).min(AUTO)
+        let limit = window - reserve;
+        Limits {
+            ceiling: limit.min(AUTO),
+            limit,
+        }
     }
 
-    /// Prepare `conversation` for a request that may hold `ceiling` tokens; `ratio`: real tokens
-    /// per estimated one, from the last answer's usage.
-    fn prepare(&self, conversation: &mut Conversation, ceiling: u64, ratio: f64) -> Report;
+    /// Prepare `conversation` for a request within `limits`; `ratio`: real tokens per estimated
+    /// one, from the last answer's usage.
+    fn prepare(&self, conversation: &mut Conversation, limits: Limits, ratio: f64) -> Report;
 }
 
 /// One step of a pipeline: elides what it owns before the frame's tail, oldest first, until the
@@ -111,24 +152,38 @@ pub struct Pipeline {
 }
 
 impl Default for Pipeline {
-    /// llx's: old outputs, old arguments; the tail only past the ceiling.
+    /// llx's: old outputs, old arguments; the tail only past the model's limit.
     fn default() -> Self {
         Self::keeping(Box::new(|_, _| false))
     }
 }
 
 impl Pipeline {
-    /// llx's, the newest output of each call `keep` names left alone as the tail is.
+    /// llx's, the newest output of each call `keep` names left alone as the tail is; no
+    /// reasoning let go.
     pub fn keeping(keep: Box<Lasting>) -> Self {
+        Self::shedding(keep, Box::new(|_| false))
+    }
+
+    /// llx's: first the reasoning old turns carried back, as `shed` lets it go (the least
+    /// valuable: a provider drops it itself once the person speaks again, and in a long task it
+    /// grows with every turn), then old outputs but the newest of each call `keep` names, then
+    /// old arguments.
+    pub fn shedding(keep: Box<Lasting>, shed: Box<Shed>) -> Self {
         Self {
-            stages: vec![Box::new(Outputs { keep }), Box::new(Arguments)],
+            stages: vec![
+                Box::new(Reasoning { shed }),
+                Box::new(Outputs { keep }),
+                Box::new(Arguments),
+            ],
             tail: TAIL,
         }
     }
 }
 
 impl Strategy for Pipeline {
-    fn prepare(&self, conversation: &mut Conversation, ceiling: u64, ratio: f64) -> Report {
+    fn prepare(&self, conversation: &mut Conversation, limits: Limits, ratio: f64) -> Report {
+        let Limits { ceiling, limit } = limits;
         let mut frame = Frame {
             target: ceiling * LOW / 100,
             ratio,
@@ -136,7 +191,11 @@ impl Strategy for Pipeline {
             pass: Pass::Gate,
         };
         let mut report = Report::new();
-        if frame.size(conversation) * 100 < ceiling * HIGH {
+        let size = frame.size(conversation);
+        // At the gate, and a pass's headroom past where the last one left it.
+        let due = size * 100 >= ceiling * HIGH
+            && size >= conversation.settled() + ceiling * (HIGH - LOW) / 100;
+        if !due && size <= limit {
             return report;
         }
         // The tail is counted in real tokens too.
@@ -153,13 +212,38 @@ impl Strategy for Pipeline {
             }
         };
         run(&frame, conversation);
-        // Still past the ceiling itself: the tail gives way too, all but its last messages.
-        if frame.size(conversation) > ceiling {
+        // Still past the model's own limit: the tail gives way too, all but its last messages.
+        if frame.size(conversation) > limit {
             frame.tail = conversation.messages().len().saturating_sub(MIN_TAIL);
             frame.pass = Pass::Ceiling;
             run(&frame, conversation);
         }
+        conversation.settle(frame.size(conversation));
         report
+    }
+}
+
+/// The reasoning old turns carried back, as far as the provider's `shed` lets it go.
+pub(crate) struct Reasoning {
+    shed: Box<Shed>,
+}
+
+impl Stage for Reasoning {
+    fn name(&self) -> &'static str {
+        "reasoning"
+    }
+
+    fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
+        // The model's last turn keeps its reasoning, however far its results pushed it from the
+        // end: a provider may take its next request only with it (thinking in a tool loop).
+        let last = (conversation.messages().iter())
+            .rposition(|message| matches!(message, Message::Assistant { .. }));
+        pass(conversation, frame, |conversation, at| {
+            match Some(at) == last {
+                true => 0,
+                false => conversation.shed(at, &*self.shed),
+            }
+        })
     }
 }
 
@@ -230,23 +314,35 @@ impl Stage for Arguments {
 }
 
 /// Elide the messages before the frame's tail that a stage `owns`, oldest first, until the
-/// frame's target. The size is counted once and kept by what each elision took out, not read
-/// again from the whole conversation.
+/// frame's target.
 fn elide(conversation: &mut Conversation, frame: &Frame, owns: impl Fn(&Message) -> bool) -> usize {
+    pass(conversation, frame, |conversation, at| {
+        match conversation.messages().get(at).is_some_and(&owns) {
+            true => conversation.elide(at),
+            false => 0,
+        }
+    })
+}
+
+/// `act` on each message before the frame's tail, oldest first, until the frame's target: how
+/// much it did. The size is counted once and kept by what each act took out, not read again from
+/// the whole conversation.
+fn pass(
+    conversation: &mut Conversation,
+    frame: &Frame,
+    mut act: impl FnMut(&mut Conversation, usize) -> usize,
+) -> usize {
     let mut estimate = conversation.tokens();
-    let mut elided = 0;
+    let mut done = 0;
     for at in 0..frame.tail {
         if frame.real(estimate) <= frame.target {
             break;
         }
-        if !conversation.messages().get(at).is_some_and(&owns) {
-            continue;
-        }
         let before = conversation.size_at(at);
-        elided += conversation.elide(at);
+        done += act(conversation, at);
         estimate = estimate - before + conversation.size_at(at);
     }
-    elided
+    done
 }
 
 /// Where the tail of `budget` tokens starts: at least `MIN_TAIL` messages from the end. The
@@ -290,7 +386,9 @@ pub(crate) fn whole(tokens: f64) -> u64 {
     tokens as u64
 }
 
-/// A message's tokens, estimated: four bytes of its text to a token.
+/// A message's tokens, estimated: four bytes of its text to a token, what its turn carried back
+/// with it (a model's reasoning, sent with every request of the task, and counted by the model).
+/// Only the model's own is ever there (`Conversation::for_model`): another's is never sent.
 pub(crate) fn tokens(message: &Message) -> u64 {
     let bytes = match message {
         Message::System(text) | Message::User(text) => text.len(),

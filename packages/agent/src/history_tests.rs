@@ -1,6 +1,6 @@
 use contracts::chat::{Message, ToolCall};
 use contracts::tool::ToolOutput;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use super::*;
 use crate::fakes::tool_results;
@@ -59,6 +59,87 @@ fn elided(conversation: &Conversation) -> Vec<bool> {
         .collect()
 }
 
+/// A ceiling of 20k under a model limit of 40k.
+const WIDE: Limits = Limits {
+    ceiling: 20_000,
+    limit: 40_000,
+};
+
+/// A ceiling that is the model's own limit too.
+fn at(ceiling: u64) -> Limits {
+    Limits {
+        ceiling,
+        limit: ceiling,
+    }
+}
+
+/// `conversation` with `reads` more calls after its last, each getting `chars` characters back.
+fn read_more(conversation: &mut Conversation, reads: usize, chars: usize) {
+    let first = conversation.messages().len();
+    for n in first..first + reads {
+        conversation.push(Message::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: format!("c{n}"),
+                name: "shell".into(),
+                arguments: json!({"command": format!("cat f{n}.rs")}),
+            }],
+            carried: vec![],
+        });
+        conversation.result(&format!("c{n}"), &"x".repeat(chars));
+    }
+}
+
+/// Words no stage elides (the goal, say) of about 15k tokens, then `reads` reads of 1k tokens.
+fn heavy(reads: usize) -> Conversation {
+    let mut conversation = Conversation::new("rules");
+    conversation.push(Message::User("x".repeat(60_000)));
+    read_more(&mut conversation, reads, 4_000);
+    conversation
+}
+
+#[test]
+fn a_pass_that_could_not_reach_its_target_does_not_open_again_at_every_request() {
+    let pipeline = Pipeline {
+        tail: 2_000,
+        ..Pipeline::default()
+    };
+    // 20k: the gate opens at 18k, a pass stops at 12k, under what no stage elides.
+    let mut conversation = heavy(5);
+    let first = pipeline.prepare(&mut conversation, WIDE, 1.0);
+    assert!(!first.is_empty(), "past the gate: {first:?}");
+    // A read more each turn: no pass until a pass's headroom (6k) has grown.
+    for turn in 0..5 {
+        read_more(&mut conversation, 1, 4_000);
+        let report = pipeline.prepare(&mut conversation, WIDE, 1.0);
+        assert!(report.is_empty(), "turn {turn}: {report:?}");
+    }
+    read_more(&mut conversation, 2, 4_000);
+    let report = pipeline.prepare(&mut conversation, WIDE, 1.0);
+    assert!(
+        report.first().is_some_and(|(_, elided)| *elided >= 5),
+        "the grown part goes at once: {report:?}"
+    );
+}
+
+#[test]
+fn past_the_ceiling_but_under_the_models_limit_the_tail_stays() {
+    let pipeline = Pipeline {
+        tail: 8_000,
+        ..Pipeline::default()
+    };
+    // 15k of words and 10 reads (25k) against a ceiling of 20k, a limit of 40k. What the gate leaves
+    // (15k and a tail of 7k) is past the ceiling, not past the limit.
+    let mut conversation = heavy(10);
+    pipeline.prepare(&mut conversation, WIDE, 1.0);
+    let marks = elided(&conversation);
+    assert!(marks[0], "{marks:?}");
+    assert!(
+        marks[3..].iter().all(|e| !e),
+        "the tail is whole: {marks:?}"
+    );
+}
+
 #[test]
 fn the_ceiling_leaves_a_reserve_and_stays_under_auto() {
     let pipeline = Pipeline::default();
@@ -89,7 +170,7 @@ fn under_the_gate_nothing_changes_for_the_cache() {
     let mut conversation = reading(10, 4_000);
     let before = tool_results(conversation.messages());
     // About 10k tokens against a 20k ceiling: under 90%.
-    let report = Pipeline::default().prepare(&mut conversation, 20_000, 1.0);
+    let report = Pipeline::default().prepare(&mut conversation, at(20_000), 1.0);
     assert!(report.is_empty());
     assert_eq!(tool_results(conversation.messages()), before);
 }
@@ -101,7 +182,7 @@ fn past_the_gate_old_outputs_go_down_to_the_target_and_the_tail_stays() {
         ..Pipeline::default()
     };
     let mut conversation = reading(10, 4_000);
-    let report = pipeline.prepare(&mut conversation, 11_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
     assert_eq!(report, [("outputs", 4)]);
     // The oldest go first, only as many as the target needs; the newest stay whole.
     let marks = elided(&conversation);
@@ -128,9 +209,9 @@ fn what_was_elided_stays_elided_and_a_second_pass_changes_nothing() {
         ..Pipeline::default()
     };
     let mut conversation = reading(10, 4_000);
-    pipeline.prepare(&mut conversation, 11_000, 1.0);
+    pipeline.prepare(&mut conversation, at(11_000), 1.0);
     let after = tool_results(conversation.messages());
-    let report = pipeline.prepare(&mut conversation, 11_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
     assert!(report.is_empty(), "under the gate now: {report:?}");
     assert_eq!(
         tool_results(conversation.messages()),
@@ -148,7 +229,7 @@ fn an_output_that_quotes_the_marker_is_elided_as_any_other() {
         tail: 2_000,
         ..Pipeline::default()
     };
-    let report = pipeline.prepare(&mut conversation, 11_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
     assert_eq!(report, [("outputs", 4)]);
     let results = tool_results(conversation.messages());
     assert!(
@@ -184,7 +265,7 @@ fn large_arguments_go_when_outputs_are_not_enough() {
         tail: 1_000,
         ..Pipeline::default()
     };
-    let report = pipeline.prepare(&mut conversation, 6_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(6_000), 1.0);
     assert_eq!(report[0].0, "arguments");
     let first = &conversation.messages()[2];
     assert!(matches!(first, Message::Assistant { calls, .. }
@@ -212,7 +293,7 @@ fn a_patch_written_as_text_goes_as_large_arguments_do() {
         tail: 1_000,
         ..Pipeline::default()
     };
-    let report = pipeline.prepare(&mut conversation, 6_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(6_000), 1.0);
     assert_eq!(report[0].0, "arguments");
     let first = &conversation.messages()[2];
     assert!(matches!(first, Message::Assistant { calls, .. }
@@ -223,11 +304,11 @@ fn a_patch_written_as_text_goes_as_large_arguments_do() {
 fn the_real_size_counts() {
     // The estimate is 10k, under the gate of a 21k ceiling...
     let mut estimated = reading(10, 4_000);
-    let report = Pipeline::default().prepare(&mut estimated, 21_000, 1.0);
+    let report = Pipeline::default().prepare(&mut estimated, at(21_000), 1.0);
     assert!(report.is_empty(), "{report:?}");
     // ...but the model said the real size is twice that: the oldest outputs go.
     let mut conversation = reading(10, 4_000);
-    let report = Pipeline::default().prepare(&mut conversation, 21_000, 2.0);
+    let report = Pipeline::default().prepare(&mut conversation, at(21_000), 2.0);
     let marks = elided(&conversation);
     let gone = marks.iter().filter(|e| **e).count();
     assert_eq!(report, [("outputs", gone)], "{marks:?}");
@@ -238,10 +319,131 @@ fn the_real_size_counts() {
     );
 }
 
+/// A conversation of `turns` reads, each turn carrying back `model`'s reasoning of `chars`
+/// characters.
+fn reasoning(turns: usize, model: &str, chars: usize) -> Conversation {
+    let mut conversation = Conversation::new("rules");
+    conversation.push(Message::User("Goal: look".into()));
+    for n in 0..turns {
+        conversation.push(Message::Assistant {
+            text: None,
+            calls: vec![ToolCall {
+                id: format!("c{n}"),
+                name: "shell".into(),
+                arguments: json!({"command": format!("cat f{n}.rs")}),
+            }],
+            carried: vec![
+                json!({"model": model, "item": {"type": "reasoning", "encrypted_content": "x".repeat(chars)}}),
+                json!({"model": model, "item": {"type": "message", "phase": "commentary"}}),
+            ],
+        });
+        conversation.result(&format!("c{n}"), &"y".repeat(4_000));
+    }
+    conversation
+}
+
+/// A shed as a provider's: its reasoning items go, its other items stay.
+fn reasoning_items(kept: &mut Value) -> bool {
+    match kept["item"]["type"] == "reasoning" {
+        true => {
+            *kept = Value::Null;
+            true
+        }
+        false => false,
+    }
+}
+
+/// How many reasoning items each turn still carries.
+fn sealed(conversation: &Conversation) -> Vec<usize> {
+    (conversation.messages().iter())
+        .filter_map(|message| {
+            let Message::Assistant { carried, .. } = message else {
+                return None;
+            };
+            Some(
+                (carried.iter())
+                    .filter(|kept| kept["item"]["type"] == "reasoning")
+                    .count(),
+            )
+        })
+        .collect()
+}
+
+#[test]
+fn the_last_turn_keeps_its_reasoning_however_far_its_results_pushed_it() {
+    let pipeline = Pipeline::shedding(Box::new(|_, _| false), Box::new(reasoning_items));
+    // The last turn made six calls whose results are past the whole tail; even past the limit.
+    let mut conversation = reasoning(3, "sol", 40_000);
+    conversation.push(Message::Assistant {
+        text: None,
+        calls: (0..6)
+            .map(|n| ToolCall {
+                id: format!("p{n}"),
+                name: "shell".into(),
+                arguments: json!({"command": format!("cat p{n}.rs")}),
+            })
+            .collect(),
+        carried: vec![json!({"model": "sol", "item": {"type": "reasoning", "encrypted_content": "x".repeat(40_000)}})],
+    });
+    for n in 0..6 {
+        conversation.result(&format!("p{n}"), &"y".repeat(16_000));
+    }
+    pipeline.prepare(&mut conversation, at(10_000), 1.0);
+    assert_eq!(sealed(&conversation), [0, 0, 0, 1]);
+}
+
+#[test]
+fn what_a_turn_carries_back_counts_but_only_for_its_model() {
+    let mut conversation = reasoning(4, "sol", 40_000);
+    let carrying = conversation.tokens();
+    assert!(
+        carrying > 40_000,
+        "the reasoning is sent, and counts: {carrying}"
+    );
+    // The same model: nothing goes.
+    conversation.for_model("sol");
+    assert_eq!(conversation.tokens(), carrying);
+    // Another: no provider would send it.
+    conversation.for_model("sonnet");
+    assert!(conversation.tokens() < 6_000, "{}", conversation.tokens());
+    assert_eq!(sealed(&conversation), [0, 0, 0, 0]);
+}
+
+#[test]
+fn old_reasoning_goes_first_and_the_outputs_stay_while_that_is_enough() {
+    let pipeline = Pipeline {
+        tail: 2_000,
+        ..Pipeline::shedding(Box::new(|_, _| false), Box::new(reasoning_items))
+    };
+    // Ten turns of 10k reasoning and a 1k output each: about 110k against a ceiling of 100k.
+    let mut conversation = reasoning(10, "sol", 40_000);
+    let report = pipeline.prepare(&mut conversation, at(100_000), 1.0);
+    assert_eq!(
+        report.first().map(|(stage, _)| *stage),
+        Some("reasoning"),
+        "{report:?}"
+    );
+    assert!(
+        report.iter().all(|(stage, _)| *stage == "reasoning"),
+        "{report:?}"
+    );
+    let left = sealed(&conversation);
+    assert_eq!(left[0], 0, "the oldest went: {left:?}");
+    assert_eq!(left[9], 1, "the newest stays: {left:?}");
+    assert!(elided(&conversation).iter().all(|e| !e), "no output went");
+    // What was not reasoning stays with its turn.
+    assert!(conversation.messages().iter().all(|message| {
+        let Message::Assistant { carried, .. } = message else {
+            return true;
+        };
+        carried.iter().any(|kept| kept["item"]["type"] == "message")
+    }));
+}
+
 #[test]
 fn an_output_the_app_keeps_stays_while_the_others_around_it_go() {
     let (pipeline, mut conversation) = reading_rules_at(&[1]);
-    let report = pipeline.prepare(&mut conversation, 11_000, 1.0);
+    let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
     // The one kept is passed over: the next one goes in its place.
     assert_eq!(report, [("outputs", 4)]);
     let marks = elided(&conversation);
@@ -256,7 +458,7 @@ fn an_output_the_app_keeps_stays_while_the_others_around_it_go() {
 #[test]
 fn of_the_same_call_only_the_newest_output_is_kept() {
     let (pipeline, mut conversation) = reading_rules_at(&[0, 2]);
-    pipeline.prepare(&mut conversation, 11_000, 1.0);
+    pipeline.prepare(&mut conversation, at(11_000), 1.0);
     let marks = elided(&conversation);
     assert!(marks[0] && !marks[2], "{marks:?}");
 }
@@ -265,7 +467,7 @@ fn of_the_same_call_only_the_newest_output_is_kept() {
 fn past_the_limit_itself_a_kept_output_gives_way_too() {
     let (pipeline, mut conversation) = reading_rules_at(&[0]);
     // Below what the kept output (1,000 tokens) and the tail (2,000) take together.
-    pipeline.prepare(&mut conversation, 2_500, 1.0);
+    pipeline.prepare(&mut conversation, at(2_500), 1.0);
     let marks = elided(&conversation);
     assert!(marks[0], "{marks:?}");
 }
@@ -274,7 +476,7 @@ fn past_the_limit_itself_a_kept_output_gives_way_too() {
 fn past_the_limit_itself_the_tail_gives_way_but_its_last_messages_stay() {
     let mut conversation = reading(10, 4_000);
     // The default tail (16k tokens) covers the whole conversation; the limit is far below it.
-    let report = Pipeline::default().prepare(&mut conversation, 6_000, 1.0);
+    let report = Pipeline::default().prepare(&mut conversation, at(6_000), 1.0);
     assert!(!report.is_empty());
     let marks = elided(&conversation);
     assert!(marks[0] && !marks[9] && !marks[8], "{marks:?}");
@@ -399,6 +601,7 @@ mod dialogue {
             schema: None,
             inbox: None,
             window: WINDOW,
+            model: String::new(),
             strategy: &pipeline,
             advisor: None,
         };

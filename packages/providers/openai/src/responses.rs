@@ -223,6 +223,20 @@ impl Chat for ChatModel {
     }
 }
 
+/// What of `kept`, a value a turn carried back, may go once the turn is old (the history's
+/// `Shed`): a sealed reasoning, whole (the value left null), as the API drops it itself once the
+/// person speaks again; nothing is stored, so no item names it. A message with its phase stays,
+/// and a value of another provider's is not this one's to change.
+pub fn shed(kept: &mut Value) -> bool {
+    let reasoning = kept
+        .get("item")
+        .is_some_and(|item| item["type"] == "reasoning");
+    if reasoning {
+        *kept = Value::Null;
+    }
+    reasoning
+}
+
 /// The host's own words for a refusal, where it sent some.
 fn rejected(body: &str) -> String {
     let value: Value = serde_json::from_str(body).unwrap_or(Value::Null);

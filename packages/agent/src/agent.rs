@@ -65,6 +65,9 @@ pub struct Agent<'a> {
     /// The model's context window in tokens (0 when it is not known): the strategy fits the
     /// conversation to the limit it leaves.
     pub window: u64,
+    /// The model the requests go to, as the catalog names it (empty when it is not known): what
+    /// earlier turns carried back for another goes, as no provider would send it.
+    pub model: String,
     /// How the conversation is prepared for the model before each request.
     pub strategy: &'a dyn Strategy,
     /// A decision model's word at the task's edges (C9); `None`: the loop as it is without one.
@@ -119,6 +122,14 @@ impl Agent<'_> {
         goal: &str,
         attached: &[(String, Image)],
     ) -> Run {
+        // A conversation that changed model lets go of what only another would be sent: it costs
+        // no cache (a provider's is its model's), and counted it would read as far larger.
+        let conversation = conversation.map(|mut conversation| {
+            if !self.model.is_empty() {
+                conversation.for_model(&self.model);
+            }
+            conversation
+        });
         let mut conversation = self.tell(conversation, &format!("Goal: {goal}"));
         let begun = Begun::at(goal, &conversation);
         for (name, image) in attached {
@@ -171,11 +182,11 @@ impl Agent<'_> {
         for turn in 0..self.max_turns {
             Self::deliver(&mut run, self.take());
             // Prepared for the model before each request; the elided stays elided.
-            let ceiling = self
+            let limits = self
                 .strategy
-                .ceiling(self.window)
-                .saturating_sub(whole(fixed as f64 * ratio));
-            let report = self.strategy.prepare(&mut run.conversation, ceiling, ratio);
+                .limits(self.window)
+                .less(whole(fixed as f64 * ratio));
+            let report = self.strategy.prepare(&mut run.conversation, limits, ratio);
             if !report.is_empty() {
                 self.observer.fitted(&report);
             }

@@ -206,6 +206,24 @@ fn salvage(calls: &mut [ToolCall], ending: Ending, tools: &[ToolSpec]) {
     }
 }
 
+/// What of `kept`, a value a turn carried back, may go once the turn is old (the history's
+/// `Shed`): its thinking blocks, as the API takes a turn without them but the last (which the
+/// history never reaches); the turn's words and calls stay in their order. A value of another
+/// provider's is not this one's to change.
+pub fn shed(kept: &mut Value) -> bool {
+    let Some(layout) = kept.get_mut(BLOCKS).and_then(Value::as_array_mut) else {
+        return false;
+    };
+    let before = layout.len();
+    layout.retain(|block| {
+        !matches!(
+            block["type"].as_str(),
+            Some("thinking" | "redacted_thinking")
+        )
+    });
+    layout.len() != before
+}
+
 #[cfg(test)]
 #[path = "chat_tests.rs"]
 mod tests;

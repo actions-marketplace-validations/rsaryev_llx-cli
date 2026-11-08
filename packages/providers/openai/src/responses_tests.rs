@@ -897,3 +897,25 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
     let sent: Value = serde_json::from_str(&http.sent()[0].body).unwrap();
     assert_eq!(sent["reasoning"]["effort"], "low");
 }
+
+#[test]
+fn an_old_turns_sealed_reasoning_may_go_its_messages_stay() {
+    let mut reasoning = json!({"model": "gpt-6-sol",
+        "item": {"type": "reasoning", "encrypted_content": "sealed", "summary": []}});
+    assert!(shed(&mut reasoning));
+    assert!(reasoning.is_null());
+    let mut message = json!({"model": "gpt-6-sol",
+        "item": {"type": "message", "phase": "commentary", "content": []}});
+    let before = message.clone();
+    assert!(!shed(&mut message));
+    assert_eq!(message, before);
+    // Another provider's: Anthropic's turn, chat completions' fields.
+    for mut other in [
+        json!({"model": "m", "anthropic": [{"type": "thinking", "thinking": "t", "signature": "s"}]}),
+        json!({"model": "m", "fields": {"reasoning": "t"}}),
+    ] {
+        let before = other.clone();
+        assert!(!shed(&mut other));
+        assert_eq!(other, before);
+    }
+}

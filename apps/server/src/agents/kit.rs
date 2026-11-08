@@ -32,6 +32,8 @@ pub(crate) struct Kit<'a> {
     pub max_turns: usize,
     /// The model's context window, set at each task (the model can change between them).
     pub window: &'a AtomicU64,
+    /// The model the requests go to, set at each task as the window is.
+    pub model: &'a std::sync::Mutex<String>,
     /// How each agent's conversation is prepared for the model.
     pub strategy: &'a dyn agent::history::Strategy,
     pub output: &'a Output,

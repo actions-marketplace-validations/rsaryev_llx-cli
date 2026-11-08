@@ -12,7 +12,7 @@ use contracts::tool::{Input, Tool, ToolError, ToolOutput, ToolSpec};
 use serde_json::{Value, json};
 
 use crate::conversation::Conversation;
-use crate::history::{Report, Strategy};
+use crate::history::{Limits, Report, Strategy};
 use crate::observer::Observer;
 
 /// A chat model that replies from a script, and remembers what each request allowed.
@@ -218,7 +218,7 @@ impl Observer for Silent {}
 pub(crate) struct Keep;
 
 impl Strategy for Keep {
-    fn prepare(&self, _: &mut Conversation, _: u64, _: f64) -> Report {
+    fn prepare(&self, _: &mut Conversation, _: Limits, _: f64) -> Report {
         vec![]
     }
 }

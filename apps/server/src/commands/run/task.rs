@@ -54,6 +54,10 @@ impl Rig<'_> {
         self.agent.window = self.choice.selection.model().context;
         self.window
             .store(self.agent.window, std::sync::atomic::Ordering::SeqCst);
+        self.agent.model = self.choice.model().to_string();
+        (self.model.lock())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone_from(&self.agent.model);
         let before = self.told_of_mode();
         let mut run = self.agent.run(before, goal, &attached);
         self.agents.settle();

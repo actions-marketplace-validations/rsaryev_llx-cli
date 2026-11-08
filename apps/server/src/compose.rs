@@ -130,9 +130,14 @@ fn equip(base: &Base, seat: Seat, work: impl FnOnce(&mut Rig) -> i32) -> i32 {
     // The lane's queue: what reaches its run from outside its calls.
     let lane_queue = Arc::new(crate::arrivals::queue(output.ui().cloned()));
     let window = AtomicU64::new(shared.choice.selection.model().context);
+    let model = Mutex::new(shared.choice.model().to_string());
     // Each participant keeps its own conversation; one pipeline prepares them all, keeping the
     // instruction files read as long as it can.
-    let strategy = agent::history::Pipeline::keeping(Box::new(crate::instructions::reads_one));
+    // and letting old turns' reasoning go first, as its provider says it may.
+    let strategy = agent::history::Pipeline::shedding(
+        Box::new(crate::instructions::reads_one),
+        Box::new(crate::providers::shed),
+    );
     // The decision model advises each task's edges (C9).
     let charge = |cost| base.brake.charge(cost);
     // The levels it may pick are set as each task starts (`Rig::task`), from the choice then.
@@ -148,6 +153,7 @@ fn equip(base: &Base, seat: Seat, work: impl FnOnce(&mut Rig) -> i32) -> i32 {
         context: fresh,
         max_turns: options.max_turns.unwrap_or(usize::MAX),
         window: &window,
+        model: &model,
         strategy: &strategy,
         output,
         history,

@@ -136,6 +136,7 @@ fn agent<'a>(chat: &'a Scripted, tools: &'a [&'a dyn Tool]) -> Agent<'a> {
         schema: None,
         inbox: None,
         window: 0,
+        model: String::new(),
         strategy: &crate::fakes::Keep,
         advisor: None,
     }
