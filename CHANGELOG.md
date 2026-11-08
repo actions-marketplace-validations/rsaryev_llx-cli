@@ -2,7 +2,6 @@
 
 ## Unreleased
 
-- **An output of a call made again goes first** when the history is fitted: a file read twice, `git status` or the tests run again keep their newest output, and the older copy is the first output elided (a new stage, `repeats`, before old outputs in general), so the outputs that are the only copy of what they say stay longer. It runs only when a pass does, so it costs the prompt cache nothing more.
 - **`LLX_RECORD=<dir>`** keeps each session's run whole as JSON lines: every call and its whole output as the model read it, before any elision, the model's words, each turn's usage, each elision and the answer, an agent's events named by it. Off by default; for reading a session again (what an elision took, what the agent read again after one).
 
 - **The prompt cache breaks less often in a long task**: a pass of the history now elides down to 40% of llx's ceiling instead of 60%, so one cache miss buys about twice as many turns. Each pass rewrites what follows it in the cache (about $0.41 on `claude-sonnet-5-5` at 170k tokens), and paid itself back only after some 55 requests; modelled on a task that grows 1k to 3k tokens a request, the deeper pass makes 40% fewer breaks and costs 20% to 26% less, its requests being smaller too (22 breaks instead of 26 in the 300-turn simulation of the tests, whose turns are large for its ceiling). What goes is old outputs, each with a pointer to get it back.

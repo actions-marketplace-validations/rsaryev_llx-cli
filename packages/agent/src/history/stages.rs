@@ -1,5 +1,5 @@
-//! The pipeline's stages, least valuable first: the reasoning old turns carried back, outputs of
-//! a call made again, old outputs but those the app keeps, large arguments.
+//! The pipeline's stages, least valuable first: the reasoning old turns carried back, old outputs
+//! but those the app keeps, large arguments.
 
 use std::collections::{HashMap, HashSet};
 
@@ -29,49 +29,6 @@ impl Stage for Reasoning {
             }
         })
     }
-}
-
-/// Outputs of a call made again later, the same tool with the same arguments (a file read twice,
-/// `git status` run again): the newest copy says what the old one did, or more. Free of any rule
-/// of a tool's (L5): only the call's name and arguments are compared.
-pub(super) struct Repeats;
-
-impl Stage for Repeats {
-    fn name(&self) -> &'static str {
-        "repeats"
-    }
-
-    fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        let repeated = repeated(conversation.messages());
-        elide(conversation, frame, |message| {
-            matches!(message, Message::ToolResult { id, content, .. }
-                if worth(content) && repeated.contains(id))
-        })
-    }
-}
-
-/// The ids of the outputs whose call was made again later, the same tool with the same arguments.
-fn repeated(messages: &[Message]) -> HashSet<String> {
-    let mut calls: HashMap<&str, &ToolCall> = HashMap::new();
-    let mut newest: HashMap<(&str, String), &str> = HashMap::new();
-    let mut older = HashSet::new();
-    for message in messages {
-        match message {
-            Message::Assistant { calls: made, .. } => {
-                calls.extend(made.iter().map(|call| (call.id.as_str(), call)));
-            }
-            Message::ToolResult { id, .. } => {
-                if let Some(call) = calls.get(id.as_str()) {
-                    let key = (call.name.as_str(), call.arguments.to_string());
-                    if let Some(before) = newest.insert(key, id.as_str()) {
-                        older.insert(before.to_string());
-                    }
-                }
-            }
-            Message::System(_) | Message::User(_) | Message::Image { .. } => {}
-        }
-    }
-    older
 }
 
 /// Tool outputs, any worth eliding but those the app keeps.

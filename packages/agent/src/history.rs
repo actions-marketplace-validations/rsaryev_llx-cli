@@ -3,7 +3,7 @@
 //! and is fitted to its own model, so one strategy serves them all.
 //!
 //! [`Pipeline`] is the strategy llx uses: named `Stage`s, least valuable first, each eliding
-//! what it owns (old reasoning, outputs a later call made again, outputs, arguments), outputs and arguments for pointers that say
+//! what it owns (old reasoning, outputs, arguments), outputs and arguments for pointers that say
 //! how to get them back. No summary. Made for the prompt cache:
 //! - nothing runs while the conversation is under `HIGH` of the model's limit (a pruned prefix
 //!   trades cheap cached tokens for a rewrite of everything after it);
@@ -27,7 +27,7 @@ use crate::conversation::Conversation;
 
 mod stages;
 
-use stages::{Arguments, Outputs, Reasoning, Repeats};
+use stages::{Arguments, Outputs, Reasoning};
 
 /// The window assumed when the model's is not known.
 const FALLBACK: u64 = 128_000;
@@ -169,13 +169,12 @@ impl Pipeline {
 
     /// llx's: first the reasoning old turns carried back, as `shed` lets it go (the least
     /// valuable: a provider drops it itself once the person speaks again, and in a long task it
-    /// grows with every turn), then outputs a later call of the same tool and arguments made
-    /// again, then old outputs but the newest of each call `keep` names, then old arguments.
+    /// grows with every turn), then old outputs but the newest of each call `keep` names, then
+    /// old arguments.
     pub fn shedding(keep: Box<Lasting>, shed: Box<Shed>) -> Self {
         Self {
             stages: vec![
                 Box::new(Reasoning { shed }),
-                Box::new(Repeats),
                 Box::new(Outputs { keep }),
                 Box::new(Arguments),
             ],

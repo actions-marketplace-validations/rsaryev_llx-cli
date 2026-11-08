@@ -659,29 +659,3 @@ mod dialogue {
         println!("{TURNS} turns: {breaks} cache breaks, peak {peak} of {ceiling} tokens");
     }
 }
-
-#[test]
-fn an_output_of_a_call_made_again_goes_before_any_other_and_the_newest_copy_stays() {
-    let commands: Vec<String> = ["f0", "a", "f2", "b", "f4", "f5", "a", "f7", "b", "f9"]
-        .iter()
-        .map(|file| format!("cat {file}.rs"))
-        .collect();
-    let mut conversation = running(&commands, &"x".repeat(4_000));
-    let pipeline = Pipeline {
-        tail: 2_000,
-        ..Pipeline::default()
-    };
-    let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
-    assert_eq!(report.first(), Some(&("repeats", 2)), "{report:?}");
-    let marks = elided(&conversation);
-    assert!(marks[1] && marks[3], "the older copies went: {marks:?}");
-    assert!(!marks[6] && !marks[8], "the newest copies stay: {marks:?}");
-}
-
-#[test]
-fn under_the_gate_a_call_made_again_changes_nothing() {
-    let commands: Vec<String> = ["a", "a"].iter().map(|f| format!("cat {f}.rs")).collect();
-    let mut conversation = running(&commands, &"x".repeat(4_000));
-    let report = Pipeline::default().prepare(&mut conversation, at(100_000), 1.0);
-    assert!(report.is_empty(), "{report:?}");
-}
