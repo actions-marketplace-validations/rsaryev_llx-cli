@@ -165,6 +165,29 @@ pub(crate) fn resume(
     run::run(prompt, options, Some(session), kind, front)
 }
 
+/// `llx spend`: what the session `id` names spent, else the newest one of this directory (else
+/// the newest of all), on stdout.
+pub(crate) fn spend(id: Option<&str>) -> Result<i32, Failure> {
+    let store = store();
+    let session = match id {
+        Some(id) => store.load(id),
+        None => {
+            let here = std::env::current_dir()
+                .map(|dir| dir.display().to_string())
+                .unwrap_or_default();
+            let mut all = store.list();
+            let ran_here = |s: &Session| s.workspace == here && !s.is_agent();
+            let at =
+                (all.iter().position(ran_here)).or_else(|| all.iter().position(|s| !s.is_agent()));
+            at.map(|at| all.swap_remove(at)).ok_or(HistoryError::Empty)
+        }
+    };
+    let session = session
+        .map_err(|why| Failure::Usage(format!("{why}: `llx sessions` lists the saved ones")))?;
+    error::print(&crate::spend::report(&session))?;
+    Ok(exit::OK)
+}
+
 #[cfg(test)]
 #[path = "sessions_tests.rs"]
 mod tests;

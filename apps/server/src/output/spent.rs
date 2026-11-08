@@ -48,6 +48,7 @@ fn add(all: Spent, more: Spent) -> Spent {
     Spent {
         input_tokens: all.input_tokens + more.input_tokens,
         cached_tokens: all.cached_tokens + more.cached_tokens,
+        written_tokens: all.written_tokens + more.written_tokens,
         output_tokens: all.output_tokens + more.output_tokens,
         cost: all.cost + more.cost,
     }

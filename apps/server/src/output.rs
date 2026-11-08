@@ -89,6 +89,8 @@ pub(crate) struct Output {
     done: Mutex<Vec<(String, contracts::history::Step)>>,
     /// What the session spent in all (`spent.rs`).
     total: Mutex<contracts::history::Spent>,
+    /// Each model stream's last request, to tell a prompt cache's miss (`crate::spend`).
+    streams: Mutex<crate::spend::Streams>,
     /// Where stderr is read: a CI runner may take a line of it as a command.
     runner: Runner,
     /// The session of the task running, as the log names it: copied out, so no line is written
@@ -167,6 +169,7 @@ impl Output {
             trace: None,
             answer: None,
             total: Mutex::default(),
+            streams: Mutex::default(),
             runner: Runner::Plain,
             session: Mutex::default(),
         }

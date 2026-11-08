@@ -4,6 +4,7 @@
 use agent::observer::Observer;
 use contracts::chat::{ToolCall, Usage};
 use contracts::tool::{ToolError, ToolOutput};
+use std::fmt::Write as _;
 
 use super::{Output, human, json, logged};
 use crate::printable;
@@ -72,14 +73,8 @@ impl Observer for Output {
     }
 
     fn fitted(&self, report: &agent::history::Report) {
-        let said: Vec<String> = report
-            .iter()
-            .map(|(stage, count)| format!("{count} {stage}"))
-            .collect();
-        self.note(&format!(
-            "✻ The context neared the model's limit; elided to save it: {}\n",
-            said.join(", ")
-        ));
+        let note = self.fitted_by("", report);
+        self.note(&note);
     }
 
     fn advised(&self, said: &str) {
@@ -91,18 +86,10 @@ impl Observer for Output {
 
     fn turn(&self, usage: &Usage) {
         logged::turn(&self.who(), usage);
-        let spent = contracts::history::Spent::from(usage);
-        let step = contracts::history::Step {
-            what: "model".into(),
-            detail: format!("{} in · {} out", usage.input_tokens, usage.output_tokens),
-            at_ms: self.millis().saturating_sub(usage.millis),
-            ms: usage.millis,
-            failed: false,
-            spent,
-        };
-        lock(&self.done).push((String::new(), step));
-        self.spend(spent);
-        // A lane's tokens: its agents' turns come here too.
+        if let Some(miss) = self.turn_by("", usage) {
+            self.note(&miss);
+        }
+        // A lane's tokens: its agents' turns count in their own lane.
         if let Some(ui) = &self.ui {
             ui.send(Event::Spent(usage.input_tokens + usage.output_tokens));
         }
@@ -117,5 +104,63 @@ impl Observer for Output {
                 None => self.draw(&line),
             }
         }
+    }
+}
+
+impl Output {
+    /// A model turn of `agent`'s (empty: the session's own), kept as a step of the task and
+    /// counted in the session's spend; the note to show when it missed the prompt cache.
+    pub(crate) fn turn_by(&self, agent: &str, usage: &Usage) -> Option<String> {
+        let spent = contracts::history::Spent::from(usage);
+        let at_ms = self.millis().saturating_sub(usage.millis);
+        // The streams' clock is the wall's: a pause between tasks counts.
+        let unix_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
+        let begun = unix_ms.saturating_sub(usage.millis);
+        let miss = lock(&self.streams).request(agent, &usage.model, (begun, usage.millis), &spent);
+        let mut detail = format!("{} in · {} out", usage.input_tokens, usage.output_tokens);
+        if let Some(miss) = &miss {
+            let _ = write!(detail, " · cache missed: {}", miss.cause.words());
+        }
+        let step = contracts::history::Step {
+            what: "model".into(),
+            detail,
+            agent: agent.to_string(),
+            model: usage.model.clone(),
+            at_ms,
+            ms: usage.millis,
+            failed: false,
+            spent,
+        };
+        lock(&self.done).push((String::new(), step));
+        self.spend(spent);
+        // A new conversation's first request is no news.
+        miss.filter(|miss| miss.cause != crate::spend::Cause::Cold)
+            .map(|miss| crate::spend::noted(agent, &miss))
+    }
+
+    /// `agent`'s context was elided before its next request, as `report` says: kept as a step,
+    /// so the miss that follows is told by its cause. The note to show.
+    pub(crate) fn fitted_by(&self, agent: &str, report: &agent::history::Report) -> String {
+        let said: Vec<String> = report
+            .iter()
+            .map(|(stage, count)| format!("{count} {stage}"))
+            .collect();
+        let said = said.join(", ");
+        lock(&self.streams).elided(agent);
+        let step = contracts::history::Step {
+            what: "elided".into(),
+            detail: said.clone(),
+            agent: agent.to_string(),
+            at_ms: self.millis(),
+            ..Default::default()
+        };
+        lock(&self.done).push((String::new(), step));
+        let whose = match agent {
+            "" => String::new(),
+            agent => format!(" ({agent})"),
+        };
+        format!("✻ The context neared the model's limit{whose}; elided to save it: {said}\n")
     }
 }

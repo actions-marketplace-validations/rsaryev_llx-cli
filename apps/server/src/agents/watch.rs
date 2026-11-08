@@ -60,8 +60,16 @@ impl Observer for Watch<'_> {
     }
 
     fn turn(&self, usage: &Usage) {
+        logged::turn(self.id, usage);
         self.show(Event::Spent(usage.input_tokens + usage.output_tokens));
-        self.output.turn(usage);
+        if let Some(miss) = self.output.turn_by(self.name, usage) {
+            self.show(Event::Note(miss));
+        }
+    }
+
+    fn fitted(&self, report: &agent::history::Report) {
+        let note = self.output.fitted_by(self.name, report);
+        self.show(Event::Note(note));
     }
 }
 

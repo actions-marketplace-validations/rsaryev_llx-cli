@@ -161,6 +161,14 @@ pub(crate) enum Command {
     Resume(Box<ResumeArgs>),
     /// List saved sessions, newest first.
     Sessions,
+    /// What a session spent: by task, by agent and by model, the prompt cache's misses and their
+    /// likely cause, and the dearest requests. Without an ID, the newest session of this
+    /// directory.
+    Spend {
+        /// The session (see `llx sessions`).
+        #[arg(value_name = "ID")]
+        id: Option<String>,
+    },
     /// Forget every saved sign-in: the ChatGPT tokens and each provider's saved key. A key still
     /// set in the environment is named, to unset.
     Logout,

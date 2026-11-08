@@ -167,6 +167,8 @@ Every run is saved as a session in `~/.llx/sessions/<id>.jsonl` (JSON Lines: the
 
 A session at the terminal runs in the `llx` process that shows it, with its agents and jobs: in its directory, with its environment and the options its command line gave. Quitting ends its work (asked first while something runs); `llx resume` or `llx -c` goes on with it later from its file. A session is open in one `llx` at a time: another that resumes it while it is open is refused (`session <id> is open in another llx: quit it there first`), and the file is left as it was.
 
+`llx spend [ID]` says what a session spent (the newest of this directory without an ID): by task, by agent (an agent's turns are counted in the session that started it) and by model, with the share read from the prompt cache and what was written to it; then each miss of the cache with its likely cause and the dearest requests. `/usage` in a session ends with the same report. A miss is also noted as it happens (`✻ The prompt cache missed…`), with its cause and cost.
+
 ## Project instructions
 
 llx reads instruction files, so a repository that already has them works as it is:

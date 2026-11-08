@@ -39,7 +39,7 @@ const TAIL: u64 = 16_384;
 /// Percent of the ceiling that opens the gate.
 const HIGH: u64 = 90;
 /// Percent of the ceiling a pass stops at.
-const LOW: u64 = 60;
+const LOW: u64 = 40;
 /// Bytes below which nothing is worth eliding.
 const MIN_BYTES: usize = 400;
 /// What every pointer says, so an elision is told apart.

@@ -104,12 +104,12 @@ fn a_pass_that_could_not_reach_its_target_does_not_open_again_at_every_request()
         tail: 2_000,
         ..Pipeline::default()
     };
-    // 20k: the gate opens at 18k, a pass stops at 12k, under what no stage elides.
+    // 20k: the gate opens at 18k, a pass stops at 8k, under what no stage elides.
     let mut conversation = heavy(5);
     let first = pipeline.prepare(&mut conversation, WIDE, 1.0);
     assert!(!first.is_empty(), "past the gate: {first:?}");
-    // A read more each turn: no pass until a pass's headroom (6k) has grown.
-    for turn in 0..5 {
+    // A read more each turn: no pass until a pass's headroom (10k) has grown.
+    for turn in 0..9 {
         read_more(&mut conversation, 1, 4_000);
         let report = pipeline.prepare(&mut conversation, WIDE, 1.0);
         assert!(report.is_empty(), "turn {turn}: {report:?}");
@@ -183,22 +183,22 @@ fn past_the_gate_old_outputs_go_down_to_the_target_and_the_tail_stays() {
     };
     let mut conversation = reading(10, 4_000);
     let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
-    assert_eq!(report, [("outputs", 4)]);
+    assert_eq!(report, [("outputs", 6)]);
     // The oldest go first, only as many as the target needs; the newest stay whole.
     let marks = elided(&conversation);
     assert!(
-        marks[..4].iter().all(|e| *e) && marks[4..].iter().all(|e| !*e),
+        marks[..6].iter().all(|e| *e) && marks[6..].iter().all(|e| !*e),
         "{marks:?}"
     );
     assert!(
         Frame {
-            target: 6_600,
+            target: 4_400,
             ratio: 1.0,
             tail: 0,
             pass: Pass::Gate,
         }
         .size(&conversation)
-            <= 6_600
+            <= 4_400
     );
 }
 
@@ -230,7 +230,7 @@ fn an_output_that_quotes_the_marker_is_elided_as_any_other() {
         ..Pipeline::default()
     };
     let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
-    assert_eq!(report, [("outputs", 4)]);
+    assert_eq!(report, [("outputs", 6)]);
     let results = tool_results(conversation.messages());
     assert!(
         results[0].starts_with("[output elided"),
@@ -445,12 +445,12 @@ fn an_output_the_app_keeps_stays_while_the_others_around_it_go() {
     let (pipeline, mut conversation) = reading_rules_at(&[1]);
     let report = pipeline.prepare(&mut conversation, at(11_000), 1.0);
     // The one kept is passed over: the next one goes in its place.
-    assert_eq!(report, [("outputs", 4)]);
+    assert_eq!(report, [("outputs", 6)]);
     let marks = elided(&conversation);
     assert_eq!(
         marks,
         [
-            true, false, true, true, true, false, false, false, false, false
+            true, false, true, true, true, true, true, false, false, false
         ]
     );
 }
@@ -647,7 +647,7 @@ mod dialogue {
         let marks: Vec<bool> = last.iter().filter_map(id_of).map(|(_, e)| e).collect();
         assert!(marks[..TURNS / 2].iter().filter(|e| **e).count() > TURNS / 3);
         assert!(!marks[TURNS - 3..].iter().any(|e| *e));
-        // A pass frees 30% of the limit, so it comes about once every dozen turns.
+        // A pass frees half the limit, so it comes about once every dozen turns.
         assert!(
             breaks > 0 && breaks <= TURNS / 8,
             "{breaks} cache breaks in {TURNS} turns"

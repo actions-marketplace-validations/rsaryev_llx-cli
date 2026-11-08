@@ -2,6 +2,7 @@
 //! AGENTS.md written for the project), `/copy` (the last answer, for the person's clipboard) and
 //! `/usage` (what the session spent).
 
+use std::fmt::Write as _;
 use std::path::Path;
 use std::time::Duration;
 
@@ -96,7 +97,7 @@ pub(crate) fn usage(rig: &Rig) -> String {
     let spent = &rig.spent;
     let minutes = rig.begun.elapsed().as_secs() / 60;
     let session = rig.output.total();
-    format!(
+    let mut shown = format!(
         "tasks      {}\nagent      {} · {} turns · {} · {} out · ${:.4}\n\
          time       {minutes} min\n\
          session    {} · {} out · ${:.4}\n",
@@ -109,7 +110,16 @@ pub(crate) fn usage(rig: &Rig) -> String {
         tokens_in(session.input_tokens, session.cached_tokens),
         thousands(session.output_tokens),
         session.cost,
-    )
+    );
+    if !rig.session.turns.is_empty() {
+        let _ = writeln!(
+            shown,
+            "\nthe tasks before this one, in detail (`llx spend {}`):",
+            rig.session.id
+        );
+        shown.push_str(&crate::spend::report(&rig.session));
+    }
+    shown
 }
 
 #[cfg(test)]
