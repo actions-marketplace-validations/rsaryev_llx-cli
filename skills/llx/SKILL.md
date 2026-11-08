@@ -96,8 +96,8 @@ The action's other inputs: `prompt-file`, `schema` (the answer as data), `allow`
 (rules, one per line), `provider`, `model`, `reasoning`, `max-turns`, `timeout`, `budget`,
 `working-directory`, `version`, `args`, `privileges`, `instructions-from`, `install-only`.
 Ready workflows (review with comments on lines, `@llx` in a comment, triage, a failed run
-explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira item
-made a draft pull request): https://llx.sh/docs/examples. GitLab and any other CI run
+explained, a described pull request, a draft release, a daily gate, a weekly audit, a dependency
+update read, a Jira item made a draft pull request): https://llx.sh/docs/examples. GitLab and any other CI run
 `llx exec` the same way: https://llx.sh/docs/ci.
 
 A gate fails the job on the answer: `--schema` and a check of the data, or `llx decide --expect`:

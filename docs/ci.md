@@ -186,6 +186,7 @@ Each is one file to copy into `.github/workflows/`, with the key as a secret. Th
 | [release.yml](../examples/github/release.yml) | Picks the version bump and writes the notes in one answer, and drafts a release. |
 | [gate.yml](../examples/github/gate.yml) | Checks a rule you state (here, that what the docs name exists in the code), daily and read-only, and fails the job when it is not met. |
 | [jira.yml](../examples/github/jira.yml) | Makes a Jira work item's change and opens a draft pull request named by its key, then comments on the work item. |
+| [deps.yml](../examples/github/deps.yml) | Reads a dependency update (a pull request that changes a manifest or a lockfile): what the new versions changed, what in your code it touches, whether the tests pass; one comment, `safe`, `review` or `breaking`. |
 | [audit.yml](../examples/github/audit.yml) | Explores the repository weekly, runs its tests and linters, and keeps one issue as its latest report. |
 
 ### From Jira

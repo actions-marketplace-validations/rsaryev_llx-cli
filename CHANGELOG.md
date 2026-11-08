@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Examples: `deps.yml`, a dependency update read: when a pull request changes a manifest or a lockfile (Dependabot's, Renovate's or yours), llx works out which packages move, reads what their new versions changed, searches the code for what that touches and runs the tests, then one comment it updates says `safe`, `review` or `breaking` with the lines that need a change. For Dependabot's pull requests the key must also be a Dependabot secret.
+
 - The interface has no indent where text is read or copied: an answer starts at the left edge with no bullet and no hanging indent (a long line wraps flush), a quiet line from llx (a note, a table, the footer under the prompt, a list's `↑ 3 more`) too, and the list of sessions, agents and commands under the prompt has no pointer column: only the row the keys are on has its `❯`. What you typed keeps its `❯`, and a call keeps its bullet and its `└` steps.
 
 ## 0.4.0
