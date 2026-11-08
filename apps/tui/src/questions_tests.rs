@@ -146,7 +146,7 @@ fn a_withdrawn_question_closes_unanswered_and_the_prompt_comes_back() {
     assert_eq!(
         live_area(&app, now),
         format!(
-            "{rule}\n❯ Type a task, / for commands\n{rule}\n  default mode · shift+tab to cycle",
+            "{rule}\n❯ Type a task, / for commands\n{rule}\ndefault mode · shift+tab to cycle",
             rule = "─".repeat(60)
         )
     );

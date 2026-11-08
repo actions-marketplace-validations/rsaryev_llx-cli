@@ -32,7 +32,7 @@ fn idle_shows_the_current_mode_and_cycle_hint() {
             "─".repeat(60).as_str(),
             "❯ Type a task, / for commands",
             "─".repeat(60).as_str(),
-            "  default mode · shift+tab to cycle"
+            "default mode · shift+tab to cycle"
         ]
     );
     // The rules are dim: they frame the composer, they are not read.
@@ -53,7 +53,7 @@ fn what_the_session_spent_sits_at_the_right_of_the_footer_once_it_spent() {
     };
     assert_eq!(
         footer(&app),
-        "  default mode · shift+tab to cycle",
+        "default mode · shift+tab to cycle",
         "nothing spent yet"
     );
     let total = protocol::Total {
@@ -65,7 +65,7 @@ fn what_the_session_spent_sits_at_the_right_of_the_footer_once_it_spent() {
     app.event(Event::Total(total), now);
     assert_eq!(
         footer(&app),
-        "  default mode · shift+tab to cycle    24.1k in · 87% cached · 1.2k out · $0.042"
+        "default mode · shift+tab to cycle      24.1k in · 87% cached · 1.2k out · $0.042"
     );
     assert_eq!(
         footer(&app).chars().count(),
@@ -74,7 +74,7 @@ fn what_the_session_spent_sits_at_the_right_of_the_footer_once_it_spent() {
     );
     // A narrow terminal keeps the footer's own words.
     app.width = 50;
-    assert_eq!(footer(&app), "  default mode · shift+tab to cycle");
+    assert_eq!(footer(&app), "default mode · shift+tab to cycle");
 }
 
 #[test]
@@ -116,12 +116,12 @@ fn working_shows_the_call_its_steps_the_time_and_the_queue() {
       └ scout: Ran cargo test
 
     ⠸ Working (12s · esc stop)
-      ⏎ then update the changelog
+    ⏎ then update the changelog
 
     ────────────────────────────────────────────────────────────
     ❯ Type a task, / for commands
     ────────────────────────────────────────────────────────────
-      plan mode · shift+tab to cycle
+    plan mode · shift+tab to cycle
     ");
 }
 
@@ -136,7 +136,7 @@ fn slash_lists_the_commands_under_the_prompt() {
     ────────────────────────────────────────────────────────────
       /mode       show or switch the mode
       /model      pick the model
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
 }
 
@@ -204,14 +204,14 @@ fn what_waits_reads_as_the_transcript_shows_it() {
     assert!(!screen.contains('\u{1b}'), "{screen}");
     insta::assert_snapshot!(screen, @"
     ⠋ Working (0s · esc stop)
-      ⏎ shift+tab · next mode
-      ⏎ more reasoning
-      ≋ m · x
+    ⏎ shift+tab · next mode
+    ⏎ more reasoning
+    ≋ m · x
 
     ────────────────────────────────────────────────────────────
     ❯ Type a task, / for commands
     ────────────────────────────────────────────────────────────
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
 }
 
@@ -224,7 +224,7 @@ fn esc_closes_the_commands_slash_offers_and_keeps_other_text() {
     assert_eq!(
         shown(&app, now),
         format!(
-            "{rule}\n❯ Type a task, / for commands\n{rule}\n  default mode · shift+tab to cycle",
+            "{rule}\n❯ Type a task, / for commands\n{rule}\ndefault mode · shift+tab to cycle",
             rule = "─".repeat(60)
         )
     );
@@ -271,10 +271,10 @@ fn the_footer_counts_the_commands_and_monitors_the_session_shown_runs_in_the_bac
     let footer = |app: &App| {
         let (lines, _) = render(app, now);
         (lines.iter().map(style::plain))
-            .find(|line| line.starts_with("  default mode"))
+            .find(|line| line.starts_with("default mode"))
             .unwrap_or_default()
     };
-    assert_eq!(footer(&app), "  default mode · shift+tab to cycle");
+    assert_eq!(footer(&app), "default mode · shift+tab to cycle");
     let rows = vec![
         row("a", protocol::JobKind::Shell),
         row("b", protocol::JobKind::Shell),
@@ -284,11 +284,11 @@ fn the_footer_counts_the_commands_and_monitors_the_session_shown_runs_in_the_bac
     app.event(Event::Jobs(rows), now);
     assert_eq!(
         footer(&app),
-        "  default mode · shift+tab to cycle · 2 shells, 1 monitor"
+        "default mode · shift+tab to cycle · 2 shells, 1 monitor"
     );
     app.event(Event::Jobs(vec![row("c", protocol::JobKind::Monitor)]), now);
     assert_eq!(
         footer(&app),
-        "  default mode · shift+tab to cycle · 1 monitor"
+        "default mode · shift+tab to cycle · 1 monitor"
     );
 }

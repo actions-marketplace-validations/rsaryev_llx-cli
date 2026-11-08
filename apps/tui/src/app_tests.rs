@@ -55,13 +55,13 @@ fn a_task_leaves_its_blocks_in_order() {
         },
         now,
     );
-    insta::assert_snapshot!(history(&mut app), @r"
+    insta::assert_snapshot!(history(&mut app), @"
     ❯ list the files
 
     • Ran ls
       └ README.md
 
-    • One file: README.md.
+    One file: README.md.
 
     ─ Worked for 3.0s · 2 turns · $0.0010 ──────────────────────
     ");
@@ -206,7 +206,7 @@ fn slash_offers_the_commands_and_enter_takes_the_marked_one() {
       /help       the commands
       /mode       show or switch the mode
       /new        start over
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
     typed(&mut app, "n", now);
     insta::assert_snapshot!(render(&mut app, now), @"
@@ -214,7 +214,7 @@ fn slash_offers_the_commands_and_enter_takes_the_marked_one() {
     ❯ /n
     ────────────────────────────────────────────────────────────
       /new        start over
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
     assert_eq!(app.input(key(KeyCode::Enter), now), None);
     assert_eq!(
@@ -235,9 +235,9 @@ fn slash_offers_the_commands_and_enter_takes_the_marked_one() {
     ────────────────────────────────────────────────────────────
     ❯ /mode plan
     ────────────────────────────────────────────────────────────
-      mode  ›  current: default · ↑↓ choose · tab complete · en…
+    mode  ›  current: default · ↑↓ choose · tab complete · ente…
       plan         Read-only: file changes are refused
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
     app.input(key(KeyCode::Enter), now);
     assert_eq!(sent_texts(&mut app), ["/mode plan"]);
@@ -267,12 +267,12 @@ fn command_drill_down_shows_modes_and_preserves_argument_entry() {
     ────────────────────────────────────────────────────────────
     ❯ /mode
     ────────────────────────────────────────────────────────────
-      mode  ›  current: default · ↑↓ choose · tab complete · en…
+    mode  ›  current: default · ↑↓ choose · tab complete · ente…
       default      Works in the workspace without asking
       plan         Read-only: file changes are refused
       bypass       Everything runs without asking (-y)
       review       The person's own mode.
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
     ");
     typed(&mut app, "rev", now);
     app.input(key(KeyCode::Tab), now);
@@ -839,7 +839,7 @@ fn a_long_history_shows_its_last_tasks_and_counts_the_rest() {
     );
     assert!(!shown.contains("❯ task 5\n"), "{shown}");
     assert!(
-        shown.contains("❯ task 6") && shown.contains("• answer 25"),
+        shown.contains("❯ task 6") && shown.contains("\nanswer 25"),
         "{shown}"
     );
     assert_eq!(app.shown().tasks, 25);

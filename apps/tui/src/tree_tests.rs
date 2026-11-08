@@ -54,10 +54,10 @@ fn each_session_is_a_row_the_shown_one_marked() {
     assert_eq!(
         rows(&app),
         [
-            "  * go  Messaging agent tests · run them",
-            "    ├ ✓ scout  done",
-            "    └ * tests  Running cargo test",
-            "  ↓ manage · ← sessions",
+            "* go  Messaging agent tests · run them",
+            "├ ✓ scout  done",
+            "└ * tests  Running cargo test",
+            "↓ manage · ← sessions",
         ]
     );
     // ↓ from the empty prompt goes into the list on main, ↓↓ to tests, Enter shows it.
@@ -76,12 +76,12 @@ fn each_session_is_a_row_the_shown_one_marked() {
     ────────────────────────────────────────────────────────────
     ❯ Viewing agent tests · a task you type goes to go
     ────────────────────────────────────────────────────────────
-      default mode · shift+tab to cycle
+    default mode · shift+tab to cycle
 
-      * go  Messaging agent tests · run them
-        ├ ✓ scout  done
-        └ * tests  current · Running cargo test
-      ↓ manage · esc back to go
+    * go  Messaging agent tests · run them
+    ├ ✓ scout  done
+    └ * tests  current · Running cargo test
+    ↓ manage · esc back to go
     ");
 }
 
@@ -99,7 +99,7 @@ fn an_agent_shows_how_long_it_worked_and_its_tokens_after_what_it_does() {
     // The seconds in two digits, as every duration of the interface reads, at the right edge.
     assert_eq!(
         row,
-        "    └ * scout  thinking                1m 08s · 54.1k tokens"
+        "└ * scout  thinking                    1m 08s · 54.1k tokens"
     );
 }
 
@@ -137,7 +137,7 @@ fn many_agents_show_a_window_around_the_one_shown() {
     app.show("s7");
     let shown = rows(&app);
     assert!(shown[1].contains("↑ 3 more"), "{shown:?}");
-    assert!(shown[6].starts_with("    └ ○ a7"), "{shown:?}");
+    assert!(shown[6].starts_with("└ ○ a7"), "{shown:?}");
     assert_eq!(shown.len(), 8, "{shown:?}");
 }
 
@@ -181,8 +181,8 @@ fn tree_shows_lane_rows_with_time_and_tokens() {
         .map(style::plain)
         .collect();
     insta::assert_snapshot!(rows.join("\n"), @"
-    * fix the flaky  working                         1m 12s · 54.1k tokens
-      └ * scout  thinking                            1m 12s · 12.0k tokens
+    * fix the flaky  working                           1m 12s · 54.1k tokens
+    └ * scout  thinking                                1m 12s · 12.0k tokens
     ↓ manage · ← 1 other session (1 finished)
     ");
 }
@@ -199,7 +199,7 @@ fn waiting_for_you_detail_when_held() {
     };
     app.asked(1, "B", choose, now);
     // Another session is not listed under the prompt: one line says what waits there.
-    assert_eq!(rows(&app), ["  ← 1 other session (1 waiting for you)"]);
+    assert_eq!(rows(&app), ["← 1 other session (1 waiting for you)"]);
 }
 
 #[test]
@@ -208,7 +208,7 @@ fn other_sessions_without_agents_take_one_line() {
     let mut app = App::new(60, 20, vec![]);
     lanes(&mut app, &[("A", "first"), ("B", "second"), ("C", "third")]);
     app.frame(in_session("B", Event::TaskStarted("go".into())), now);
-    assert_eq!(rows(&app), ["  ← 2 other sessions (1 working)"]);
+    assert_eq!(rows(&app), ["← 2 other sessions (1 working)"]);
     // ↓ has nothing to choose there: it stays the composer's.
     press(&mut app, KeyCode::Down, now);
     assert_eq!(app.views.focus, None);
@@ -229,14 +229,14 @@ fn another_sessions_agents_are_not_listed() {
         ),
         now,
     );
-    assert_eq!(rows(&app), ["  ← 1 other session"]);
+    assert_eq!(rows(&app), ["← 1 other session"]);
     app.show("B");
     assert_eq!(
         rows(&app),
         [
-            "  ● second  idle",
-            "    └ ○ scout  starting",
-            "  ↓ manage · ← 1 other session"
+            "● second  idle",
+            "└ ○ scout  starting",
+            "↓ manage · ← 1 other session"
         ]
     );
 }

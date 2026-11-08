@@ -60,7 +60,7 @@ fn enter_on_a_commands_row_shows_what_it_prints_as_it_prints() {
     let screen = term.draw(&mut app, now);
     assert!(screen.contains("$ nap · running · "), "{screen}");
     assert!(screen.contains("while :; do echo tick"), "{screen}");
-    assert!(screen.contains("  tick\n  tick"), "{screen}");
+    assert!(screen.contains("tick\ntick"), "{screen}");
     assert!(screen.ends_with("x stop · esc back"), "{screen}");
     assert!(!screen.contains("Type a task"), "{screen}");
     app.poll(now + std::time::Duration::from_secs(1));
@@ -188,7 +188,7 @@ fn a_monitor_waiting_shows_its_checks_and_opens_to_what_its_last_check_printed()
     app.frame(in_session("watch-lane", output), now);
     let screen = term.draw(&mut app, now);
     assert!(screen.contains("≋ ready · 3 checks · "), "{screen}");
-    assert!(screen.contains("  curl: (7) Failed to connect"), "{screen}");
+    assert!(screen.contains("curl: (7) Failed to connect"), "{screen}");
     assert!(screen.ends_with("x stop · esc back"), "{screen}");
 }
 

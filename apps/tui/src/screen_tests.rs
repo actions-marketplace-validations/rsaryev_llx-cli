@@ -214,7 +214,7 @@ fn consecutive_reads_form_a_compact_chain_even_when_they_finish_in_separate_fram
     }
     app.event(Event::Answer("Found the entry points.".into()), now);
     let shown = term.draw(&mut app, now);
-    assert!(shown.contains("• Read src/main.rs from line 1\n  ↳ Read src/lib.rs from line 20\n  ↳ Read README.md from line 1\n\n• Found the entry points."), "{shown}");
+    assert!(shown.contains("• Read src/main.rs from line 1\n  ↳ Read src/lib.rs from line 20\n  ↳ Read README.md from line 1\n\nFound the entry points."), "{shown}");
 }
 
 #[test]
@@ -369,7 +369,7 @@ fn a_note_between_calls_of_one_verb_ends_their_chain() {
     app.event(Event::Note("the person changed the mode".into()), now);
     let shown = reads(&mut app, &mut term, &["b.rs"], now);
     assert!(
-        shown.contains("• Read a.rs\n\n  the person changed the mode\n\n• Read b.rs"),
+        shown.contains("• Read a.rs\n\nthe person changed the mode\n\n• Read b.rs"),
         "{shown}"
     );
 }
