@@ -7,13 +7,13 @@ use contracts::tool::{Input, Tool, ToolError, ToolOutput};
 use serde_json::{Value, json};
 
 use super::*;
-use crate::fakes::Silent;
 use crate::fakes::{Echo, Recorder, Scripted, calls, data, done, ok, says, users};
+use crate::fakes::{Shaped, Silent};
 
 fn agent<'a>(
     chat: &'a dyn Chat,
     tools: &'a [&'a dyn Tool],
-    schema: Option<&'a Value>,
+    schema: Option<&'a dyn Shape>,
     observer: &'a dyn Observer,
 ) -> Agent<'a> {
     Agent {
@@ -195,7 +195,9 @@ fn turns_run_out_without_a_last_request_for_an_answer() {
 
 #[test]
 fn with_a_schema_the_data_is_asked_for_after_the_answer_with_the_call_forced() {
-    let schema = json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}});
+    let schema = Shaped(
+        json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}}),
+    );
     let chat = Scripted::new(vec![
         says("The price is 93 EUR."),
         data(&json!({"price": "93"})),
@@ -234,7 +236,9 @@ fn with_a_schema_the_data_is_asked_for_after_the_answer_with_the_call_forced() {
 
 #[test]
 fn a_result_called_once_the_work_is_done_ends_the_task_with_no_request_more() {
-    let schema = json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}});
+    let schema = Shaped(
+        json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}}),
+    );
     let chat = Scripted::new(vec![
         calls("echo", json!({})),
         data(&json!({"price": "93"})),
@@ -259,7 +263,7 @@ fn a_result_called_once_the_work_is_done_ends_the_task_with_no_request_more() {
 
 #[test]
 fn a_result_beside_other_calls_is_not_taken_and_the_work_goes_on() {
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let mut both = calls("echo", json!({}));
     both.calls.push(ToolCall {
         id: "c2".into(),
@@ -281,7 +285,9 @@ fn a_result_beside_other_calls_is_not_taken_and_the_work_goes_on() {
 
 #[test]
 fn a_result_that_keeps_breaking_its_schema_leaves_the_run_without_data() {
-    let schema = json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}});
+    let schema = Shaped(
+        json!({"type": "object", "required": ["price"], "properties": {"price": {"type": "number"}}}),
+    );
     let wrong = || data(&json!({}));
     let chat = Scripted::new(vec![says("93."), wrong(), wrong(), wrong(), wrong()]);
     let recorder = Recorder::default();
@@ -306,7 +312,7 @@ fn a_result_that_keeps_breaking_its_schema_leaves_the_run_without_data() {
 #[test]
 fn a_reply_in_words_to_the_data_request_is_asked_again() {
     // Where the host takes no forced call, the model may answer in words: asked once more.
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![
         says("93."),
         says("It is 93."),
@@ -319,7 +325,7 @@ fn a_reply_in_words_to_the_data_request_is_asked_again() {
 
 #[test]
 fn with_a_schema_a_reply_that_is_not_the_call_leaves_the_run_without_data() {
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![
         says("93."),
         says("Here it is."),
@@ -368,7 +374,7 @@ fn the_context_opens_a_new_conversation_only_when_given() {
 fn every_request_of_a_task_names_it_and_the_next_task_is_another() {
     // A provider keeps a task's requests together by it, whatever the task says to the model on
     // the way (its data asked for); a task that goes on from it, or one after a rewind, is new.
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![
         calls("echo", json!({})),
         done("A."),
@@ -393,7 +399,7 @@ fn every_request_of_a_task_names_it_and_the_next_task_is_another() {
 
 #[test]
 fn with_a_schema_turns_that_run_out_leave_no_data_and_no_data_step() {
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new((0..5).map(|_| calls("echo", json!({}))).collect());
     let echo = Echo::new((0..5).map(|_| ok("again")).collect());
     let run = agent(&chat, &[&echo], Some(&schema), &Silent).run(None, "Find the price", &[]);
@@ -977,7 +983,7 @@ fn an_answer_on_the_last_turn_is_kept_and_nothing_is_waited_for() {
 fn the_data_request_refuses_any_other_call_and_asks_again() {
     // Offered every tool (the cache holds), the model may call another one when the data is
     // asked for: it is answered unrun, so no call is left open, and the data asked again.
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![
         says("Done."),
         calls("echo", json!({})),
@@ -995,7 +1001,7 @@ fn the_data_request_refuses_any_other_call_and_asks_again() {
 
 #[test]
 fn a_cut_result_leaves_the_whole_calls_before_it_to_run_as_they_are() {
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let mut cut = calls("echo", json!({}));
     cut.calls.push(ToolCall {
         id: "c2".into(),
@@ -1020,7 +1026,7 @@ fn a_result_waits_for_what_is_still_to_come() {
         .lock()
         .unwrap()
         .push("<agent_result>42</agent_result>".into());
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![data(&json!({"n": 1})), data(&json!({"n": 42}))]);
     let run = Agent {
         inbox: Some(&mail),
@@ -1036,7 +1042,7 @@ fn a_result_waits_for_what_is_still_to_come() {
 
 #[test]
 fn a_result_that_keeps_breaking_its_schema_in_the_work_ends_it_without_data() {
-    let schema = json!({"type": "object", "required": ["price"]});
+    let schema = Shaped(json!({"type": "object", "required": ["price"]}));
     let wrong = || data(&json!({}));
     let chat = Scripted::new(vec![wrong(), wrong(), wrong(), wrong(), wrong()]);
     let run = agent(&chat, &[], Some(&schema), &Silent).run(None, "Find the price", &[]);
@@ -1055,7 +1061,7 @@ fn a_result_that_keeps_breaking_its_schema_in_the_work_ends_it_without_data() {
 
 #[test]
 fn the_words_beside_a_result_are_shown_once() {
-    let schema = json!({"type": "object"});
+    let schema = Shaped(json!({"type": "object"}));
     let chat = Scripted::new(vec![Completion {
         text: Some("Found it.".into()),
         ..data(&json!({}))

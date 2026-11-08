@@ -115,7 +115,7 @@ fn an_answer_on_the_last_turn_stands() {
 #[test]
 fn data_returned_before_a_push_on_is_not_kept_when_the_work_then_runs_out() {
     // The advisor found the answer unfinished: the data it came with is not the task's.
-    let schema = serde_json::json!({"type": "object"});
+    let schema = crate::fakes::Shaped(serde_json::json!({"type": "object"}));
     let chat = Scripted::new(vec![
         data(&serde_json::json!({"early": true})),
         calls("echo", serde_json::json!({})),

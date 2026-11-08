@@ -21,4 +21,5 @@ pub mod history;
 pub mod inbox;
 pub mod model;
 pub mod person;
+pub mod shape;
 pub mod tool;

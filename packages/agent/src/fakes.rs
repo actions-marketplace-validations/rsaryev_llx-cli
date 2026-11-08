@@ -222,3 +222,37 @@ impl Strategy for Keep {
         vec![]
     }
 }
+
+/// A `--schema` shape that checks what the agent's tests need of one: the fields a schema
+/// requires and the types of its own fields, said as the app's check says them.
+pub(crate) struct Shaped(pub(crate) Value);
+
+impl contracts::shape::Shape for Shaped {
+    fn schema(&self) -> &Value {
+        &self.0
+    }
+
+    fn mismatches(&self, data: &Value) -> Vec<String> {
+        let mut out = vec![];
+        let required = self.0["required"].as_array().into_iter().flatten();
+        for name in required.filter_map(Value::as_str) {
+            if data.get(name).is_none() {
+                out.push(format!("data is missing \"{name}\""));
+            }
+        }
+        let typed = self.0["properties"].as_object().into_iter().flatten();
+        for (name, rule) in typed {
+            let kind = rule["type"].as_str().unwrap_or("any");
+            let held = match (kind, data.get(name)) {
+                (_, None) | ("any", _) => true,
+                ("number", Some(value)) => value.is_number(),
+                ("string", Some(value)) => value.is_string(),
+                (_, Some(_)) => true,
+            };
+            if !held {
+                out.push(format!("data.{name} must be {kind}"));
+            }
+        }
+        out
+    }
+}

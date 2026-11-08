@@ -2,7 +2,6 @@
 //! lane is built from beside it ([`Seat`]).
 
 use contracts::history::{History, HistoryError, Record, Session};
-use serde_json::Value;
 use session::Sessions;
 use tools::workspace::Workspace;
 
@@ -24,7 +23,7 @@ pub(crate) struct Setup {
     pub context: String,
     /// The same with no earlier session: what `/new` starts over with.
     pub fresh: String,
-    pub schema: Option<Value>,
+    pub schema: Option<crate::shape::Checked>,
     /// The mode the run starts in, as the context states it.
     pub mode: Mode,
     /// Every mode a session can switch to, the command line's rules joined to each.
@@ -70,7 +69,7 @@ pub(crate) struct Seat {
     pub record: Box<dyn Record>,
     /// The interface the lane is shown in: none in `exec`.
     pub ui: Option<Ui>,
-    pub schema: Option<Value>,
+    pub schema: Option<crate::shape::Checked>,
 }
 
 impl Setup {

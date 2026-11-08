@@ -25,6 +25,7 @@ use contracts::chat::{
     Calling, Chat, ChatError, Completion, Ending, Message, Request, Spend, TaskId,
 };
 use contracts::inbox::Inbox;
+use contracts::shape::Shape;
 use contracts::tool::{Image, Tool, ToolSpec};
 use serde_json::Value;
 
@@ -58,7 +59,7 @@ pub struct Agent<'a> {
     /// Sees each call, its result and each turn as they happen (the live trace).
     pub observer: &'a dyn Observer,
     /// `--schema`: the `result` call carries data that matches it.
-    pub schema: Option<&'a Value>,
+    pub schema: Option<&'a dyn Shape>,
     /// What reaches the run between its turns; `None` for nothing.
     pub inbox: Option<&'a dyn Inbox>,
     /// The model's context window in tokens (0 when it is not known): the strategy fits the
@@ -150,7 +151,7 @@ impl Agent<'_> {
         // `result` among them from the first request: the tools are the start of every prompt,
         // and a list that changed at the data's request would cost the whole prompt cache.
         let mut specs: Vec<ToolSpec> = self.tools.iter().map(|tool| tool.spec()).collect();
-        specs.extend(self.schema.map(schema::spec));
+        specs.extend(self.schema.map(|shape| schema::spec(shape.schema())));
         let mut run = Run {
             status: Status::Exhausted,
             answer: String::new(),

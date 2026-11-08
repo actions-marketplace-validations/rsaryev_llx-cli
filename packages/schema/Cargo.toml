@@ -1,0 +1,18 @@
+[package]
+name = "schema"
+description = "Data checked against a JSON Schema given at run time, as --schema gives it"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No workspace package: a primitive the app composes (rule L3).
+[dependencies]
+# A pattern our own automaton cannot take (`\b`, an anchor inside, a long count): 0.2% of a
+# corpus of real schemas, for some 50 KB where the full `regex` adds 800 KB.
+regex-lite.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

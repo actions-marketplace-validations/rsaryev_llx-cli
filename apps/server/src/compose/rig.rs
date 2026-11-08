@@ -8,6 +8,7 @@ use agent::agent::Agent;
 use agent::conversation::Conversation;
 use contracts::advice::Advisor;
 use contracts::history::Session;
+use contracts::shape::Shape;
 use contracts::tool::Tool;
 
 use super::{Base, Lane, Seat, Shared};
@@ -23,6 +24,7 @@ use crate::mode::{self, Mode, ModeCell};
 use crate::output::Output;
 use crate::providers::Provider;
 use crate::server::Ui;
+use crate::shape::Checked;
 use crate::sync::lock;
 use protocol::Event;
 
@@ -91,6 +93,9 @@ pub(super) fn drive(
         ui,
         schema,
     } = seat;
+    if let Some(note) = schema.as_ref().and_then(Checked::unchecked_note) {
+        base.output.note(&note);
+    }
     let shared = base.shared;
     // Dropped last, however the lane ends, once the scope below has joined every thread of the
     // lane (its agents, its monitors, its titles): what it had waiting goes with it, and the
@@ -151,7 +156,7 @@ pub(super) fn drive(
                 context: &context,
                 max_turns: lane.kit.max_turns,
                 observer: base.output,
-                schema: schema.as_ref(),
+                schema: schema.as_ref().map(|schema| schema as &dyn Shape),
                 inbox: Some(lane.inbox),
                 window: 0,
                 strategy: lane.kit.strategy,
