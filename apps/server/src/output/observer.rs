@@ -16,6 +16,7 @@ use protocol::Event;
 impl Observer for Output {
     fn call(&self, call: &ToolCall) {
         logged::call(&self.who(), call);
+        self.recorded_call("", call);
         let label = label(&call.name, &call.arguments);
         let step = contracts::history::Step {
             what: call.name.clone(),
@@ -40,6 +41,7 @@ impl Observer for Output {
 
     fn result(&self, call: &ToolCall, outcome: &Result<ToolOutput, ToolError>) {
         logged::result(&self.who(), call, outcome);
+        self.recorded_result("", call, outcome);
         let now = self.millis();
         let mut done = lock(&self.done);
         if let Some((_, step)) = done.iter_mut().rev().find(|(id, _)| *id == call.id) {
@@ -65,6 +67,7 @@ impl Observer for Output {
     // `--json` has no event for it: the events are a contract, changed only with the schema.
     fn said(&self, text: &str) {
         logged::said(&self.who(), text);
+        self.record("", serde_json::json!({"kind": "said", "text": text}));
         let said = Event::Answer(text.to_string());
         if let Some(ui) = &self.ui {
             return ui.send(said);
@@ -134,6 +137,19 @@ impl Output {
             spent,
         };
         lock(&self.done).push((String::new(), step));
+        self.record(
+            agent,
+            serde_json::json!({
+                "kind": "turn",
+                "model": usage.model,
+                "input_tokens": usage.input_tokens,
+                "cached_tokens": usage.cached_tokens,
+                "written_tokens": usage.written_tokens,
+                "output_tokens": usage.output_tokens,
+                "cost": usage.cost,
+                "ms": usage.millis,
+            }),
+        );
         self.spend(spent);
         // A new conversation's first request is no news.
         miss.filter(|miss| miss.cause != crate::spend::Cause::Cold)
@@ -157,10 +173,41 @@ impl Output {
             ..Default::default()
         };
         lock(&self.done).push((String::new(), step));
+        self.record(agent, serde_json::json!({"kind": "elided", "stages": said}));
         let whose = match agent {
             "" => String::new(),
             agent => format!(" ({agent})"),
         };
         format!("✻ The context neared the model's limit{whose}; elided to save it: {said}\n")
+    }
+
+    /// A call of `agent`'s in the record, its arguments as the model wrote them.
+    pub(crate) fn recorded_call(&self, agent: &str, call: &ToolCall) {
+        self.record(
+            agent,
+            serde_json::json!({
+                "kind": "call", "id": call.id, "name": call.name, "arguments": call.arguments,
+            }),
+        );
+    }
+
+    /// What a call of `agent`'s came to in the record, whole, as the model read it.
+    pub(crate) fn recorded_result(
+        &self,
+        agent: &str,
+        call: &ToolCall,
+        outcome: &Result<ToolOutput, ToolError>,
+    ) {
+        let (content, failed) = match outcome {
+            Ok(output) => (output.report.as_str(), false),
+            Err(ToolError::Failed(why) | ToolError::Fatal(why)) => (why.as_str(), true),
+        };
+        self.record(
+            agent,
+            serde_json::json!({
+                "kind": "result", "id": call.id, "name": call.name, "content": content,
+                "failed": failed,
+            }),
+        );
     }
 }

@@ -81,8 +81,9 @@ or usage, 130 interrupted.
 
 Environment: OPENROUTER_API_KEY (else the key /login saved), LLX_PROVIDER, LLX_MODEL,
 LLX_REASONING, LLX_DECISION_MODEL (decide, doctor), LLX_MODELS_REFRESH (0: no background
-catalog refresh), LLX_SESSIONS (where sessions are kept, default ~/.llx/sessions). Sign-ins and
-the /login choice are kept in ~/.config/llx/ (0600).";
+catalog refresh), LLX_SESSIONS (where sessions are kept, default ~/.llx/sessions), LLX_RECORD
+(a directory: each session's run kept whole there, every output as the model read it). Sign-ins
+and the /login choice are kept in ~/.config/llx/ (0600).";
 
 #[derive(Parser, Debug)]
 #[command(

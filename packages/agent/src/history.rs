@@ -3,7 +3,7 @@
 //! and is fitted to its own model, so one strategy serves them all.
 //!
 //! [`Pipeline`] is the strategy llx uses: named `Stage`s, least valuable first, each eliding
-//! what it owns (old reasoning, outputs, arguments), outputs and arguments for pointers that say
+//! what it owns (old reasoning, outputs a later call made again, outputs, arguments), outputs and arguments for pointers that say
 //! how to get them back. No summary. Made for the prompt cache:
 //! - nothing runs while the conversation is under `HIGH` of the model's limit (a pruned prefix
 //!   trades cheap cached tokens for a rewrite of everything after it);
@@ -19,13 +19,15 @@
 //! - so is the newest output of each call the app keeps ([`Lasting`]): what is still in force once
 //!   read, as the rules of a directory are.
 
-use std::collections::{HashMap, HashSet};
-
 use contracts::chat::{Message, ToolCall};
 use contracts::tool::ToolSpec;
 use serde_json::Value;
 
 use crate::conversation::Conversation;
+
+mod stages;
+
+use stages::{Arguments, Outputs, Reasoning, Repeats};
 
 /// The window assumed when the model's is not known.
 const FALLBACK: u64 = 128_000;
@@ -167,12 +169,13 @@ impl Pipeline {
 
     /// llx's: first the reasoning old turns carried back, as `shed` lets it go (the least
     /// valuable: a provider drops it itself once the person speaks again, and in a long task it
-    /// grows with every turn), then old outputs but the newest of each call `keep` names, then
-    /// old arguments.
+    /// grows with every turn), then outputs a later call of the same tool and arguments made
+    /// again, then old outputs but the newest of each call `keep` names, then old arguments.
     pub fn shedding(keep: Box<Lasting>, shed: Box<Shed>) -> Self {
         Self {
             stages: vec![
                 Box::new(Reasoning { shed }),
+                Box::new(Repeats),
                 Box::new(Outputs { keep }),
                 Box::new(Arguments),
             ],
@@ -220,96 +223,6 @@ impl Strategy for Pipeline {
         }
         conversation.settle(frame.size(conversation));
         report
-    }
-}
-
-/// The reasoning old turns carried back, as far as the provider's `shed` lets it go.
-pub(crate) struct Reasoning {
-    shed: Box<Shed>,
-}
-
-impl Stage for Reasoning {
-    fn name(&self) -> &'static str {
-        "reasoning"
-    }
-
-    fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        // The model's last turn keeps its reasoning, however far its results pushed it from the
-        // end: a provider may take its next request only with it (thinking in a tool loop).
-        let last = (conversation.messages().iter())
-            .rposition(|message| matches!(message, Message::Assistant { .. }));
-        pass(conversation, frame, |conversation, at| {
-            match Some(at) == last {
-                true => 0,
-                false => conversation.shed(at, &*self.shed),
-            }
-        })
-    }
-}
-
-/// Tool outputs, any worth eliding but those the app keeps.
-pub(crate) struct Outputs {
-    keep: Box<Lasting>,
-}
-
-impl Stage for Outputs {
-    fn name(&self) -> &'static str {
-        "outputs"
-    }
-
-    fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        let kept = match frame.pass {
-            Pass::Gate => kept(conversation.messages(), &self.keep),
-            Pass::Ceiling => HashSet::new(),
-        };
-        elide(conversation, frame, |message| {
-            matches!(message, Message::ToolResult { id, content, .. }
-                if worth(content) && !kept.contains(id))
-        })
-    }
-}
-
-/// The ids of the outputs `keep` names, the newest of each call (its tool and arguments): a file
-/// read again keeps one copy, not every one.
-fn kept(messages: &[Message], keep: &Lasting) -> HashSet<String> {
-    let mut calls: HashMap<&str, &ToolCall> = HashMap::new();
-    let mut newest = HashMap::new();
-    for message in messages {
-        match message {
-            Message::Assistant { calls: made, .. } => {
-                calls.extend(made.iter().map(|call| (call.id.as_str(), call)));
-            }
-            Message::ToolResult {
-                id,
-                content,
-                failed: false,
-            } => {
-                if let Some(call) = calls.get(id.as_str()).filter(|call| keep(call, content)) {
-                    newest.insert((&call.name, call.arguments.to_string()), id.clone());
-                }
-            }
-            Message::ToolResult { failed: true, .. }
-            | Message::System(_)
-            | Message::User(_)
-            | Message::Image { .. } => {}
-        }
-    }
-    newest.into_values().collect()
-}
-
-/// The large arguments of tool calls: what an edit wrote is on disk.
-pub(crate) struct Arguments;
-
-impl Stage for Arguments {
-    fn name(&self) -> &'static str {
-        "arguments"
-    }
-
-    fn run(&self, conversation: &mut Conversation, frame: &Frame) -> usize {
-        elide(conversation, frame, |message| {
-            matches!(message, Message::Assistant { calls, .. }
-                if calls.iter().any(|call| large(&call.arguments)))
-        })
     }
 }
 

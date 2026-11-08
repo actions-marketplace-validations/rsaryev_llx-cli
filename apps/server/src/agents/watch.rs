@@ -32,6 +32,7 @@ impl Watch<'_> {
 impl Observer for Watch<'_> {
     fn call(&self, call: &ToolCall) {
         logged::call(self.id, call);
+        self.output.recorded_call(self.name, call);
         let label = label(&call.name, &call.arguments);
         let what = format!("{} {}", label.done, label.subject)
             .trim()
@@ -46,6 +47,7 @@ impl Observer for Watch<'_> {
 
     fn result(&self, call: &ToolCall, outcome: &Result<ToolOutput, ToolError>) {
         logged::result(self.id, call, outcome);
+        self.output.recorded_result(self.name, call, outcome);
         self.show(Event::Result {
             call: call.id.clone(),
             name: call.name.clone(),
@@ -56,6 +58,8 @@ impl Observer for Watch<'_> {
 
     fn said(&self, text: &str) {
         logged::said(self.id, text);
+        self.output
+            .record(self.name, serde_json::json!({"kind": "said", "text": text}));
         self.show(Event::Answer(text.to_string()));
     }
 
