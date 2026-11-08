@@ -47,7 +47,7 @@ fn scripted(
     client: OpenRouter,
     answers: Vec<Result<(u16, &str), HttpError>>,
 ) -> (OpenRouter, Arc<Mutex<Vec<Value>>>) {
-    let answers = (answers.into_iter().rev())
+    let answers = (answers.into_iter())
         .map(|answer| {
             answer.map(|(status, body)| Reply {
                 status,
@@ -56,6 +56,15 @@ fn scripted(
             })
         })
         .collect();
+    replying(client, answers)
+}
+
+/// The same, with whole replies: their headers too.
+fn replying(
+    client: OpenRouter,
+    answers: Vec<Result<Reply, HttpError>>,
+) -> (OpenRouter, Arc<Mutex<Vec<Value>>>) {
+    let answers = answers.into_iter().rev().collect();
     let sent = Arc::new(Mutex::new(vec![]));
     let http = Scripted {
         answers: Mutex::new(answers),
@@ -145,6 +154,11 @@ fn an_overloaded_answer_is_retried_and_a_refused_key_is_not() {
         format!("Lab {error}"),
         "Lab refused the key: User not found.; type /login, or check the key's variable"
     );
+    // A permission or a moderation flag, not a key refused: no /login to send the person to.
+    let flagged = r#"{"error":{"message":"Flagged by moderation."}}"#;
+    let (client, _) = scripted(lab(), vec![Ok((403, flagged))]);
+    let error = client.post("/x", &json!({}), None).unwrap_err();
+    assert_eq!(error, ApiError::Http(403, "Flagged by moderation.".into()));
 }
 
 #[test]
@@ -195,6 +209,7 @@ fn openrouter_at_another_address_is_still_sent_openrouters_fields() {
     let chat = crate::chat::ChatModel {
         client,
         selection: Selection::new(model),
+        switch: crate::level::Switch::Named,
     };
     let conversation = [Message::User("goal".into())];
     let request = Request {
@@ -279,6 +294,7 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
     let chat = crate::chat::ChatModel {
         client,
         selection: Selection::new(model),
+        switch: crate::level::Switch::Named,
     };
     let conversation = [Message::User("goal".into())];
     for effort in [Effort::Low, Effort::Medium] {
@@ -314,4 +330,26 @@ fn a_stream_that_failed_after_its_first_words_is_not_sent_again_and_one_before_t
     let (client, sent) = scripted(lab(), vec![Ok((200, before)), Ok((200, "{}"))]);
     assert_eq!(client.post("/x", &json!({}), None).unwrap().0, json!({}));
     assert_eq!(sent.lock().unwrap().len(), 2, "sent again");
+}
+
+#[test]
+fn a_spending_limit_of_a_moment_is_waited_out_and_one_of_the_account_is_not() {
+    // OpenRouter's in-flight budget answers 402 with a Retry-After; credits run out answer 402
+    // with none.
+    let limited = Reply {
+        status: 402,
+        headers: vec![("retry-after".into(), "0".into())],
+        body: r#"{"error":{"message":"in flight"}}"#.into(),
+    };
+    let fine = Reply {
+        status: 200,
+        headers: vec![],
+        body: r#"{"ok":1}"#.into(),
+    };
+    let (client, sent) = replying(lab(), vec![Ok(limited), Ok(fine)]);
+    assert!(client.post("/x", &json!({}), None).is_ok());
+    assert_eq!(sent.lock().unwrap().len(), 2);
+    let (client, sent) = scripted(lab(), vec![Ok((402, r#"{"error":{"message":"credits"}}"#))]);
+    assert!(client.post("/x", &json!({}), None).is_err());
+    assert_eq!(sent.lock().unwrap().len(), 1);
 }

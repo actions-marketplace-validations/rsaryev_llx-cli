@@ -33,7 +33,7 @@ impl Ended {
                 exit::EXHAUSTED,
                 Some(format!(
                     "the time limit ran out ({} s; raise it with --timeout)",
-                    limits.time.as_secs()
+                    limits.time.map_or(0, |time| time.as_secs())
                 )),
             ),
             (Some(Halt::OverBudget), _) => ended(

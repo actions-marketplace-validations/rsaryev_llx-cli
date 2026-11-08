@@ -151,15 +151,12 @@ pub(crate) fn render(app: &App, width: usize) -> Vec<Line<'static>> {
             state(row),
         ]),
         Line::from(Span::styled(
-            format!(
-                "  {}",
-                cut(&printable(&row.detail), width.saturating_sub(2))
-            ),
+            cut(&printable(&row.detail), width),
             style::dim(),
         )),
         Line::default(),
     ];
-    let indent = Line::from("  ");
+    let indent = Line::default();
     let mut printed: Vec<Line<'static>> = (watching.text.lines())
         .flat_map(|line| wrap(&Line::from(printable(line)), width, &indent, &indent))
         .collect();
@@ -169,7 +166,7 @@ pub(crate) fn render(app: &App, width: usize) -> Vec<Line<'static>> {
         } else {
             ""
         };
-        printed.push(Line::from(Span::styled(format!("  {none}"), style::dim())));
+        printed.push(Line::from(Span::styled(none.to_string(), style::dim())));
     }
     // The end of it, as a terminal shows a command running: the window's height less the rest.
     let room = app.height.saturating_sub(10).max(3);
@@ -179,7 +176,7 @@ pub(crate) fn render(app: &App, width: usize) -> Vec<Line<'static>> {
         None => "x stop · esc back",
         Some(_) => "x remove · esc back",
     };
-    out.push(Line::from(Span::styled(format!("  {keys}"), style::dim())));
+    out.push(Line::from(Span::styled(keys.to_string(), style::dim())));
     out
 }
 

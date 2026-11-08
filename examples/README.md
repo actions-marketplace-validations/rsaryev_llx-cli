@@ -4,7 +4,7 @@ Ready-made uses of llx, by where they run. Each was run for real before it was p
 
 | Where | Example |
 | --- | --- |
-| GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx-cli@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request |
+| GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx-cli@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request, a dependency update read |
 | Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
 
 ## GitHub workflows
@@ -41,6 +41,7 @@ git add .github/workflows/llx-review.yml && git commit -m "llx reviews pull requ
 | [release.yml](github/release.yml) | run by hand | picks the version bump and writes the notes in one answer; drafts a release a person publishes | tags like `v1.2.3`; with none, the first draft is `v0.1.0` |
 | [gate.yml](github/gate.yml) | daily, or by hand | checks a rule you state (here, that what the docs name exists in the code), read-only, and fails the job when the listed data shows it is not met | |
 | [jira.yml](github/jira.yml) | a Jira automation flow hands it a work item (a manual trigger, or a transition) | makes the change on the branch `llx/KEY` and runs the tests; opens a draft pull request named by the key, or pushes to the open one; comments on the work item | a Jira flow and a fine-grained token, as its header says; for the comment, `JIRA_API`, `JIRA_EMAIL` and the secret `JIRA_API_TOKEN`; "Allow GitHub Actions to create and approve pull requests" |
+| [deps.yml](github/deps.yml) | a pull request changes a manifest or a lockfile (Dependabot's, Renovate's or yours) | works out which packages move, reads what their new versions changed, searches the code for what that touches and runs the tests; one comment it updates: `safe`, `review` or `breaking`, with the lines that need a change | for Dependabot's pull requests, the key also as a Dependabot secret; your package managers' files in `paths` |
 | [audit.yml](github/audit.yml) | weekly, or by hand | explores the repository, runs its tests and linters, and keeps one issue labeled `llx-audit` as its latest report: opened or rewritten when it finds something worth a maintainer's time, closed when nothing of it holds | |
 
 ### How they are built

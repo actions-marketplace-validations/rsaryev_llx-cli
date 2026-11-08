@@ -5,7 +5,7 @@
 //! ```text
 //! ❯ make a landing page for a phone shop
 //!
-//! • The page is in site/index.html.
+//! The page is in site/index.html.
 //!
 //! ─ Worked for 48s · 6 turns · $0.0087 ──────────────────────
 //! ```
@@ -24,7 +24,7 @@ use crate::printable::printable;
 /// What the person typed.
 pub(crate) fn user(text: &str, width: usize) -> Vec<Line<'static>> {
     let first = Line::from(Span::styled("❯ ", style::bold()));
-    let rest = Line::from("  ");
+    let rest = Line::default();
     text.trim()
         .lines()
         .enumerate()
@@ -35,19 +35,10 @@ pub(crate) fn user(text: &str, width: usize) -> Vec<Line<'static>> {
         .collect()
 }
 
-/// What the model wrote, as markdown under a bullet.
+/// What the model wrote, as markdown, flush with the left edge: no bullet and no indent, so a
+/// copied answer is its text alone.
 pub(crate) fn agent(text: &str, width: usize) -> Vec<Line<'static>> {
-    let rows = markdown::render(text.trim(), width.saturating_sub(2));
-    rows.into_iter()
-        .enumerate()
-        .map(|(at, mut row)| {
-            let prefix = if at == 0 { "• " } else { "  " };
-            if line_width(&row) > 0 || at == 0 {
-                row.spans.insert(0, Span::raw(prefix));
-            }
-            row
-        })
-        .collect()
+    markdown::render(text.trim(), width)
 }
 
 /// How a task ended.
@@ -119,7 +110,7 @@ pub(crate) fn error(text: &str, width: usize) -> Vec<Line<'static>> {
         &line,
         width,
         &Line::from(Span::styled("■ ", style::failed())),
-        &Line::from("  "),
+        &Line::default(),
     )
 }
 
@@ -129,14 +120,11 @@ pub(crate) fn note(text: &str, width: usize) -> Vec<Line<'static>> {
     let mut out = vec![];
     for row in text.trim_matches('\n').lines() {
         let row = printable(row.trim_end());
-        match text_width(&row) + 2 <= width {
-            true => out.push(Line::from(vec![
-                Span::raw("  "),
-                Span::styled(row, style::dim()),
-            ])),
+        match text_width(&row) <= width {
+            true => out.push(Line::from(Span::styled(row, style::dim()))),
             false => {
                 // A table's row (a label, two spaces or more, then its text) wraps under its
-                // second column, so the columns stay; any other row hangs by two.
+                // second column, so the columns stay; any other row wraps flush.
                 let trimmed = row.trim_start();
                 let label = (trimmed.find("  ").and_then(|at| trimmed.get(at..)))
                     .map(|rest| row.len() - rest.trim_start().len())
@@ -145,11 +133,8 @@ pub(crate) fn note(text: &str, width: usize) -> Vec<Line<'static>> {
                     })
                     .unwrap_or(0);
                 let (label, body) = row.split_at(label);
-                let under = match label.is_empty() {
-                    true => "    ".to_string(),
-                    false => " ".repeat(2 + text_width(label)),
-                };
-                let first = Line::from(Span::styled(format!("  {label}"), style::dim()));
+                let under = " ".repeat(text_width(label));
+                let first = Line::from(Span::styled(label.to_string(), style::dim()));
                 let body = Line::from(Span::styled(body.to_string(), style::dim()));
                 out.extend(wrap(&body, width, &first, &Line::from(under)));
             }

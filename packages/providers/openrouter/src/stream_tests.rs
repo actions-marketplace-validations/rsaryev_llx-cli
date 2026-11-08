@@ -105,3 +105,18 @@ fn a_body_that_is_not_a_stream_is_none() {
     assert_eq!(assembled("not a stream"), None);
     assert_eq!(assembled(""), None);
 }
+
+#[test]
+fn reasoning_parts_with_no_index_are_kept_apart() {
+    // Two signed parts (Gemini's, one a call): joined, their data would be one corrupt value.
+    let part = |data: &str| json!({"type": "reasoning.encrypted", "data": data, "format": "g"});
+    let body = streamed(&[
+        delta(&json!({"reasoning_details": [part("one")]})),
+        delta(&json!({"reasoning_details": [part("two")]})),
+    ]);
+    let message = assembled(&body).unwrap()["choices"][0]["message"].clone();
+    assert_eq!(
+        message["reasoning_details"],
+        json!([part("one"), part("two")])
+    );
+}

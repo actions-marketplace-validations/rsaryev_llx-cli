@@ -147,15 +147,14 @@ fn o_writes_the_answer_and_schema_prints_the_data_alone() {
     assert_eq!(written, "{\"version\":\"1.2\"}\n");
     let requests = model.requests();
     assert_eq!(requests.len(), 2);
-    assert!(
-        requests[0]["tool_choice"] == "auto"
-            && !names(&requests[0]).iter().any(|name| name == "result")
-    );
-    assert_eq!(names(&requests[1]), ["result"]);
-    assert_eq!(
-        requests[1]["tool_choice"],
-        json!({"type": "function", "function": {"name": "result"}})
-    );
+    // `result` is offered from the first request, and the data's request offers the same tools:
+    // the prompt cache holds to the end.
+    assert_eq!(requests[0]["tool_choice"], "auto");
+    assert!(names(&requests[0]).iter().any(|name| name == "result"));
+    assert_eq!(names(&requests[1]), names(&requests[0]));
+    // Over chat completions the call is asked for in words, not forced: hosts refuse a named
+    // choice while their model thinks.
+    assert_eq!(requests[1]["tool_choice"], "auto");
 }
 
 #[test]
@@ -455,24 +454,24 @@ fn traced(env: &[(&str, &str)]) -> String {
 
 #[test]
 fn the_trace_on_stderr_shows_each_call_each_turn_and_how_the_task_ended() {
-    insta::assert_snapshot!(traced(&[]), @r"
+    insta::assert_snapshot!(traced(&[]), @"
     llx: reading additional input from stdin (</dev/null to skip it)
-        · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
+      · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
     • Ran echo hi
       └ hi
-        · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
+      · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
 
     • Ran echo oops; exit 3
       └ oops
         Exit code: 3
-        · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
+      · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns
 
     • Ran sleep 10
       └ Stopped: by the person (the command and everything it started were killed)
 
     ─ Ran out after N.Ns · 3 turns · $0.0003 ───────────────────────────────────────────────────────────
-      agent    anthropic/claude-haiku-5.5 · 3,000 in · 60 out · $0.0003 · N.Ns
-      session  <id>
+    agent    anthropic/claude-haiku-5.5 · 3,000 in · 60 out · $0.0003 · N.Ns
+    session  <id>
     ■ the budget ran out ($0.00025; raise it with --budget)
     ");
 }
@@ -480,24 +479,24 @@ fn the_trace_on_stderr_shows_each_call_each_turn_and_how_the_task_ended() {
 #[test]
 fn the_trace_is_coloured_where_colour_is_forced() {
     let trace = traced(&[("CLICOLOR_FORCE", "1")]).replace('\x1b', "␛");
-    insta::assert_snapshot!(trace, @r"
+    insta::assert_snapshot!(trace, @"
     llx: reading additional input from stdin (</dev/null to skip it)
-      ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
+    ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
     ␛[32m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0mecho hi
     ␛[2m  └ ␛[0m␛[2mhi␛[0m
-      ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
+    ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
 
     ␛[31m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0mecho oops; exit 3
     ␛[2m  └ ␛[0m␛[2moops␛[0m
     ␛[2m    ␛[0m␛[31mExit code: 3␛[0m
-      ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
+    ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
 
     ␛[31m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0msleep 10
     ␛[2m  └ ␛[0m␛[31mStopped: by the person (the command and everything it started were killed)␛[0m
 
     ␛[2m─ Ran out after N.Ns · 3 turns · $0.0003 ───────────────────────────────────────────────────────────␛[0m
-      ␛[2magent    anthropic/claude-haiku-5.5 · 3,000 in · 60 out · $0.0003 · N.Ns␛[0m
-      ␛[2msession  <id>␛[0m
+    ␛[2magent    anthropic/claude-haiku-5.5 · 3,000 in · 60 out · $0.0003 · N.Ns␛[0m
+    ␛[2msession  <id>␛[0m
     ␛[31m■ ␛[0m␛[31mthe␛[0m␛[31m ␛[0m␛[31mbudget␛[0m␛[31m ␛[0m␛[31mran␛[0m␛[31m ␛[0m␛[31mout␛[0m␛[31m ␛[0m␛[31m($0.00025;␛[0m␛[31m ␛[0m␛[31mraise␛[0m␛[31m ␛[0m␛[31mit␛[0m␛[31m ␛[0m␛[31mwith␛[0m␛[31m ␛[0m␛[31m--budget)␛[0m
     ");
 }

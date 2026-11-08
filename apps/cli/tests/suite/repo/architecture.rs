@@ -113,8 +113,9 @@ fn l2_the_agent_knows_only_the_contracts() {
 
 /// What the model providers share: plumbing with no port, which knows no workspace package.
 const KIT: &str = "provider-kit";
-/// Primitives the app composes (the lanes' queue): no port, no workspace package.
-const PRIMITIVES: [&str; 1] = ["queue"];
+/// Primitives the app composes (the lanes' queue, `--schema`'s check): no port, no workspace
+/// package.
+const PRIMITIVES: [&str; 2] = ["queue", "schema"];
 
 #[test]
 fn l3_tools_providers_and_stores_know_only_the_contracts() {
@@ -179,6 +180,7 @@ const BEYOND_THE_INTERFACE: &[&str] = &[
     "agent::",
     "session::",
     "queue::",
+    "schema::",
     "provider_kit::",
     "models::",
     "openai::",

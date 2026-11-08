@@ -1,0 +1,22 @@
+# The schema package's benchmarks and conformance runs, against the Rust crate `jsonschema`.
+# A crate of its own, outside the workspace: `jsonschema` and the corpora never reach llx's build.
+[package]
+name = "schema-bench"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+schema = { path = ".." }
+serde_json = "1.0.154"
+jsonschema = { version = "0.60", default-features = false }
+
+# As llx's release is built: size first, a panic unwinding.
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+panic = "unwind"
+debug = 1

@@ -143,8 +143,13 @@ fn lines_not_found_in_a_long_file_come_back_with_its_nearest_lines() {
         "@@\n fn run(x: i32) {\n-    go(x);\n+    go(x + 1);\n",
     )
     .unwrap_err();
+    // The lines found, with those around them, numbered as a read shows them.
     assert!(
-        why.contains("nearest lines in f.txt, from line 2001:\nfn run(x: u32) {\n    go(x);"),
+        why.contains("nearest lines in f.txt, from line 1995:\n  1995\tlet v1995 = 1995;"),
+        "{why}"
+    );
+    assert!(
+        why.contains("  2001\tfn run(x: u32) {\n  2002\t    go(x);\n  2003\t}"),
         "{why}"
     );
     assert!(!why.contains("let v1 = 1;"), "{why}");

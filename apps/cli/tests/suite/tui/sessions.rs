@@ -195,7 +195,7 @@ fn a_resumed_session_shows_its_earlier_tasks() {
     for shown in [
         "2 earlier tasks",
         "❯ fix the parser",
-        "• Fixed the parser.",
+        "Fixed the parser.",
         "■ stopped",
     ] {
         assert!(screen.contains(shown), "{shown:?}:\n{screen}");

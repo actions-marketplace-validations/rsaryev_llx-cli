@@ -73,3 +73,51 @@ fn a_resend_counts_among_the_attempts() {
     });
     assert_eq!((result, tries), (Err(3), 3));
 }
+
+#[test]
+fn the_wait_a_host_asks_for_is_kept_and_one_past_the_deadline_is_not_waited() {
+    let started = Instant::now();
+    let mut tries = 0;
+    let result: Result<u32, u32> = retried(Duration::ZERO, None, Resend::Never, || {
+        tries += 1;
+        match tries {
+            1 => Attempt::After(tries, Duration::from_millis(40)),
+            _ => Attempt::Done(Ok(tries)),
+        }
+    });
+    assert_eq!(result, Ok(2));
+    assert!(
+        started.elapsed() >= Duration::from_millis(40),
+        "the host's wait was kept"
+    );
+    // A wait that would end past the deadline: the failure at once.
+    let until = Instant::now() + Duration::from_millis(50);
+    let started = Instant::now();
+    let result: Result<(), u32> = retried(Duration::ZERO, Some(until), Resend::Never, || {
+        Attempt::After(7, Duration::from_secs(30))
+    });
+    assert_eq!(result, Err(7));
+    assert!(started.elapsed() < Duration::from_millis(50));
+}
+
+#[test]
+fn a_retry_after_header_is_read_as_seconds() {
+    assert_eq!(after(Some("2")), Some(Duration::from_secs(2)));
+    assert_eq!(after(Some("1.5")), Some(Duration::from_millis(1500)));
+    assert_eq!(after(Some("soon")), None);
+    assert_eq!(after(None), None);
+}
+
+#[test]
+fn a_wait_longer_than_a_minute_is_said_at_once_and_no_pause_grows_past_it() {
+    let started = Instant::now();
+    let result: Result<(), u32> = retried(Duration::ZERO, None, Resend::Never, || {
+        Attempt::After(9, Duration::from_secs(3600))
+    });
+    assert_eq!(result, Err(9));
+    assert!(
+        started.elapsed() < Duration::from_secs(1),
+        "an hour's limit is not slept"
+    );
+    assert_eq!(grown(Duration::from_secs(50)), Duration::from_secs(60));
+}

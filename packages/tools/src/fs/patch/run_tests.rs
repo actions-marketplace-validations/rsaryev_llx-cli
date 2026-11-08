@@ -206,6 +206,32 @@ fn a_hunk_that_does_not_match_writes_nothing_and_asks_nothing() {
 }
 
 #[test]
+fn every_file_whose_lines_do_not_match_is_named_at_once_so_one_retry_mends_them_all() {
+    let dir = Scratch::new();
+    dir.file("a.txt", "x\n");
+    dir.file("b.txt", "y\n");
+    dir.file("c.txt", "z\n");
+    let message = failed(patch(
+        &dir,
+        &Recorder::default(),
+        "*** Update File: a.txt\n@@\n-gone\n+X\n*** Update File: b.txt\n@@\n-y\n+Y\n\
+         *** Update File: c.txt\n@@\n-lost\n+Z\n*** Update File: a.txt\n@@\n-x\n+X\n",
+    ));
+    assert!(
+        message.contains("a.txt") && message.contains("gone"),
+        "{message}"
+    );
+    assert!(
+        message.contains("c.txt") && message.contains("lost"),
+        "{message}"
+    );
+    // A later hunk of a file an earlier one missed still finds the file as it was.
+    assert!(!message.contains("does not exist"), "{message}");
+    assert!(message.ends_with("No file was changed."), "{message}");
+    assert_eq!(read(&dir, "b.txt"), "y\n");
+}
+
+#[test]
 fn later_hunks_see_the_files_as_earlier_ones_leave_them() {
     let dir = Scratch::new();
     dir.file("a.txt", "1\n2\n");

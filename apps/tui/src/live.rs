@@ -72,7 +72,7 @@ pub(crate) fn render(app: &App, now: Instant) -> (Vec<Line<'static>>, Option<Cur
         let more = app.questions.len() - 1;
         if more > 0 {
             let s = if more == 1 { "" } else { "s" };
-            let waiting = format!("  {more} more question{s} waiting");
+            let waiting = format!("{more} more question{s} waiting");
             out.push(Line::from(Span::styled(waiting, style::dim())));
         }
         let cursor = cursor.map(|(row, column)| Cursor {
@@ -116,12 +116,8 @@ pub(crate) fn render(app: &App, now: Instant) -> (Vec<Line<'static>>, Option<Cur
     out.extend(offer_rows(app, &offers, width));
     let footer = footer(app, now);
     let spent = app.lane().total.as_ref().map(super::spend::spent);
-    let row = width.saturating_sub(2);
-    let footer = super::spend::across(&cut(&footer, row), &spent.unwrap_or_default(), row);
-    out.push(Line::from(Span::styled(
-        format!("  {footer}"),
-        style::dim(),
-    )));
+    let footer = super::spend::across(&cut(&footer, width), &spent.unwrap_or_default(), width);
+    out.push(Line::from(Span::styled(footer, style::dim())));
     if offers.is_empty() {
         let tree = tree::render(app, now, &spinner);
         if !tree.is_empty() {

@@ -1,9 +1,10 @@
 //! The agent's loop: the chat model reads the goal and calls tools until it answers with a
 //! message and no call, bounded by `max_turns` (unlimited unless the app sets one). That message
-//! is the answer; with `--schema`, the data is then asked for in one more request with the
-//! `result` call forced (`crate::schema`). Nothing invites the model to stop: a failed call goes
-//! back to it with its reason, and no tool ends the task. Only the advisor pushes an answer on,
-//! twice a task at most (C9, `agent/advice.rs`).
+//! is the answer; with `--schema`, `result` is offered with every request, and a `result` call
+//! alone, its data matching, is the answer too; an answer in words is followed by one more
+//! request with the call forced, the same tools offered (`crate::schema`, `agent/returned.rs`).
+//! Nothing invites the model to stop: a failed call goes back to it with its reason. Only the
+//! advisor pushes an answer on, twice a task at most (C9, `agent/advice.rs`).
 //! The calls of one turn that may run together do (`crate::calls`). A reply the output limit cut
 //! off is not an answer: the model goes on from it, and its last call is never run as it stands
 //! (B7, `agent/handling.rs`). Before each turn, what came into the inbox is said; an answer while
@@ -11,18 +12,21 @@
 
 mod advice;
 mod handling;
+mod returned;
 
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use advice::Begun;
 use handling::{Came, cut_off, go_on};
+use returned::Returned;
 
 use contracts::advice::Advisor;
 use contracts::chat::{
     Calling, Chat, ChatError, Completion, Ending, Message, Request, Spend, TaskId,
 };
 use contracts::inbox::Inbox;
-use contracts::tool::{Image, Tool, ToolError, ToolOutput, ToolSpec};
+use contracts::shape::Shape;
+use contracts::tool::{Image, Tool, ToolSpec};
 use serde_json::Value;
 
 use crate::conversation::Conversation;
@@ -55,7 +59,7 @@ pub struct Agent<'a> {
     /// Sees each call, its result and each turn as they happen (the live trace).
     pub observer: &'a dyn Observer,
     /// `--schema`: the `result` call carries data that matches it.
-    pub schema: Option<&'a Value>,
+    pub schema: Option<&'a dyn Shape>,
     /// What reaches the run between its turns; `None` for nothing.
     pub inbox: Option<&'a dyn Inbox>,
     /// The model's context window in tokens (0 when it is not known): the strategy fits the
@@ -144,7 +148,10 @@ impl Agent<'_> {
 
     fn reach(&self, conversation: Conversation, begun: Begun<'_>) -> Run {
         let task = TaskId(TASKS.fetch_add(1, Ordering::Relaxed));
-        let specs: Vec<ToolSpec> = self.tools.iter().map(|tool| tool.spec()).collect();
+        // `result` among them from the first request: the tools are the start of every prompt,
+        // and a list that changed at the data's request would cost the whole prompt cache.
+        let mut specs: Vec<ToolSpec> = self.tools.iter().map(|tool| tool.spec()).collect();
+        specs.extend(self.schema.map(|shape| schema::spec(shape.schema())));
         let mut run = Run {
             status: Status::Exhausted,
             answer: String::new(),
@@ -154,13 +161,13 @@ impl Agent<'_> {
             conversation,
             used: 0,
         };
-        // Real tokens per estimated one, from the last answer's usage.
-        let mut ratio = 1.0;
+        // Real tokens per estimated one, from the last answer's usage, an earlier task's too.
+        let mut ratio = run.conversation.ratio();
         // The specs go with every request: they count in the usage the ratio is taken from, and
         // against the limit, but no stage can elide them.
         let fixed = history::specs(&specs);
         self.advise_start(&begun, &mut run);
-        let (mut cuts, mut pushes) = (0, 0);
+        let (mut cuts, mut pushes, mut fixes) = (0, 0, 0);
         for turn in 0..self.max_turns {
             Self::deliver(&mut run, self.take());
             // Prepared for the model before each request; the elided stays elided.
@@ -188,6 +195,7 @@ impl Agent<'_> {
             if completion.usage.input_tokens > 0 && estimate > 0 {
                 let input = completion.usage.input_tokens as f64;
                 ratio = (input / (estimate + fixed) as f64).clamp(0.3, 4.0);
+                run.conversation.measured(ratio);
             }
             // A reply cut off with no call is not the answer: what it wrote stays, and the model
             // goes on from it, as Claude Code's does, where Codex and opencode end the task.
@@ -211,23 +219,32 @@ impl Agent<'_> {
                     Waited::No => {}
                 }
             }
-            if completion.calls.is_empty() {
+            let returned = self.returned(&completion, &mut fixes, &mut run);
+            let returned_data = matches!(returned, Returned::Data { .. } | Returned::Failed);
+            if completion.calls.is_empty() || returned_data {
                 // A message with no call is the answer: the task ends with it, as a person's
                 // final message ends their turn, unless the advisor finds it unfinished.
                 let answer = completion.text.unwrap_or_default().trim().to_string();
                 if turn + 1 < self.max_turns
                     && self.pushed_on(&begun, &answer, &mut pushes, &mut run)
                 {
+                    // The data it came with is not the task's: the work goes on.
+                    run.data = None;
                     continue;
                 }
                 run.status = Status::Done;
                 run.answer = answer;
-                run.shown = said;
-                self.conclude(&mut run, task);
+                run.shown = said || returned == Returned::Data { said: true };
+                if !returned_data {
+                    self.conclude(&mut run, task, &specs);
+                }
                 return run;
             }
+            let Returned::Rest(rest, ending) = returned else {
+                continue;
+            };
             self.say(&completion);
-            match self.handle_all(&completion.calls, completion.ending, &specs, &mut run) {
+            match self.handle_all(&rest, ending, &specs, &mut run) {
                 Came::Ended => return run,
                 Came::Did => cuts = 0,
                 // A cut reply that did nothing counts as one with no call does.
@@ -270,55 +287,6 @@ impl Agent<'_> {
             });
         }
         Some(completion)
-    }
-
-    /// With `--schema`, once the work has ended: the `result` call asked for and forced, its data
-    /// checked; a mismatch goes back to be fixed, until the fixes run out and the run has none.
-    fn conclude(&self, run: &mut Run, task: TaskId) {
-        let Some(schema) = self.schema else {
-            return;
-        };
-        let specs = [schema::spec(schema)];
-        run.conversation.push(Message::User(DATA_NOW.into()));
-        let mut problems = String::from("no `result` call came");
-        for _ in 0..=MAX_FIXES {
-            let request = Request {
-                conversation: run.conversation.messages(),
-                tools: &specs,
-                calling: Calling::Only(schema::TOOL),
-                deadline: None,
-                effort: run.conversation.effort(),
-                task,
-            };
-            let answered = self.chat.complete(request);
-            let Some(completion) = self.kept(answered, run) else {
-                return;
-            };
-            let Some(call) = (completion.calls.iter()).find(|call| call.name == schema::TOOL)
-            else {
-                break;
-            };
-            self.observer.call(call);
-            match schema::take(&call.arguments, schema) {
-                Ok(data) => {
-                    let outcome = Ok(ToolOutput::from(RETURNED.to_string()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.result(&call.id, RETURNED);
-                    run.data = Some(Ok(data));
-                    return;
-                }
-                Err(why) => {
-                    let said = format!("The result is not taken: {why}.");
-                    let outcome = Err(ToolError::Failed(said.clone()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.failure(&call.id, &said);
-                    problems = why;
-                }
-            }
-        }
-        run.data = Some(Err(format!(
-            "the result did not match the schema: {problems}"
-        )));
     }
 
     /// Whether an answer (a message with no call) was held for what reached the run meanwhile,

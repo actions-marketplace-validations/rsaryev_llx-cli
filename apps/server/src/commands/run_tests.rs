@@ -25,7 +25,7 @@ struct Done {
 /// Run one task through the whole composition, with a scripted model: one command, then an
 /// answer. Nothing but the models is faked.
 /// `unwritable`: `-o` names a file in a directory that does not exist.
-fn compose_one(mode: Mode, unwritable: bool, schema: Option<Value>) -> Done {
+fn compose_one(mode: Mode, unwritable: bool, schema: Option<crate::shape::Checked>) -> Done {
     compose_ending(
         mode,
         unwritable,
@@ -38,7 +38,7 @@ fn compose_one(mode: Mode, unwritable: bool, schema: Option<Value>) -> Done {
 fn compose_ending(
     mode: Mode,
     unwritable: bool,
-    schema: Option<Value>,
+    schema: Option<crate::shape::Checked>,
     ending: Vec<Completion>,
 ) -> Done {
     let scratch = Scratch::new();
@@ -174,7 +174,8 @@ fn a_failed_answer_file_is_in_the_exit_code_the_report_gives() {
 
 #[test]
 fn with_a_schema_and_no_data_the_answer_file_holds_no_prose() {
-    // The model answers, then answers the forced `result` request with prose again: no data.
+    // The model answers, then answers each `result` request with prose again (asked three
+    // times): no data.
     let prose = Completion {
         text: Some("Done.".into()),
         ..Completion::default()
@@ -182,8 +183,8 @@ fn with_a_schema_and_no_data_the_answer_file_holds_no_prose() {
     let done = compose_ending(
         crate::modes::built("bypass"),
         false,
-        Some(json!({"type": "object"})),
-        vec![prose.clone(), prose],
+        Some(crate::shape::Checked::new(json!({"type": "object"}))),
+        vec![prose.clone(), prose.clone(), prose.clone(), prose],
     );
     assert_eq!(
         done.last, "",

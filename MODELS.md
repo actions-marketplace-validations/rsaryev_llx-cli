@@ -101,8 +101,12 @@ long-context price band; the reason llx's default request ceiling is 272k);
   `limit.output`. Its levels come from `capabilities.reasoning` (effort list, toggle → off and
   on, budget → low, medium, high, and off when its `min` allows) and its default from `default`,
   else medium or the nearest below, else the lowest it takes. A provider is called over
-  `chat-completions` (any host), but OpenAI with a ChatGPT sign-in over `responses`, which also
-  offers the models served over it alone. A `decision` model that is not `deprecated` is kept for
+  `chat-completions` (any host), but over `messages` where the model is served over it too
+  (Anthropic's: chat completions there cache no prompt and ignore the level), thinking within a
+  budget when its reasoning has one (`budget`), else at the level as an effort; and OpenAI over
+  `responses`, the ChatGPT backend with a sign-in and the API with a key (its chat completions
+  refuse function tools with a level for the newest models, and keep no reasoning between
+  turns), which also offers the models served over it alone. A `decision` model that is not `deprecated` is kept for
   `llx decide`: the app's default one (`DECISION_DEFAULT`) must be among them.
 - **Free-text tools:** whether a model takes a tool of free text held to a Lark grammar (how
   `apply_patch` is offered over the Responses API) is the API's `capabilities.tools.freeform`,
@@ -111,7 +115,8 @@ long-context price band; the reason llx's default request ceiling is 272k);
 - **Prompt-cache marks:** whether a model caches only at marked breakpoints (`takes_marks`) is read
   from its id's vendor (`anthropic/`, `google/gemini`, `qwen/`): the catalog's `cache.explicit`
   covers other mechanisms too, so it cannot say this.
-- **Price:** `cost.text.input.price`, `cost.text.input.cache.read` and `cost.text.output.price`,
+- **Price:** `cost.text.input.price`, `cost.text.input.cache.read`, `cost.text.input.cache.write`
+  (one number, or one per keep: the five minutes' a mark asks for) and `cost.text.output.price`,
   with the last long-context band (`overrides`, `when.context.gt` or `gte`) the request's input
   reaches. A completion whose provider reports no cost (a ChatGPT sign-in) is priced from them, so
   `--budget` and `/usage` count it.

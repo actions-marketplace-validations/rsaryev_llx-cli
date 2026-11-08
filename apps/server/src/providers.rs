@@ -8,12 +8,12 @@ use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-use contracts::catalog::{Effort, ModelEntry, Selection};
-use contracts::chat::{Chat, ChatError, Completion, Request};
+use contracts::catalog::{Effort, ModelEntry};
 use models::{CHAT_COMPLETIONS, Catalog, RESPONSES};
 
 use crate::compose::APP;
 
+mod chat;
 mod deciding;
 mod kept;
 mod login;
@@ -57,6 +57,9 @@ const DEFAULTS: [(&str, &str); 2] = [
 /// The decision model `llx decide` and `llx doctor` start with, and the one a session's tasks
 /// are advised by: a policy, by catalog id (OpenRouter's).
 pub(crate) const DECISION_DEFAULT: &str = "~typesafe/jev-latest";
+
+/// The providers whose models are called over the Messages API: those its wire is built for.
+const MESSAGES_HOSTS: [&str; 1] = ["anthropic"];
 
 /// How often a long-lived process looks for a newer catalog: a file's time, and the refresh
 /// asked, which asks models.dev at most once an hour. A `/model` opened a minute after a
@@ -132,26 +135,14 @@ impl Provider {
         }
     }
 
-    /// The models it is called with: over the ChatGPT backend with a ChatGPT sign-in, else over
-    /// chat completions.
+    /// The models it is called with: OpenAI's over the Responses API (the ChatGPT backend with a
+    /// sign-in, the API with a key), any other provider's over chat completions.
     pub(crate) fn models(&self) -> Vec<ModelEntry> {
-        self.served(self.chatgpt())
+        catalog().served(&self.0, self.protocol())
     }
 
-    /// Whether it is called over the ChatGPT backend: OpenAI with a ChatGPT sign-in (unit tests
-    /// read no sign-in: the same on every machine).
-    fn chatgpt(&self) -> bool {
-        self.0 == "openai" && !cfg!(test) && openai::tokens::load(APP).is_some()
-    }
-
-    /// Its models over the ChatGPT backend (`chatgpt`, the Responses API), else over chat
-    /// completions.
-    pub(crate) fn served(&self, chatgpt: bool) -> Vec<ModelEntry> {
-        catalog().served(&self.0, self.protocol(chatgpt))
-    }
-
-    fn protocol(&self, chatgpt: bool) -> &'static str {
-        match chatgpt && self.0 == "openai" {
+    fn protocol(&self) -> &'static str {
+        match self.0 == "openai" {
             true => RESPONSES,
             false => CHAT_COMPLETIONS,
         }
@@ -172,7 +163,7 @@ impl Provider {
 
     /// llx's default where it has one and the catalog lists it, else the newest model.
     pub(crate) fn default_model(&self) -> String {
-        let protocol = self.protocol(self.chatgpt());
+        let protocol = self.protocol();
         let stated = DEFAULTS.iter().find(|(p, _)| *p == self.0).map(|(_, m)| *m);
         // The stated model alone is decoded; every one only when it is not served, for the newest.
         if let Some(id) = stated.filter(|id| catalog().serves(&self.0, id, protocol)) {
@@ -246,58 +237,6 @@ impl Provider {
         Ok(path)
     }
 
-    /// The chat model for `selection`, each request priced; `None` when not signed in.
-    pub(crate) fn chat(&self, selection: &Selection) -> Option<Box<dyn Chat>> {
-        self.chat_in(selection, None)
-    }
-
-    /// [`Provider::chat`], its key read in `vars`.
-    pub(crate) fn chat_in(&self, selection: &Selection, vars: Vars) -> Option<Box<dyn Chat>> {
-        let inner = self.unpriced(selection, vars)?;
-        Some(Box::new(Priced {
-            inner,
-            provider: self.0.clone(),
-            model: selection.model().id.clone(),
-        }))
-    }
-
-    /// How a patch is offered to model `id` over the ChatGPT backend: as a custom tool held to
-    /// its grammar where the catalog says the model takes those, else as a function.
-    fn texts(&self, id: &str) -> openai::responses::Texts {
-        match catalog().takes_lark(&self.0, id, RESPONSES) {
-            true => openai::responses::Texts::Custom,
-            false => openai::responses::Texts::Functions,
-        }
-    }
-
-    fn unpriced(&self, selection: &Selection, vars: Vars) -> Option<Box<dyn Chat>> {
-        let selection = selection.clone();
-        if self.0 == "openai"
-            && let Some(tokens) = openai::tokens::load(APP)
-        {
-            let texts = self.texts(&selection.model().id);
-            let model = openai::responses::ChatModel::new(APP, tokens, selection, texts);
-            return Some(Box::new(model));
-        }
-        let (key, _) = self.key_in(vars)?;
-        let client = match self.0.as_str() {
-            "openrouter" => openrouter_client(key, vars),
-            id => {
-                let catalog = catalog();
-                let model = catalog.model(id, &selection.model().id);
-                let address = model
-                    .and_then(|m| m.address(CHAT_COMPLETIONS))
-                    .or_else(|| {
-                        let mut models = catalog.provider(id)?.models();
-                        models.find_map(|(_, m)| m.address(CHAT_COMPLETIONS))
-                    })?;
-                let name = catalog.provider(id).map_or(id, |p| p.name());
-                openrouter::client::OpenRouter::at(address, key, APP, name)
-            }
-        };
-        Some(Box::new(openrouter::chat::ChatModel { client, selection }))
-    }
-
     /// Forget the saved sign-in; whether there was one.
     pub(crate) fn forget(&self) -> std::io::Result<bool> {
         let mut removed = false;
@@ -308,29 +247,6 @@ impl Provider {
             removed |= provider_kit::store::remove(&path)?;
         }
         Ok(removed)
-    }
-}
-
-/// A chat model whose requests are priced from the catalog when the provider reports no billed
-/// amount: a ChatGPT plan's requests as their API-equivalent value.
-struct Priced {
-    inner: Box<dyn Chat>,
-    provider: String,
-    model: String,
-}
-
-impl Chat for Priced {
-    fn complete(&self, request: Request) -> Result<Completion, ChatError> {
-        let mut completion = self.inner.complete(request)?;
-        let usage = &mut completion.usage;
-        if usage.cost == 0.0
-            && let Some(model) = catalog().model(&self.provider, &self.model)
-        {
-            let (input, cached, output) =
-                (usage.input_tokens, usage.cached_tokens, usage.output_tokens);
-            usage.cost = model.price(input, cached, output).unwrap_or(0.0);
-        }
-        Ok(completion)
     }
 }
 

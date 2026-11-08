@@ -34,6 +34,7 @@ mod printable;
 mod providers;
 mod rules;
 mod server;
+mod shape;
 mod sync;
 #[cfg(any(test, feature = "testing"))]
 pub mod test_support;

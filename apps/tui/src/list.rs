@@ -120,20 +120,14 @@ impl App {
     }
 }
 
-/// `  ↑ 3 more`: the rows of a list past the ones shown, on the side `arrow` points to.
+/// `↑ 3 more`: the rows of a list past the ones shown, on the side `arrow` points to.
 pub(super) fn more(count: usize, arrow: &str) -> Line<'static> {
-    Line::from(Span::styled(
-        format!("  {arrow} {count} more"),
-        style::dim(),
-    ))
+    Line::from(Span::styled(format!("{arrow} {count} more"), style::dim()))
 }
 
-/// `text` as a dim row under the composer, indented and cut to `width`.
+/// `text` as a dim row under the composer, cut to `width`.
 pub(super) fn dimmed(text: &str, width: usize) -> Line<'static> {
-    Line::from(Span::styled(
-        format!("  {}", cut(text, width.saturating_sub(2))),
-        style::dim(),
-    ))
+    Line::from(Span::styled(cut(text, width), style::dim()))
 }
 
 /// One row up (`code` is Up) or else down from `at` among `last + 1` rows, stopping at the ends.

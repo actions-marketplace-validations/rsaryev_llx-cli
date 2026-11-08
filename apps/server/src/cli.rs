@@ -353,16 +353,17 @@ pub(crate) struct RunOptions {
     #[arg(short, long, help_heading = "Output")]
     pub verbose: bool,
 
-    /// Model turns for one task (1 to 10000). None by default: the time limit bounds a task.
+    /// Model turns for one task (1 to 10000). None by default: the time limit bounds a task in
+    /// `llx exec`.
     #[arg(long, value_name = "N", help_heading = "Limits",
         value_parser = RangedU64ValueParser::<usize>::new().range(1..=10_000))]
     pub max_turns: Option<usize>,
     /// Seconds one task may take, up to a day; at the limit a command or agent running is
-    /// killed, and the task stops at its next model turn, or while it waits on its monitors or
-    /// agents.
-    #[arg(long, value_name = "SECONDS", default_value_t = 1800, help_heading = "Limits",
+    /// killed, and the task stops at once, or while it waits on its monitors or agents. Default:
+    /// 1800 in `llx exec`; none in a session, where you stop a task yourself.
+    #[arg(long, value_name = "SECONDS", help_heading = "Limits",
         value_parser = RangedU64ValueParser::<u64>::new().range(1..=86_400))]
-    pub timeout: u64,
+    pub timeout: Option<u64>,
     /// Dollars one task may spend (more than 0, e.g. 0.50); it stops at the next model turn
     /// once its turns, its agents' and the decision model's advice have cost that. A turn the
     /// provider reports no cost for is priced from the catalog (a ChatGPT sign-in's at its API

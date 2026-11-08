@@ -115,9 +115,10 @@ pub(super) struct Row<'a> {
 }
 
 pub(super) fn row(row: Row, names: usize, width: usize) -> Line<'static> {
+    // No column kept for a pointer: only the row the keys are on has one.
     let pointer = match row.chosen {
         true => Span::styled("❯ ", style::code()),
-        false => Span::raw("  "),
+        false => Span::raw(""),
     };
     let name_style = match row.weight {
         Weight::Shown => style::bold(),
@@ -127,10 +128,10 @@ pub(super) fn row(row: Row, names: usize, width: usize) -> Line<'static> {
     };
     let branch = match row.branch {
         Branch::None => "",
-        Branch::Mid => "  ├ ",
-        Branch::Last => "  └ ",
+        Branch::Mid => "├ ",
+        Branch::Last => "└ ",
     };
-    let taken = 2 + text_width(branch);
+    let taken = text_width(&pointer.content) + text_width(branch);
     let room = width.saturating_sub(taken);
     let right = printable(&row.right);
     // Time and tokens, or how a job runs, end at the right edge, as the footer's spend does; a

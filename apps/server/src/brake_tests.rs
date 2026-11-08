@@ -73,6 +73,35 @@ fn past_its_time_a_task_stops_and_the_next_one_starts_fresh() {
     assert!(brake.complete(request(&[])).is_ok());
 }
 
+/// A chat model whose request is still on its way when the time it was given runs out: the
+/// host is cut off at the deadline, as a request held to it is.
+struct Slow;
+
+impl Chat for Slow {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "a test's fake: the request takes this long"
+    )]
+    fn complete(&self, request: Request) -> Result<Completion, ChatError> {
+        if let Some(at) = request.deadline {
+            std::thread::sleep(at.saturating_duration_since(Instant::now()));
+        }
+        Err(ChatError::Unavailable(
+            "ChatGPT did not answer: timeout: global".into(),
+        ))
+    }
+}
+
+#[test]
+fn a_request_cut_off_by_the_time_limit_ends_the_task_as_out_of_time_not_as_an_error() {
+    let open = || false;
+    let brake = Brake::new(&Slow, &open, &open);
+    brake.arm(Limits::time(Duration::from_millis(20)));
+    let error = brake.complete(request(&[])).unwrap_err();
+    assert_eq!(brake.halted(), Some(Halt::TimedOut), "{error}");
+    assert_eq!(error.to_string(), "the time limit ran out");
+}
+
 #[test]
 fn a_wait_past_the_deadline_is_due_and_halts_the_task() {
     let chat = Ready::default();
@@ -140,7 +169,7 @@ fn a_task_over_its_budget_halts_before_the_next_request_and_a_new_one_starts_at_
     let open = || false;
     let brake = Brake::new(&chat, &open, &open);
     let limits = Limits {
-        time: Duration::from_secs(60),
+        time: Some(Duration::from_secs(60)),
         budget: Some(0.015),
     };
     brake.arm(limits);
@@ -189,4 +218,19 @@ fn a_request_carries_the_time_the_task_has_left() {
         Some(before + Duration::from_millis(500)),
         "the nearer wins"
     );
+}
+
+#[test]
+fn a_task_in_a_session_has_no_time_limit_unless_one_is_given_and_one_in_exec_has_half_an_hour() {
+    let in_session = Limits::of(None, None, Attended::Yes);
+    assert_eq!(in_session.time, None, "the person stops a task they watch");
+    let unattended = Limits::of(None, Some(0.5), Attended::No);
+    assert_eq!(unattended.time, Some(Duration::from_secs(1800)));
+    assert_eq!(unattended.budget, Some(0.5));
+    let given = Limits::of(Some(60), None, Attended::Yes);
+    assert_eq!(given.time, Some(Duration::from_secs(60)));
+    let (chat, open) = (Ready::default(), || false);
+    let brake = Brake::new(&chat, &open, &open);
+    brake.arm(in_session);
+    assert!(!brake.due());
 }

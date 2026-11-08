@@ -10,7 +10,7 @@ checksum = "320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa"
 
 [[package]]
 name = "agent"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "contracts",
  "serde_json",
@@ -36,6 +36,16 @@ name = "anstyle"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "940b3a0ca603d1eade50a4846a2afffd5ef57a9feac2c0e2ec2e14f9ead76000"
+
+[[package]]
+name = "anthropic"
+version = "0.4.0"
+dependencies = [
+ "contracts",
+ "log",
+ "provider-kit",
+ "serde_json",
+]
 
 [[package]]
 name = "anyhow"
@@ -262,7 +272,7 @@ checksum = "a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c"
 
 [[package]]
 name = "contracts"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -1002,7 +1012,7 @@ checksum = "4744e383959f0db86ede514b809b1c53251889093803c05267acc7d4e7030d70"
 
 [[package]]
 name = "llx-cli"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "crossterm",
  "insta",
@@ -1099,7 +1109,7 @@ dependencies = [
 
 [[package]]
 name = "models"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "contracts",
  "miniz_oxide",
@@ -1210,7 +1220,7 @@ checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
 
 [[package]]
 name = "openai"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "contracts",
@@ -1221,7 +1231,7 @@ dependencies = [
 
 [[package]]
 name = "openrouter"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "contracts",
  "log",
@@ -1492,11 +1502,11 @@ dependencies = [
 
 [[package]]
 name = "protocol"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "provider-kit"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "getrandom 0.4.3",
@@ -1527,7 +1537,7 @@ dependencies = [
 
 [[package]]
 name = "queue"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "quote"
@@ -1699,6 +1709,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "regex-lite"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab834c73d247e67f4fae452806d17d3c7501756d98c8808d7c9c7aa7d18f973"
+
+[[package]]
 name = "regex-syntax"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1754,6 +1770,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9cb23c424d8ee841bb4d813677ca237e2a610067d594fec130f87d6093495ab5"
 dependencies = [
  "windows-sys",
+]
+
+[[package]]
+name = "schema"
+version = "0.4.0"
+dependencies = [
+ "regex-lite",
+ "serde_json",
 ]
 
 [[package]]
@@ -1845,9 +1869,10 @@ dependencies = [
 
 [[package]]
 name = "server"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "agent",
+ "anthropic",
  "clap",
  "contracts",
  "libc",
@@ -1858,6 +1883,7 @@ dependencies = [
  "protocol",
  "provider-kit",
  "queue",
+ "schema",
  "serde_json",
  "session",
  "tools",
@@ -1866,7 +1892,7 @@ dependencies = [
 
 [[package]]
 name = "session"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "contracts",
  "getrandom 0.4.3",
@@ -2276,7 +2302,7 @@ dependencies = [
 
 [[package]]
 name = "tools"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "base64 0.23.1",
  "contracts",
@@ -2287,7 +2313,7 @@ dependencies = [
 
 [[package]]
 name = "tui"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "crossterm",
  "insta",

@@ -81,11 +81,10 @@ fn a_command_still_running_after_its_wait_moves_to_the_background_with_what_it_p
     .unwrap();
     // Waited for its wait only, not for its end.
     assert!(started.elapsed() < Duration::from_secs(1), "{report}");
+    // The wait is shown as it was measured: a loaded runner may overshoot the 0.2 s.
+    assert!(report.starts_with("Still running after: 0."), "{report}");
     assert!(
-        report.starts_with(
-            "Still running after: 0.2 seconds (moved to the background as job \
-             `slow echo` (job-1)"
-        ),
+        report.contains(" seconds (moved to the background as job `slow echo` (job-1)"),
         "{report}"
     );
     assert!(report.ends_with("Output so far:\nfirst"), "{report}");

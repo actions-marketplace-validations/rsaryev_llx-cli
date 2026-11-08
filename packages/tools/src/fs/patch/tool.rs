@@ -24,9 +24,9 @@ are kept. A patch is applied whole or not at all, and one patch may add and chan
 put in it every change you are ready to make, across every file it touches, rather than one \
 file per call. A reply cut off at your output limit applies only the files written whole before \
 the cut, and says where it stopped. Read a file before changing it; a patch that applied needs \
-no read to check it (the call fails when it does not), and one whose lines are not found comes \
-back with the file as it is now, numbered, when it is short (else its nearest lines and where \
-they start): write the next one from that, with no read first.";
+no read to check it (the call fails when it does not), and one whose lines are not found names \
+every file they were not found in, each as it is now, numbered, when it is short (else its \
+nearest lines with those around them): write the next one from that, with no read first.";
 
 /// The patch's grammar, as the model's provider holds it to.
 const GRAMMAR: &str = r#"start: begin_patch hunk+ end_patch

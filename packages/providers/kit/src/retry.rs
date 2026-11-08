@@ -19,6 +19,9 @@ pub enum Attempt<T, E> {
     Done(Result<T, E>),
     /// A failure another attempt may mend.
     Again(E),
+    /// The same, after the wait the host asked for (`Retry-After`), when it is longer than the
+    /// pause; never past the deadline.
+    After(E, Duration),
     /// The request went out and no whole answer came back: sent again as [`Resend`] says.
     Unanswered(E),
 }
@@ -52,6 +55,12 @@ pub fn retried<T, E>(
         let error = match (attempt(), resend) {
             (Attempt::Done(result), _) => return result,
             (Attempt::Again(error), _) => error,
+            // A wait past a minute is a limit of hours: said at once, not slept through.
+            (Attempt::After(error, asked), _) if asked > LONGEST => return Err(error),
+            (Attempt::After(error, asked), _) => {
+                wait = wait.max(asked);
+                error
+            }
             (Attempt::Unanswered(error), Resend::Never) => return Err(error),
             // Sent again as any attempt is, after the pause; the next one is not.
             (Attempt::Unanswered(error), Resend::Once) => {
@@ -63,8 +72,23 @@ pub fn retried<T, E>(
             return Err(error);
         }
         std::thread::sleep(wait);
-        wait = wait.saturating_mul(2);
+        wait = grown(wait);
     }
+}
+
+/// The longest wait a host's `Retry-After` is kept to: a longer one is a limit of hours, better
+/// said at once than slept through.
+const LONGEST: Duration = Duration::from_secs(60);
+
+/// The pause after `wait`: twice it, never past a minute.
+fn grown(wait: Duration) -> Duration {
+    wait.saturating_mul(2).min(LONGEST)
+}
+
+/// A `Retry-After` header's wait, in seconds (a date is not read).
+pub fn after(header: Option<&str>) -> Option<Duration> {
+    let seconds: f64 = header?.trim().parse().ok()?;
+    Duration::try_from_secs_f64(seconds).ok()
 }
 
 #[cfg(test)]

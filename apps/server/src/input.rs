@@ -146,7 +146,7 @@ fn read_capped(reader: impl Read, limit: usize, what: &str) -> Result<String, Fa
 }
 
 /// `--schema`: inline JSON, or `@path` to a file; it must be a JSON Schema object.
-pub(crate) fn schema(arg: &str) -> Result<Value, Failure> {
+pub(crate) fn schema(arg: &str) -> Result<crate::shape::Checked, Failure> {
     let usage = Failure::Usage;
     let text = match arg.strip_prefix('@') {
         Some(path) => std::fs::read_to_string(path)
@@ -158,7 +158,7 @@ pub(crate) fn schema(arg: &str) -> Result<Value, Failure> {
     if !schema.is_object() {
         return Err(usage("--schema must be a JSON Schema object".into()));
     }
-    Ok(schema)
+    Ok(crate::shape::Checked::new(schema))
 }
 
 #[cfg(test)]

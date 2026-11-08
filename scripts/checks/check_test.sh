@@ -39,7 +39,7 @@ expect() {
   fi
 }
 
-core="-p agent -p contracts -p llx-cli -p models -p openai -p openrouter -p server -p session -p tools"
+core="-p agent -p anthropic -p contracts -p llx-cli -p models -p openai -p openrouter -p server -p session -p tools"
 
 expect "a core crate: it and every dependent, tested" "" "fmt
 clippy $core

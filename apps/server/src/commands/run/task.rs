@@ -1,6 +1,6 @@
 //! One task of a session, on its [`Rig`]: run, reported, recorded.
 
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
 use contracts::history::Turn;
 use contracts::tool::Image;
@@ -8,7 +8,7 @@ use serde_json::Value;
 
 use super::Ended;
 use crate::attach;
-use crate::brake::Limits;
+use crate::brake::{Attended, Limits};
 use crate::compose::Rig;
 use crate::exit;
 use crate::output::{Start, Summary};
@@ -26,10 +26,13 @@ impl Rig<'_> {
         });
         let attached = self.pictures();
         crate::meta::title::start(self, goal);
-        let limits = Limits {
-            time: Duration::from_secs(self.shared.options.timeout),
-            budget: self.shared.options.budget,
+        // `ask` is offered where a person watches the run: a session, not `exec`.
+        let attended = match self.shared.asks {
+            true => Attended::Yes,
+            false => Attended::No,
         };
+        let options = &self.shared.options;
+        let limits = Limits::of(options.timeout, options.budget, attended);
         self.brake.arm(limits);
         self.interrupt.begin();
         self.jobs.queue().begin();

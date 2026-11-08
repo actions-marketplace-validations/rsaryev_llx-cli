@@ -38,12 +38,12 @@ fn a_person_reads_each_call_once_done_then_how_the_task_ended() {
     };
     let spend = Event::Note("session  1-ab\n".into());
     let trace = drawn(&mut Trace::new(false, 100), &[call, result, end, spend]);
-    insta::assert_snapshot!(trace, @r"
+    insta::assert_snapshot!(trace, @"
     • Ran cargo test
       └ (no output)
 
     ─ Worked for 0.0s · 0 turns · $0.0000 ──────────────────────────────────────────────────────────────
-      session  1-ab
+    session  1-ab
     ");
 }
 
@@ -59,12 +59,12 @@ fn the_steps_under_a_call_are_drawn_with_it_and_only_with_it() {
         Event::Error("the model is gone".into()),
     ];
     let trace = drawn(&mut Trace::new(false, 100), &events);
-    insta::assert_snapshot!(trace, @r"
+    insta::assert_snapshot!(trace, @"
     • Ran ls
       · a: Ran cargo build
       └ (no output)
 
-    • Built.
+    Built.
     ■ the model is gone
     ");
 }
@@ -75,7 +75,7 @@ fn a_turn_for_v_is_a_quiet_line_and_what_the_trace_does_not_show_adds_nothing() 
     let turn = Event::Note("  · m/x · 12,345 in · 67 out · $0.0123 · 1.5s".into());
     assert_eq!(
         trace.draw(&turn),
-        "    · m/x · 12,345 in · 67 out · $0.0123 · 1.5s\n"
+        "  · m/x · 12,345 in · 67 out · $0.0123 · 1.5s\n"
     );
     for event in [
         Event::Spent(10),
@@ -101,5 +101,5 @@ fn colour_is_drawn_as_the_terminal_reads_it() {
 fn the_answer_at_a_terminal_comes_after_a_blank_row_as_the_model_wrote_it_drawn() {
     // The tests' stdout is no terminal: no colour.
     let answer = Trace::new(false, 40).answer();
-    assert_eq!(answer("All **good**."), "\n• All good.\n");
+    assert_eq!(answer("All **good**."), "\nAll good.\n");
 }

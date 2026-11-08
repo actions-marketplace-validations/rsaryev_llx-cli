@@ -1,7 +1,10 @@
+use contracts::catalog::Effort;
 use contracts::chat::TaskId;
 
 use super::*;
 use contracts::tool::Input;
+
+use crate::level::Switch;
 
 #[test]
 fn a_conversation_goes_out_in_the_wire_format_with_cache_marks() {
@@ -90,8 +93,8 @@ fn a_picture_goes_out_as_a_user_message_with_an_image_part_and_the_mark() {
 
 #[test]
 fn off_turns_thinking_off_and_a_level_is_asked_by_name() {
-    assert_eq!(reasoning(Effort::Off), json!({"enabled": false}));
-    assert_eq!(reasoning(Effort::XHigh), json!({"effort": "xhigh"}));
+    assert_eq!(level::reasoning(Effort::Off), json!({"enabled": false}));
+    assert_eq!(level::reasoning(Effort::XHigh), json!({"effort": "xhigh"}));
 }
 
 fn selection(efforts: Vec<Effort>, effort: Effort) -> Selection {
@@ -112,6 +115,28 @@ fn selection_of(id: &str, efforts: Vec<Effort>, effort: Effort) -> Selection {
 }
 
 fn request_body(wire: Wire, selection: &Selection, calling: Calling) -> Value {
+    body_with(wire, selection, calling, crate::level::Switch::Named)
+}
+
+fn selection_with_output(efforts: Vec<Effort>, effort: Effort, output: u64) -> Selection {
+    let model = contracts::catalog::ModelEntry {
+        id: "lab/model".into(),
+        name: "Model".into(),
+        default: efforts[0],
+        efforts,
+        context: 100_000,
+        output,
+        marks: false,
+    };
+    Selection::new(model).with_effort(effort).unwrap()
+}
+
+fn body_with(
+    wire: Wire,
+    selection: &Selection,
+    calling: Calling,
+    switch: crate::level::Switch,
+) -> Value {
     let conversation = [
         Message::System("rules".into()),
         Message::User("context".into()),
@@ -130,7 +155,7 @@ fn request_body(wire: Wire, selection: &Selection, calling: Calling) -> Value {
         effort: None,
         task: TaskId::NONE,
     };
-    body(wire, selection, &request)
+    body(wire, selection, &request, switch)
 }
 
 #[test]
@@ -157,16 +182,68 @@ fn openrouter_is_sent_its_reasoning_object_the_usage_report_and_cache_marks() {
     );
     assert_eq!(off["reasoning"], json!({"enabled": false}));
     assert_eq!(off["tool_choice"], "none", "an answer is asked for");
-    // The `result` call with `--schema`'s data is asked for by name: the reply is that call.
-    let only = request_body(
-        Wire::OpenRouter,
-        &selection(levels, Effort::Off),
+    // A call asked for by name goes out as `auto` over chat completions: hosts refuse a named
+    // choice while their model thinks (DeepSeek, Qwen), take only `auto` (Z.ai), or refuse one
+    // for their newest models (Claude); the agent asks for the call in words, and `result` is
+    // offered with every request. OpenAI's own API forces it.
+    for host in [Wire::OpenRouter, Wire::Plain] {
+        let only = request_body(
+            host,
+            &selection(levels.clone(), Effort::Off),
+            Calling::Only("result"),
+        );
+        assert_eq!(only["tool_choice"], "auto");
+    }
+    let openai = request_body(
+        Wire::OpenAi,
+        &selection(vec![], Effort::Off),
         Calling::Only("result"),
     );
     assert_eq!(
-        only["tool_choice"],
+        openai["tool_choice"],
         json!({"type": "function", "function": {"name": "result"}})
     );
+}
+
+#[test]
+fn a_host_with_a_toggle_of_its_own_is_sent_it_for_off() {
+    use crate::level::{Switch, Toggle};
+    let levels = || vec![Effort::Off, Effort::Medium];
+    let sent = |switch, effort| {
+        body_with(
+            Wire::Plain,
+            &selection(levels(), effort),
+            Calling::Any,
+            switch,
+        )
+    };
+    let toggled = Switch::Toggled(Toggle::Thinking);
+    let off = sent(toggled, Effort::Off);
+    assert_eq!(off["thinking"], json!({"type": "disabled"}));
+    assert!(off.get("reasoning_effort").is_none());
+    assert_eq!(
+        sent(toggled, Effort::Medium)["thinking"],
+        json!({"type": "enabled"})
+    );
+    let qwen = Switch::NamedOrOff(Toggle::EnableThinking);
+    assert_eq!(sent(qwen, Effort::Off)["enable_thinking"], false);
+    let on = sent(qwen, Effort::Medium);
+    assert_eq!(on["reasoning_effort"], "medium");
+    assert!(on.get("enable_thinking").is_none());
+    assert_eq!(sent(Switch::Named, Effort::Off)["reasoning_effort"], "none");
+}
+
+#[test]
+fn the_deepest_levels_may_write_64000_tokens() {
+    // OpenRouter sizes a budgeted model's thinking from the output limit (95% at xhigh and max):
+    // at 32,000 a reply had a few thousand tokens left for its calls.
+    let sent = |effort| {
+        let levels = vec![Effort::High, Effort::XHigh];
+        let selection = selection_with_output(levels, effort, 128_000);
+        request_body(Wire::OpenRouter, &selection, Calling::Any)["max_tokens"].clone()
+    };
+    assert_eq!(sent(Effort::High), 32_000);
+    assert_eq!(sent(Effort::XHigh), 64_000);
 }
 
 #[test]
@@ -209,7 +286,13 @@ fn openai_itself_is_sent_a_cache_key_per_conversation_and_others_none() {
             effort: None,
             task: TaskId::NONE,
         };
-        body(wire, &selection(vec![], Effort::Off), &request)["prompt_cache_key"].clone()
+        body(
+            wire,
+            &selection(vec![], Effort::Off),
+            &request,
+            Switch::Named,
+        )["prompt_cache_key"]
+            .clone()
     };
     let opened = |goal: &str| {
         vec![
@@ -268,6 +351,46 @@ fn the_models_reasoning_goes_back_to_it_with_the_next_request() {
 }
 
 #[test]
+fn a_calls_thought_signature_goes_back_on_the_call_as_gemini_requires() {
+    let signed = json!({"google": {"thought_signature": "sig=="}});
+    let reply = json!({"model": "g", "choices": [{"message": {"content": null,
+        "tool_calls": [{"id": "c1", "type": "function", "extra_content": signed,
+            "function": {"name": "read", "arguments": "{}"}},
+            {"id": "c2", "type": "function", "function": {"name": "read", "arguments": "{}"}}]}}]});
+    let completion = read(&reply, "g", 0).unwrap();
+    let sent = wire(&completion.message(), "g", &[]);
+    assert_eq!(sent["tool_calls"][0]["extra_content"], signed);
+    assert!(sent["tool_calls"][1].get("extra_content").is_none());
+    assert!(
+        wire(&completion.message(), "other", &[])["tool_calls"][0]
+            .get("extra_content")
+            .is_none()
+    );
+}
+
+#[test]
+fn an_answer_in_chunks_is_read_as_its_text_and_goes_back_whole() {
+    // Mistral's reasoning models answer in chunks, their thinking among them.
+    let chunks = json!([{"type": "thinking", "thinking": [{"type": "text", "text": "hmm"}]},
+        {"type": "text", "text": "Done."}]);
+    let reply = json!({"model": "m", "choices": [{"message": {"content": chunks}}]});
+    let completion = read(&reply, "m", 0).unwrap();
+    assert_eq!(completion.text.as_deref(), Some("Done."));
+    assert_eq!(wire(&completion.message(), "m", &[])["content"], chunks);
+}
+
+#[test]
+fn a_withheld_reply_is_an_error_and_a_hosts_own_cache_count_is_read() {
+    let filtered = json!({"model": "m", "choices": [{"finish_reason": "content_filter",
+        "message": {"content": ""}}]});
+    assert!(read(&filtered, "m", 0).is_err());
+    // Together's: at the top of the usage.
+    let reply = json!({"model": "m", "choices": [{"message": {"content": "ok"}}],
+        "usage": {"prompt_tokens": 100, "cached_tokens": 60, "completion_tokens": 1}});
+    assert_eq!(read(&reply, "m", 0).unwrap().usage.cached_tokens, 60);
+}
+
+#[test]
 fn cache_marks_go_only_to_the_models_that_take_explicit_breakpoints() {
     let marked = |id: &str| {
         let sent = request_body(
@@ -312,7 +435,12 @@ fn a_patch_is_offered_as_a_function_with_one_string_argument() {
         effort: None,
         task: TaskId::NONE,
     };
-    let body = body(Wire::OpenRouter, &selection(vec![], Effort::Off), &request);
+    let body = body(
+        Wire::OpenRouter,
+        &selection(vec![], Effort::Off),
+        &request,
+        Switch::Named,
+    );
     let function = &body["tools"][0]["function"];
     assert_eq!(function["name"], "apply_patch");
     assert_eq!(function["parameters"]["required"], json!(["source"]));
@@ -375,7 +503,7 @@ fn openrouter_groups_a_conversations_requests_into_one_session() {
             effort: None,
             task: TaskId::NONE,
         };
-        body(wire, &selection, &request)["session_id"].clone()
+        body(wire, &selection, &request, Switch::Named)["session_id"].clone()
     };
     let opened = |goal: &str| {
         vec![
@@ -508,4 +636,13 @@ fn a_cut_patch_call_keeps_the_text_it_wrote_and_another_cut_call_its_raw_argumen
     let raw = r#"{"command": "rm -r build/ca"#;
     let cut = arrived(read(&reply("bash", raw), "m", 0).unwrap(), &tools);
     assert_eq!(cut.calls[0].arguments, json!(raw));
+}
+
+#[test]
+fn a_reply_on_the_persons_own_provider_key_costs_what_the_provider_charged_too() {
+    let reply = json!({"model": "m", "choices": [{"message": {"content": "ok"}}],
+        "usage": {"prompt_tokens": 10, "completion_tokens": 1, "cost": 0.0001, "is_byok": true,
+            "cost_details": {"upstream_inference_cost": 0.002}}});
+    let cost = read(&reply, "m", 0).unwrap().usage.cost;
+    assert!((cost - 0.0021).abs() < 1e-9, "{cost}");
 }

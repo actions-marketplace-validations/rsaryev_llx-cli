@@ -106,6 +106,9 @@ pub struct Usage {
     pub input_tokens: u64,
     /// Input tokens read from the provider's prompt cache: counted in `input_tokens` too.
     pub cached_tokens: u64,
+    /// Input tokens written to the provider's prompt cache, where it bills them apart (at more
+    /// than the input's price): counted in `input_tokens` too.
+    pub written_tokens: u64,
     pub output_tokens: u64,
 }
 

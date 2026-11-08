@@ -57,3 +57,21 @@ test("an llx given by its path is known by its bytes, whether or not this reposi
   expect(a).toMatchObject({ label: "old", kind: "llx", path: binary, version: "llx 9.9.9", commit: null });
   expect(a.bytes).toBe(fs.statSync(binary).size);
 });
+
+test("Claude Code: a request is a message, its output in all the result's; failed tools by their results", () => {
+  const usage = (output: number) => ({ input_tokens: 10, cache_creation_input_tokens: 2000, cache_read_input_tokens: 5000, output_tokens: output });
+  const assistant = (id: string, output: number, content: object[]) => event({ type: "assistant", message: { id, usage: usage(output), content } });
+  const events = log("claude.jsonl", [
+    event({ type: "system", subtype: "init" }),
+    assistant("m1", 5, [{ type: "text", text: "Reading." }]),
+    assistant("m1", 40, [{ type: "tool_use", id: "t1", name: "Bash", input: { command: "cat README.md" } }]),
+    event({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t1", content: "ok" }] } }),
+    assistant("m2", 300, [{ type: "tool_use", id: "t2", name: "Write", input: {} }, { type: "tool_use", id: "t3", name: "Bash", input: {} }]),
+    event({ type: "user", message: { content: [{ type: "tool_result", tool_use_id: "t2", content: "written" }, { type: "tool_result", tool_use_id: "t3", is_error: true, content: "Exit code 1" }] } }),
+    event({ type: "result", subtype: "success", is_error: false, result: "Done.", usage: { output_tokens: 2340 } }),
+  ]);
+  const d = did("claude", events, "", {});
+  // The output's total is the result's: the replies' own counts are those their streams began with.
+  expect(d.requests).toEqual([{ input: 7010, cached: 5000, output: 40 }, { input: 7010, cached: 5000, output: 2300 }]);
+  expect([d.status, d.calls, d.failed_commands, d.patches, d.failed_patches, d.answer]).toEqual(["done", 3, 1, 1, 0, "Done."]);
+});

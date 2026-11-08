@@ -148,10 +148,11 @@ impl Model {
             && self.status.as_deref() != Some("deprecated")
     }
 
-    /// What one request costs, in US dollars, from the catalog's prices:
-    /// uncached input at the input price, cached input at the cache-read price (else the
-    /// input price), output at the output price; the long-context band by this request's input.
-    pub fn price(&self, input: u64, cached: u64, output: u64) -> Option<f64> {
+    /// What one request costs, in US dollars, from the catalog's prices: uncached input at the
+    /// input price, input read from the cache at the cache-read price and input written to it at
+    /// the cache-write price (each else the input price), output at the output price; the
+    /// long-context band by this request's input.
+    pub fn price(&self, input: u64, cached: u64, written: u64, output: u64) -> Option<f64> {
         let text = self.cost.as_ref()?.get("text")?;
         let rates = |side: &str| {
             let base = text.get(side)?;
@@ -171,13 +172,26 @@ impl Model {
                     .or_else(|| base.pointer(key))?
                     .as_f64()
             };
-            Some((price("/price")?, price("/cache/read")))
+            // A write's price is one number, or one for each time a write is kept: the
+            // shortest (five minutes) is what a mark asks for.
+            let write = price("/cache/write").or_else(|| price("/cache/write/5m"));
+            Some((price("/price")?, price("/cache/read"), write))
         };
-        let (input_price, cache_price) = rates("input")?;
-        let (output_price, _) = rates("output")?;
-        let uncached = input.saturating_sub(cached) as f64;
-        let cached = cached as f64 * cache_price.unwrap_or(input_price);
-        Some((uncached * input_price + cached + output as f64 * output_price) / 1_000_000.0)
+        let (input_price, read_price, write_price) = rates("input")?;
+        let (output_price, ..) = rates("output")?;
+        let uncached = input.saturating_sub(cached).saturating_sub(written) as f64;
+        let cached = cached as f64 * read_price.unwrap_or(input_price);
+        let written = written as f64 * write_price.unwrap_or(input_price);
+        let paid = uncached * input_price + cached + written + output as f64 * output_price;
+        Some(paid / 1_000_000.0)
+    }
+
+    /// Whether it thinks within a budget of tokens a request gives (`budget_tokens`): the models
+    /// that take one, which the older ones alone accept; the current ones decide how much to
+    /// think at the level given.
+    pub fn thinks_by_budget(&self) -> bool {
+        let reasoning = self.capabilities.reasoning.as_ref();
+        reasoning.is_some_and(|reasoning| reasoning.budget.is_some())
     }
 
     /// Whether it takes tools of free text held to a Lark grammar through `protocol`: the API's own

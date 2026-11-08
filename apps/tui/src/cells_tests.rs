@@ -35,24 +35,24 @@ fn a_task_from_question_to_end() {
     // The person's lines stay lines; a note keeps its rows and columns.
     out.extend(user("one\ntwo", width));
     out.extend(note("model      haiku\nworkspace  ~/shop\n", width));
-    insta::assert_snapshot!(shown(&out), @r"
+    insta::assert_snapshot!(shown(&out), @"
     llx 0.1.0 · haiku-5.5 · ~/shop
 
     ❯ make a landing page for a phone shop, with prices and a
-      contact form
+    contact form
 
-    • The page is in site/index.html:
+    The page is in site/index.html:
 
-      - a hero with three phones
-      - a contact form
+    - a hero with three phones
+    - a contact form
 
     ─ Worked for 48s · 6 turns · $0.0087 ───────────────────────
     ■ the model is unreachable: timed out after 90s
-      resumed session 2026-10-23-1
+    resumed session 2026-10-23-1
     ❯ one
-      two
-      model      haiku
-      workspace  ~/shop
+    two
+    model      haiku
+    workspace  ~/shop
     ");
 }
 
@@ -130,11 +130,11 @@ fn a_wide_row_of_a_table_wraps_under_its_second_column() {
         "* default     Each command and file change is asked about first.\n  plan        Investigate and plan: no file changes at all.",
         40,
     );
-    let under = " ".repeat(16);
+    let under = " ".repeat(14);
     assert_eq!(
         shown(&rows),
         format!(
-            "  * default     Each command and file\n{under}change is asked about\n{under}first.\n    plan        Investigate and plan: no\n{under}file changes at all."
+            "* default     Each command and file\n{under}change is asked about\n{under}first.\n  plan        Investigate and plan: no\n{under}file changes at all."
         )
     );
 }

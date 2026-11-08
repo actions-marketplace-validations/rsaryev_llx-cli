@@ -10,6 +10,7 @@
 #     kit                   no port: HTTP and its retries, PKCE, the sign-in callback, credential
 #                           files, SSE, the prompt cache's key
 #     openrouter            OpenRouter's chat and decision models, its key
+#     anthropic             the Messages API: Anthropic's models, with its prompt cache
 #     openai                OpenAI's models through a ChatGPT sign-in (the Responses API)
 #     models                the model catalog: models.dev's files built in, its API over them
 #   packages/protocol       what the interface and the server say to each other: the seam's types
@@ -29,6 +30,7 @@ members = [
     "packages/contracts",
     "packages/protocol",
     "packages/queue",
+    "packages/schema",
     "packages/session",
     "packages/tools",
     "packages/providers/*",
@@ -36,7 +38,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.3.0"
+version = "0.4.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
@@ -151,10 +153,12 @@ allow_attributes = "deny"
 agent = { path = "packages/agent" }
 contracts = { path = "packages/contracts" }
 protocol = { path = "packages/protocol" }
+anthropic = { path = "packages/providers/anthropic" }
 models = { path = "packages/providers/models" }
 openai = { path = "packages/providers/openai" }
 openrouter = { path = "packages/providers/openrouter" }
 queue = { path = "packages/queue" }
+schema = { path = "packages/schema" }
 provider-kit = { path = "packages/providers/kit" }
 server = { path = "apps/server" }
 session = { path = "packages/session" }
@@ -177,6 +181,8 @@ unicode-width = "0.2"
 insta = "1.46"
 vt100 = "0.16.2"
 serde = { version = "1.0.229", features = ["derive"] }
+# The schema primitive's fallback for a pattern its automaton cannot take.
+regex-lite = "0.1.9"
 serde_json = "1.0.154"
 # Already in the tree through crossterm: the facade the log is written through.
 log = "0.4"

@@ -26,6 +26,8 @@ pub(crate) struct Scripted {
     pub(crate) sent: Mutex<Vec<(Vec<Message>, Option<Effort>)>>,
     /// The task each request named.
     pub(crate) tasks: Mutex<Vec<TaskId>>,
+    /// The names of the tools each request offered.
+    pub(crate) offered: Mutex<Vec<Vec<String>>>,
 }
 
 impl Scripted {
@@ -36,6 +38,7 @@ impl Scripted {
             last_user: Mutex::new(vec![]),
             sent: Mutex::new(vec![]),
             tasks: Mutex::new(vec![]),
+            offered: Mutex::new(vec![]),
         }
     }
 }
@@ -52,6 +55,8 @@ impl Chat for Scripted {
     fn complete(&self, request: Request) -> Result<Completion, ChatError> {
         (self.sent.lock().unwrap()).push((request.conversation.to_vec(), request.effort));
         self.tasks.lock().unwrap().push(request.task);
+        let names = request.tools.iter().map(|spec| spec.name.clone()).collect();
+        self.offered.lock().unwrap().push(names);
         self.calling.lock().unwrap().push(match request.calling {
             Calling::Any => "any".into(),
             Calling::Nothing => "nothing".into(),
@@ -215,5 +220,39 @@ pub(crate) struct Keep;
 impl Strategy for Keep {
     fn prepare(&self, _: &mut Conversation, _: u64, _: f64) -> Report {
         vec![]
+    }
+}
+
+/// A `--schema` shape that checks what the agent's tests need of one: the fields a schema
+/// requires and the types of its own fields, said as the app's check says them.
+pub(crate) struct Shaped(pub(crate) Value);
+
+impl contracts::shape::Shape for Shaped {
+    fn schema(&self) -> &Value {
+        &self.0
+    }
+
+    fn mismatches(&self, data: &Value) -> Vec<String> {
+        let mut out = vec![];
+        let required = self.0["required"].as_array().into_iter().flatten();
+        for name in required.filter_map(Value::as_str) {
+            if data.get(name).is_none() {
+                out.push(format!("data is missing \"{name}\""));
+            }
+        }
+        let typed = self.0["properties"].as_object().into_iter().flatten();
+        for (name, rule) in typed {
+            let kind = rule["type"].as_str().unwrap_or("any");
+            let held = match (kind, data.get(name)) {
+                (_, None) | ("any", _) => true,
+                ("number", Some(value)) => value.is_number(),
+                ("string", Some(value)) => value.is_string(),
+                (_, Some(_)) => true,
+            };
+            if !held {
+                out.push(format!("data.{name} must be {kind}"));
+            }
+        }
+        out
     }
 }

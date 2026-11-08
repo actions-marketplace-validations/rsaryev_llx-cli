@@ -5,7 +5,7 @@ use super::*;
 use crate::exit;
 
 const LIMITS: Limits = Limits {
-    time: std::time::Duration::from_secs(90),
+    time: Some(std::time::Duration::from_secs(90)),
     budget: Some(0.5),
 };
 

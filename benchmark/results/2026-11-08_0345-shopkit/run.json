@@ -1,0 +1,51 @@
+{
+ "when": "2026-11-08 03:45",
+ "task": "shopkit",
+ "tests": 69,
+ "provider": "anthropic",
+ "model": "claude-sonnet-5-5",
+ "reasoning": "low",
+ "advice": true,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "sonnet 5.5, edits through python3 (no apply_patch), Messages API cache",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 4.5,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.3.0",
+   "commit": "6d592d08-dirty",
+   "bytes": 2740848,
+   "sha256": "7c52fbb31d86"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 45.9,
+   "pass": 69,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 3,
+   "input_tokens": 30226,
+   "cached_tokens": 14055,
+   "output_tokens": 7934,
+   "cost_usd": 0.1131,
+   "cache_pct": 46,
+   "calls": 2,
+   "failed_commands": 0,
+   "patches": 0,
+   "failed_patches": 0,
+   "model_s": 45.2,
+   "advised": 0
+  }
+ ]
+}

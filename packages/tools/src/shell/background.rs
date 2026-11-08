@@ -114,8 +114,9 @@ fn moved(job: &Adopted, elapsed: Duration, file: Option<&Path>, so_far: &str) ->
     let mut out = vec![format!(
         "Still running after: {:.1} seconds (moved to the background as job `{}` ({}); its end \
          comes back to you on its own as a <background> message. {IDLE} It runs now: do not \
-         start a second copy. A command that should have ended by now may be stuck, looping or waiting, \
-         rather than slow: if so, end it with `jobs stop` and find why.)",
+         start a second copy, and do not change or check the files it writes (a formatter's, a \
+         script's) before it ends. A command that should have ended by now may be stuck, looping \
+         or waiting, rather than slow: if so, end it with `jobs stop` and find why.)",
         elapsed.as_secs_f64(),
         job.name,
         job.id
