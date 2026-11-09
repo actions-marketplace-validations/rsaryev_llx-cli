@@ -138,9 +138,8 @@ impl Tool for Withheld {
 
     fn call(&self, _: &Value) -> Result<ToolOutput, ToolError> {
         Err(ToolError::Failed(format!(
-            "`{}` is the main session's alone: an agent works with bash, \
-             apply_patch and grep, and decides on its best \
-             assumption where it would ask",
+            "`{}` is the main session's alone: an agent works with bash and \
+             apply_patch, and decides on its best assumption where it would ask",
             self.0.name
         )))
     }
