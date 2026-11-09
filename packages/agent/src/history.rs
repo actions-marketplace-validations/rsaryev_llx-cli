@@ -5,7 +5,7 @@
 //! [`Pipeline`] is the strategy llx uses: named `Stage`s, least valuable first, each eliding
 //! what it owns (old reasoning, outputs, arguments), outputs and arguments for pointers that say
 //! how to get them back. No summary. Made for the prompt cache:
-//! - nothing runs while the conversation is under `HIGH` of the model's limit (a pruned prefix
+//! - nothing runs while the conversation is under `HIGH` of llx's ceiling (a pruned prefix
 //!   trades cheap cached tokens for a rewrite of everything after it);
 //! - once it is, the stages run until `LOW`, so one cache miss buys many stable turns;
 //! - a pass that could not get down to `LOW` (what no stage elides, a model's reasoning carried
@@ -154,19 +154,14 @@ pub struct Pipeline {
 }
 
 impl Default for Pipeline {
-    /// llx's: old outputs, old arguments; the tail only past the model's limit.
+    /// llx's with nothing kept and no reasoning let go: old outputs, old arguments; the tail only
+    /// past the model's limit.
     fn default() -> Self {
-        Self::keeping(Box::new(|_, _| false))
+        Self::shedding(Box::new(|_, _| false), Box::new(|_| false))
     }
 }
 
 impl Pipeline {
-    /// llx's, the newest output of each call `keep` names left alone as the tail is; no
-    /// reasoning let go.
-    pub fn keeping(keep: Box<Lasting>) -> Self {
-        Self::shedding(keep, Box::new(|_| false))
-    }
-
     /// llx's: first the reasoning old turns carried back, as `shed` lets it go (the least
     /// valuable: a provider drops it itself once the person speaks again, and in a long task it
     /// grows with every turn), then old outputs but the newest of each call `keep` names, then

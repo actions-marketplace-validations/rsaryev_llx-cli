@@ -40,14 +40,8 @@ pub struct Conversation {
 
 impl Conversation {
     pub(crate) fn new(system: &str) -> Self {
-        let system = Message::System(system.to_string());
-        Self {
-            sizes: vec![fit::tokens(&system)],
-            messages: vec![system],
-            effort: None,
-            ratio: 1.0,
-            settled: 0,
-        }
+        // A system prompt alone leaves no call open.
+        Self::of(vec![Message::System(system.to_string())], "")
     }
 
     /// Real tokens per estimated one, as last measured.

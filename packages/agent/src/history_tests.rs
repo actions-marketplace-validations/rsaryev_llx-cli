@@ -47,7 +47,7 @@ fn reading_rules_at(rules: &[usize]) -> (Pipeline, Conversation) {
     let keep = |call: &ToolCall, _: &str| call.arguments["command"] == json!("cat sub/rules.md");
     let pipeline = Pipeline {
         tail: 2_000,
-        ..Pipeline::keeping(Box::new(keep))
+        ..Pipeline::shedding(Box::new(keep), Box::new(|_| false))
     };
     (pipeline, running(&commands, &"x".repeat(4_000)))
 }
