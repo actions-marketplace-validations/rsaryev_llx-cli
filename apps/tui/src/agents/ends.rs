@@ -131,7 +131,7 @@ impl App {
         } else if at != self.views.home() {
             self.views.sessions[at].unseen = true;
             let line = finished_line("Session", &name, &status, millis, " · ← to open");
-            let shown = self.views.find(&self.views.shown).unwrap_or(0);
+            let shown = self.views.shown_at();
             self.push(shown, vec![line]);
         }
         let view = &mut self.views.sessions[at];

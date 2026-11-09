@@ -197,7 +197,7 @@ impl App {
 
     /// The session shown.
     pub(crate) fn shown(&self) -> &SessionView {
-        &self.views.sessions[self.views.find(&self.views.shown).unwrap_or(0)]
+        &self.views.sessions[self.views.shown_at()]
     }
 
     /// Whether a session works: the spinner turns.

@@ -43,7 +43,7 @@ pub(crate) fn colour_on(stream: &impl IsTerminal) -> bool {
 
 /// `line` as the terminal draws it: SGR codes around each styled span, or plain text.
 #[cfg(any(test, feature = "testing"))]
-pub(crate) fn ansi(line: &Line, colour: bool) -> String {
+fn ansi(line: &Line, colour: bool) -> String {
     let mut out = String::new();
     put(&mut out, line, colour);
     out

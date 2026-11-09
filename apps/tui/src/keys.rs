@@ -154,17 +154,16 @@ impl App {
         let typed = self.composer.text();
         let typed = typed.trim();
         let whole = offers.iter().any(|offer| match offer {
-            Offer::Command(name, _) => typed == format!("/{name}"),
-            Offer::Mode(name, _) => typed.ends_with(&format!(" {name}")),
+            Offer::Command(name, _) => typed.strip_prefix('/') == Some(name.as_str()),
+            Offer::Mode(name, _) => {
+                (typed.strip_suffix(name.as_str())).is_some_and(|before| before.ends_with(' '))
+            }
             Offer::File(_) => false,
         });
         if !whole {
             let entry = match &offers[self.offered.min(offers.len() - 1)] {
                 Offer::Command(name, _) => format!("/{name}"),
-                Offer::Mode(name, _) => {
-                    let command = typed.split_whitespace().next().unwrap_or("/mode");
-                    format!("{command} {name}")
-                }
+                Offer::Mode(name, _) => with_mode(typed, name),
                 Offer::File(_) => {
                     self.complete(offers);
                     return None;
@@ -238,25 +237,19 @@ impl App {
                 .collect();
         }
         let text = self.composer.text();
-        if let Some(typed) = mode_typed(&text) {
-            if typed.contains(char::is_whitespace) {
-                return vec![];
-            }
-            return (self.modes.iter())
-                .filter(|(name, _)| name.starts_with(typed))
-                .map(|(name, what)| Offer::Mode(name.clone(), what.clone()))
-                .collect();
-        }
-        let Some(typed) = text.strip_prefix('/') else {
-            return vec![];
+        let (typed, names, offer): (_, _, fn(String, String) -> Offer) = match mode_typed(&text) {
+            Some(typed) => (typed, &self.modes, Offer::Mode),
+            None => match text.strip_prefix('/') {
+                Some(typed) => (typed, &self.commands, Offer::Command),
+                None => return vec![],
+            },
         };
         if typed.contains(char::is_whitespace) {
             return vec![];
         }
-        self.commands
-            .iter()
+        (names.iter())
             .filter(|(name, _)| name.starts_with(typed))
-            .map(|(name, what)| Offer::Command(name.clone(), what.clone()))
+            .map(|(name, what)| offer(name.clone(), what.clone()))
             .collect()
     }
 
@@ -273,9 +266,8 @@ impl App {
                 self.composer.set(&format!("/{name}{suffix}"));
             }
             Some(Offer::Mode(name, _)) => {
-                let command = self.composer.text();
-                let prefix = command.split_whitespace().next().unwrap_or("/mode");
-                self.composer.set(&format!("{prefix} {name}"));
+                let entry = with_mode(&self.composer.text(), name);
+                self.composer.set(&entry);
             }
             Some(Offer::File(path)) => {
                 if let Some((start, _)) = self.composer.mention() {
@@ -290,6 +282,12 @@ impl App {
 
 /// The commands that take a mode's name after them.
 pub(super) const MODE: [&str; 2] = ["mode", "permissions"];
+
+/// `name` after the mode command `text` starts with (`/mode` when it starts with none).
+fn with_mode(text: &str, name: &str) -> String {
+    let command = text.split_whitespace().next().unwrap_or("/mode");
+    format!("{command} {name}")
+}
 
 /// What follows a mode command and its space, when `text` starts with one.
 pub(super) fn mode_typed(text: &str) -> Option<&str> {
