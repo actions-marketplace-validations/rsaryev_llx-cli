@@ -207,17 +207,18 @@ impl Chat for ChatModel {
                 }),
                 // A 429 is a key's rate limit of a moment; with a sign-in it is the plan's usage
                 // limit, hours away: not worth a second try.
-                429 if matches!(self.access, Access::Key(_)) => {
-                    Attempt::Again(ChatError::Unavailable(rejected(&reply.body)))
+                status if matches!(self.access, Access::Key(_)) => {
+                    let message = rejected(&reply.body);
+                    let error =
+                        ChatError::Unavailable(format!("OpenAI answered {status}: {message}"));
+                    if status == 429 || TRANSIENT.contains(&status) {
+                        Attempt::Again(error)
+                    } else {
+                        Attempt::Done(Err(error))
+                    }
                 }
                 status if TRANSIENT.contains(&status) => {
                     Attempt::Again(ChatError::Unavailable(refusal(status, &reply.body)))
-                }
-                status if matches!(self.access, Access::Key(_)) => {
-                    let message = rejected(&reply.body);
-                    Attempt::Done(Err(ChatError::Unavailable(format!(
-                        "OpenAI answered {status}: {message}"
-                    ))))
                 }
                 status => Attempt::Done(Err(ChatError::Unavailable(refusal(status, &reply.body)))),
             }

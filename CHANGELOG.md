@@ -23,7 +23,7 @@
 - A reply from OpenRouter or another OpenAI-compatible host that carries `"error": null` beside its completion is the completion; before, it was taken for a failure and asked again.
 - A token count from 999,950 to 999,999 reads `1.0M`, in `llx spend`, `/usage` and the footer; before, it read `1000k` or `1000.0k`.
 - `--schema`'s `format: "regex"` checks a valid pattern with no allocation when it holds a lookaround, a back-reference or a `\p{...}` too, as the schema package promises for valid data (`\p{L}` 155 ns to 65 ns).
-- With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; before, it said ChatGPT failed, as with a sign-in.
+- With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; so does a 5xx or a 429 that outlasts its retries (`OpenAI answered 503: …`); before, they named ChatGPT, as with a sign-in, or no host at all.
 - An agent that calls `agents`, `ask` or `jobs` is told it works with `bash` and `apply_patch`; before, the refusal named `grep` too, a tool llx no longer has.
 
 - The interface has no indent where text is read or copied: an answer starts at the left edge with no bullet and no hanging indent (a long line wraps flush), a quiet line from llx (a note, a table, the footer under the prompt, a list's `↑ 3 more`) too, and the list of sessions, agents and commands under the prompt has no pointer column: only the row the keys are on has its `❯`. What you typed keeps its `❯`, and a call keeps its bullet and its `└` steps.

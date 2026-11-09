@@ -396,6 +396,35 @@ fn with_a_key_a_reply_that_fails_names_openai_not_chatgpt() {
 }
 
 #[test]
+fn with_a_key_a_status_a_wait_may_mend_names_openai_once_the_tries_run_out() {
+    let body = r#"{"error": {"message": "busy"}}"#.to_string();
+    let replies = [503, 503, 503, 429, 429, 429].map(|status| (status, body.clone()));
+    let http = Arc::new(Scripted::new(replies.to_vec()));
+    let model = ChatModel {
+        pause: Duration::ZERO,
+        ..ChatModel::keyed(
+            Box::new(Shared(Arc::clone(&http))),
+            APP,
+            "sk-key".into(),
+            "https://api.openai.com/v1/",
+            Selection::new(entry("gpt-6-sol")),
+            Texts::Functions,
+        )
+    };
+    let conversation = conversation();
+    for status in [503, 429] {
+        let error = (model.complete(asking(&conversation, Calling::Nothing)))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains(&format!("OpenAI answered {status}: busy"))
+                && !error.contains("ChatGPT"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
 fn a_token_about_to_lapse_is_refreshed_and_kept_first() {
     let refreshed = json!({"access_token": access("acct-1", LATER), "refresh_token": "r2"});
     let replies = vec![
