@@ -19,6 +19,7 @@
 
 - `--schema`: a `result` made just as an agent answers (or a background command or a monitor ends) waits for that answer, which reaches the model first; before, the data could be taken without it, the answer left unread.
 
+- `--schema`'s `format: "regex"` checks a valid pattern with no allocation when it holds a lookaround, a back-reference or a `\p{...}` too, as the schema package promises for valid data (`\p{L}` 155 ns to 65 ns).
 - With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; before, it said ChatGPT failed, as with a sign-in.
 - An agent that calls `agents`, `ask` or `jobs` is told it works with `bash` and `apply_patch`; before, the refusal named `grep` too, a tool llx no longer has.
 

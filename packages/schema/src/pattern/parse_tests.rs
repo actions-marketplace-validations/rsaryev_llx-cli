@@ -119,12 +119,12 @@ fn class_escapes_and_assertions() {
 
 #[test]
 fn the_properties_known_exactly() {
-    assert_eq!(class("\\p{Zs}"), Class::property("Zs").unwrap());
+    assert_eq!(class("\\p{Zs}"), Class::of(Class::ranges("Zs").unwrap()));
     assert_eq!(
         class("\\P{ASCII}"),
-        Class::property("ASCII").unwrap().negated()
+        Class::of(Class::ranges("ASCII").unwrap()).negated()
     );
-    let mut both = Class::property("Zs").unwrap();
+    let mut both = Class::of(Class::ranges("Zs").unwrap());
     both.union(&Class::one('a'));
     assert_eq!(class("[\\p{Zs}a]"), both);
 }

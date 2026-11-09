@@ -64,16 +64,17 @@ fn the_ascii_table_and_single() {
     assert_eq!(Class::digit().single(), None);
 }
 
+fn property(name: &str) -> Option<Class> {
+    Class::ranges(name).map(Class::of)
+}
+
 #[test]
 fn the_few_properties_known_exactly() {
-    let spaces = Class::property("Zs").unwrap();
+    let spaces = property("Zs").unwrap();
     assert!(spaces.contains(' ') && spaces.contains('\u{3000}') && spaces.contains('\u{202F}'));
     assert!(!spaces.contains('\t') && !spaces.contains('\u{2028}'));
-    assert_eq!(
-        Class::property("General_Category=Space_Separator"),
-        Some(spaces)
-    );
-    assert!(Class::property("AHex").unwrap().contains('F'));
-    assert!(!Class::property("ASCII").unwrap().contains('é'));
-    assert_eq!(Class::property("Letter"), None);
+    assert_eq!(property("General_Category=Space_Separator"), Some(spaces));
+    assert!(property("AHex").unwrap().contains('F'));
+    assert!(!property("ASCII").unwrap().contains('é'));
+    assert_eq!(property("Letter"), None);
 }

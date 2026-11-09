@@ -55,9 +55,10 @@ impl Class {
         Self::of(&SPACES)
     }
 
-    /// `\p{name}` for the properties whose characters are few and fixed: `Zs` (the spaces),
-    /// `ASCII`, `ASCII_Hex_Digit`, `Any`; `None` for the rest, which need Unicode's tables.
-    pub(super) fn property(name: &str) -> Option<Self> {
+    /// The ranges of `\p{name}` for the properties whose characters are few and fixed: `Zs` (the
+    /// spaces), `ASCII`, `ASCII_Hex_Digit`, `Any`; `None` for the rest, which need Unicode's
+    /// tables.
+    pub(super) fn ranges(name: &str) -> Option<&'static [(u32, u32)]> {
         let name = name
             .strip_prefix("General_Category=")
             .or_else(|| name.strip_prefix("gc="))
@@ -77,7 +78,7 @@ impl Class {
             "Any" => &[(0, MAX)],
             _ => return None,
         };
-        Some(Self::of(ranges))
+        Some(ranges)
     }
 
     /// `.`: every character but the line terminators.
@@ -85,7 +86,7 @@ impl Class {
         Self::of(&[(0x0A, 0x0A), (0x0D, 0x0D), (0x2028, 0x2029)]).negated()
     }
 
-    fn of(ranges: &[(u32, u32)]) -> Self {
+    pub(super) fn of(ranges: &[(u32, u32)]) -> Self {
         let mut class = Self::empty();
         for &(first, last) in ranges {
             class.add(first, last);

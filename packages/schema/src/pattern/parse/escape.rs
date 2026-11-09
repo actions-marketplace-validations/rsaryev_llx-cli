@@ -5,7 +5,10 @@
 
 use super::super::Unsupported;
 use super::super::class::Class;
-use super::{Assert, Parser, unchecked};
+use super::{Assert, Parser};
+
+/// The longest name of a property checked here, `General_Category=Space_Separator`.
+const NAME: usize = 32;
 
 /// What an escape stands for.
 pub(super) enum Escape {
@@ -37,7 +40,7 @@ impl Parser<'_> {
             'v' => '\u{B}',
             '0' if !self.peek().is_some_and(|c| c.is_ascii_digit()) => '\0',
             '0' => return Err(self.invalid("a legacy octal escape")),
-            '1'..='9' | 'k' => return Err(unchecked("a back-reference")),
+            '1'..='9' | 'k' => return Err(self.unchecked(|| "a back-reference".into())),
             'p' => return self.property().map(Escape::Set),
             'P' => return self.property().map(|class| Escape::Set(class.negated())),
             'c' => self.control()?,
@@ -64,16 +67,26 @@ impl Parser<'_> {
         while self.peek().is_some_and(|c| c != '}') {
             self.at += 1;
         }
-        let name: String = self
-            .chars
-            .get(start..self.at)
-            .unwrap_or_default()
-            .iter()
-            .collect();
+        let chars = self.chars.get(start..self.at).unwrap_or_default();
         if !self.eat('}') {
             return Err(self.invalid("an unclosed `\\p{`"));
         }
-        Class::property(&name).ok_or_else(|| unchecked(&format!("the Unicode property `{name}`")))
+        // Read on the stack: the names checked here are short and ASCII, and judging a pattern's
+        // syntax allocates nothing.
+        let mut bytes = [0; NAME];
+        let ascii = chars.len() <= NAME
+            && (bytes.iter_mut().zip(chars))
+                .all(|(byte, &c)| c.is_ascii() && u8::try_from(c).map(|b| *byte = b).is_ok());
+        let name = (bytes.get(..chars.len()))
+            .filter(|_| ascii)
+            .and_then(|bytes| std::str::from_utf8(bytes).ok());
+        match name.and_then(Class::ranges) {
+            Some(ranges) => Ok(self.set(|| Class::of(ranges))),
+            None => Err(self.unchecked(|| {
+                let name: String = chars.iter().collect();
+                format!("the Unicode property `{name}`")
+            })),
+        }
     }
 
     /// `\cX`: the control character of an ASCII letter.
@@ -111,7 +124,9 @@ impl Parser<'_> {
             let read = digits > 0 && self.eat('}');
             return match (read, char::from_u32(value)) {
                 (true, Some(c)) => Ok(c),
-                (true, None) if value <= 0x10_FFFF => Err(unchecked("a lone surrogate")),
+                (true, None) if value <= 0x10_FFFF => {
+                    Err(self.unchecked(|| "a lone surrogate".into()))
+                }
                 (true | false, _) => Err(self.invalid("a bad `\\u{...}` escape")),
             };
         }
@@ -126,11 +141,12 @@ impl Parser<'_> {
             match self.hex(4) {
                 Some(low) if (0xDC00..0xE000).contains(&low) => {
                     let code = 0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                    return char::from_u32(code).ok_or_else(|| unchecked("a lone surrogate"));
+                    return char::from_u32(code)
+                        .ok_or_else(|| self.unchecked(|| "a lone surrogate".into()));
                 }
                 Some(_) | None => self.at = back,
             }
         }
-        char::from_u32(high).ok_or_else(|| unchecked("a lone surrogate"))
+        char::from_u32(high).ok_or_else(|| self.unchecked(|| "a lone surrogate".into()))
     }
 }

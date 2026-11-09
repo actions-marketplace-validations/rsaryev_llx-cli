@@ -7,6 +7,8 @@
 mod bracket;
 mod escape;
 
+use std::borrow::Cow;
+
 use super::Unsupported;
 use super::class::Class;
 use escape::Escape;
@@ -109,6 +111,15 @@ impl<'s> Parser<'s> {
     }
 
     /// The class `make` makes, or an empty one when nothing is built (it holds no allocation).
+    /// What this matcher cannot check, `what` said only where the pattern is built: judging the
+    /// syntax asks only the kind, so a valid pattern costs it no allocation.
+    pub(super) fn unchecked(&self, what: impl FnOnce() -> String) -> Unsupported {
+        Unsupported::unchecked(match self.build {
+            Build::Tree => Cow::Owned(format!("{} is not checked", what())),
+            Build::Nothing => Cow::Borrowed(""),
+        })
+    }
+
     pub(super) fn set(&self, make: impl FnOnce() -> Class) -> Class {
         match self.build {
             Build::Tree => make(),
@@ -275,9 +286,9 @@ impl<'s> Parser<'s> {
         if self.eat('?') {
             match self.bump() {
                 Some(':') => {}
-                Some('=' | '!') => return Err(unchecked("a lookahead")),
+                Some('=' | '!') => return Err(self.unchecked(|| "a lookahead".into())),
                 Some('<') if matches!(self.peek(), Some('=' | '!')) => {
-                    return Err(unchecked("a lookbehind"));
+                    return Err(self.unchecked(|| "a lookbehind".into()));
                 }
                 Some('<') => self.group_name()?,
                 Some(_) | None => return Err(self.invalid("an unknown group")),
@@ -285,7 +296,7 @@ impl<'s> Parser<'s> {
         }
         self.depth += 1;
         if self.depth > DEPTH {
-            return Err(unchecked("groups nested too deep"));
+            return Err(self.unchecked(|| "groups nested too deep".into()));
         }
         let inner = self.alternation()?;
         self.depth -= 1;
@@ -310,10 +321,6 @@ impl<'s> Parser<'s> {
             Err(self.invalid("a bad group name"))
         }
     }
-}
-
-fn unchecked(what: &str) -> Unsupported {
-    Unsupported::unchecked(format!("{what} is not checked"))
 }
 
 fn concat(mut items: Vec<Node>) -> Node {

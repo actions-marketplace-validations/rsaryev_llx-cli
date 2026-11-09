@@ -15,6 +15,7 @@ mod parse;
 mod shape;
 mod simple;
 
+use std::borrow::Cow;
 use std::{fmt, slice};
 
 use glushkov::{Automaton, Lean};
@@ -47,7 +48,8 @@ enum Engine {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Unsupported {
     kind: Kind,
-    why: String,
+    /// Said only where the pattern is built: judging its syntax asks only the kind.
+    why: Cow<'static, str>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -60,11 +62,11 @@ impl Unsupported {
     fn invalid(why: String) -> Self {
         Self {
             kind: Kind::Invalid,
-            why,
+            why: Cow::Owned(why),
         }
     }
 
-    fn unchecked(why: String) -> Self {
+    fn unchecked(why: Cow<'static, str>) -> Self {
         Self {
             kind: Kind::Unchecked,
             why,
@@ -150,7 +152,7 @@ fn table(node: &parse::Node, positions: usize) -> Option<Engine> {
 fn lite(node: &parse::Node) -> Result<Engine, Unsupported> {
     regex_lite::Regex::new(&emit::emit(node))
         .map(Engine::Lite)
-        .map_err(|error| Unsupported::unchecked(format!("too large to check: {error}")))
+        .map_err(|error| Unsupported::unchecked(format!("too large to check: {error}").into()))
 }
 
 #[cfg(test)]
