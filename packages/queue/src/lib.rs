@@ -1,5 +1,5 @@
 //! One queue for everything that reaches a session's run from outside its own calls: an agent's
-//! answer, a monitor's lines, a schedule's prompt, and whatever comes later. The queue knows no
+//! answer, how a monitor ended, a schedule's prompt, and whatever comes later. The queue knows no
 //! source. Each entry carries its own policy, the one table every source answers: whether a
 //! running task takes it at its next step, and what becomes of it while no task runs. The reader
 //! (the agent's inbox) knows only entries.
@@ -16,7 +16,7 @@ use std::time::Duration;
 /// What becomes of an entry that comes while no task runs, or that a task ended without reading.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Idle {
-    /// It starts a task of its own (a monitor's lines); with no one to open it, it waits for the
+    /// It starts a task of its own (how a monitor ended); with no one to open it, it waits for the
     /// next task and joins it at its first step.
     Opens,
     /// It was for the task that is over (an agent's late answer).
