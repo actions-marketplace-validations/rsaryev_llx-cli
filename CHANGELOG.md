@@ -21,6 +21,7 @@
 
 - `--schema`'s `format: "regex"` holds a pattern to the whole of ECMA-262's syntax even where it has what is not checked here: a back-reference to a group the pattern does not have (`(?=a)\1`, `\k<n>` with no group `n`), or what is invalid after a lookaround, a back-reference or a property (`(?=a)(`), is invalid; before, the first unchecked part hid it. A long pattern is judged in one pass however many back-references and lookarounds it has, and a lone surrogate at a class range's end (`[z-\uD800]`) or a group name spelled with an escape or a combining mark stays valid.
 - A reply from OpenRouter or another OpenAI-compatible host that carries `"error": null` beside its completion is the completion; before, it was taken for a failure and asked again.
+- A duration from 9,950 to 9,999 ms reads `10s`, not `10.0s`.
 - A token count from 999,950 to 999,999 reads `1.0M`, in `llx spend`, `/usage` and the footer; before, it read `1000k` or `1000.0k`.
 - `--schema`'s `format: "regex"` checks a valid pattern with no allocation when it holds a lookaround, a back-reference or a `\p{...}` too, as the schema package promises for valid data (`\p{L}` 155 ns to 65 ns).
 - With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; so does a 5xx or a 429 that outlasts its retries (`OpenAI answered 503: …`); before, they named ChatGPT, as with a sign-in, or no host at all.

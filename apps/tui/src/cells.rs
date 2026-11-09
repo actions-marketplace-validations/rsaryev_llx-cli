@@ -181,8 +181,9 @@ fn cut_start(text: &str, columns: usize) -> String {
 /// `48s`, `1m 05s`, `1h 02m`.
 pub(crate) fn duration(millis: u64) -> String {
     match millis {
-        0..10_000 => format!("{:.1}s", millis as f64 / 1000.0),
-        _ => clock(millis / 1000),
+        // Where the tenth would round up to ten seconds, the clock says them.
+        0..9_950 => format!("{:.1}s", millis as f64 / 1000.0),
+        _ => clock(millis.max(10_000) / 1000),
     }
 }
 

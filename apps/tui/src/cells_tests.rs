@@ -87,6 +87,9 @@ fn a_count_says_its_noun_in_the_plural_but_for_one() {
 #[test]
 fn durations_read_naturally() {
     assert_eq!(duration(2_140), "2.1s");
+    // Just short of ten seconds, the tenth rounds up: the clock's `10s`, not `10.0s`.
+    assert_eq!(duration(9_949), "9.9s");
+    assert_eq!(duration(9_960), "10s");
     assert_eq!(duration(48_900), "48s");
     assert_eq!(duration(65_000), "1m 05s");
     assert_eq!(duration(3_720_000), "1h 02m");
