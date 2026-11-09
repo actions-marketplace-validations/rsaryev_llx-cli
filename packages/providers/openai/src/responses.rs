@@ -179,7 +179,7 @@ impl Chat for ChatModel {
                 }
             };
             if reply.status == 200
-                && let Some(error) = failed_for_load(&reply.body)
+                && let Some(error) = failed_for_load(&reply.body, host)
             {
                 return Attempt::Again(error);
             }
@@ -194,14 +194,16 @@ impl Chat for ChatModel {
                 200 => Attempt::Done({
                     route::trace(&session, routed.as_deref(), &reply);
                     self.routes.keep(&task, &reply);
-                    read(&reply.body, self.selection.model().id.as_str()).map(|mut completion| {
-                        completion.calls = (completion.calls.into_iter())
-                            .map(|call| offer.incoming(call))
-                            .collect();
-                        completion.usage.millis =
-                            u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-                        completion
-                    })
+                    read(&reply.body, self.selection.model().id.as_str(), host).map(
+                        |mut completion| {
+                            completion.calls = (completion.calls.into_iter())
+                                .map(|call| offer.incoming(call))
+                                .collect();
+                            completion.usage.millis =
+                                u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+                            completion
+                        },
+                    )
                 }),
                 // A 429 is a key's rate limit of a moment; with a sign-in it is the plan's usage
                 // limit, hours away: not worth a second try.

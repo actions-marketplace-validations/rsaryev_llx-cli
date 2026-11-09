@@ -19,6 +19,7 @@
 
 - `--schema`: a `result` made just as an agent answers (or a background command or a monitor ends) waits for that answer, which reaches the model first; before, the data could be taken without it, the answer left unread.
 
+- With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; before, it said ChatGPT failed, as with a sign-in.
 - An agent that calls `agents`, `ask` or `jobs` is told it works with `bash` and `apply_patch`; before, the refusal named `grep` too, a tool llx no longer has.
 
 - The interface has no indent where text is read or copied: an answer starts at the left edge with no bullet and no hanging indent (a long line wraps flush), a quiet line from llx (a note, a table, the footer under the prompt, a list's `↑ 3 more`) too, and the list of sessions, agents and commands under the prompt has no pointer column: only the row the keys are on has its `❯`. What you typed keeps its `❯`, and a call keeps its bullet and its `└` steps.
