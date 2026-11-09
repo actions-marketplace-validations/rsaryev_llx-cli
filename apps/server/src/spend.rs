@@ -8,13 +8,14 @@
 
 mod miss;
 
+use std::fmt::Write as _;
+
 use contracts::history::{Session, Spent, Step};
 
 pub(crate) use miss::{Cause, Miss, Streams};
 
 /// Rows of the misses and of the dearest requests.
 const LISTED: usize = 10;
-use std::fmt::Write as _;
 
 /// The stream a step belongs to: an agent's name, `main` for the session's own model, or the step
 /// itself for another model's (`decision`, the advisor's).
@@ -27,7 +28,7 @@ fn stream(step: &Step) -> &str {
 }
 
 /// Requests, tokens and money, summed.
-#[derive(Debug, Clone, Default)]
+#[derive(Default)]
 struct Sum {
     requests: u64,
     input: u64,
@@ -47,8 +48,9 @@ impl Sum {
         self.cost += spent.cost;
     }
 
-    fn row(&self, label: &str) -> String {
+    fn row(&self, out: &mut String, label: &str) {
         columns(
+            out,
             label,
             [
                 self.requests.to_string(),
@@ -62,8 +64,21 @@ impl Sum {
     }
 }
 
-fn columns(label: &str, [a, b, c, d, e, f]: [String; 6]) -> String {
-    format!("  {label:<28} {a:>8} {b:>8} {c:>7} {d:>8} {e:>8} {f:>9}\n")
+fn columns(out: &mut String, label: &str, [a, b, c, d, e, f]: [String; 6]) {
+    let _ = writeln!(
+        out,
+        "  {label:<28} {a:>8} {b:>8} {c:>7} {d:>8} {e:>8} {f:>9}"
+    );
+}
+
+/// A table of sums under `title`, its header first, a row each.
+fn table<'a>(out: &mut String, title: &str, rows: impl Iterator<Item = (String, &'a Sum)>) {
+    let _ = writeln!(out, "\n{title}");
+    let header = ["requests", "in", "cached", "written", "out", "cost"];
+    columns(out, "", header.map(String::from));
+    for (label, sum) in rows {
+        sum.row(out, &label);
+    }
 }
 
 /// A miss where it happened.
@@ -84,15 +99,22 @@ struct Read {
     dearest: Vec<(usize, String, Spent)>,
 }
 
-fn sum_in<'a>(sums: &'a mut Vec<(String, Sum)>, key: &str) -> &'a mut Sum {
-    let at = match sums.iter().position(|(name, _)| name == key) {
+/// Sums by name, as a table's rows.
+fn named(sums: &[(String, Sum)]) -> impl Iterator<Item = (String, &Sum)> {
+    sums.iter().map(|(name, sum)| (clip(name, 28), sum))
+}
+
+/// The value `key` names in `list`, in the order keys came: a new key's value starts at its
+/// default.
+fn entry<'a, T: Default>(list: &'a mut Vec<(String, T)>, key: &str) -> &'a mut T {
+    let at = match list.iter().position(|(name, _)| name == key) {
         Some(at) => at,
         None => {
-            sums.push((key.to_string(), Sum::default()));
-            sums.len() - 1
+            list.push((key.to_string(), T::default()));
+            list.len() - 1
         }
     };
-    &mut sums[at].1
+    &mut list[at].1
 }
 
 fn read(session: &Session) -> Read {
@@ -115,12 +137,12 @@ fn read(session: &Session) -> Read {
             let name = stream(step);
             sum.add(&step.spent);
             read.all.add(&step.spent);
-            sum_in(&mut read.streams, name).add(&step.spent);
+            entry(&mut read.streams, name).add(&step.spent);
             let model = match step.model.as_str() {
                 "" => "(not recorded)",
                 model => model,
             };
-            sum_in(&mut read.models, model).add(&step.spent);
+            entry(&mut read.models, model).add(&step.spent);
             if step.what == "model"
                 && let Some(miss) = streams.request(
                     name,
@@ -169,23 +191,12 @@ pub(crate) fn report(session: &Session) -> String {
         short(read.all.written),
         short(read.all.output),
     );
-    let header = columns(
-        "",
-        ["requests", "in", "cached", "written", "out", "cost"].map(String::from),
-    );
-    let _ = write!(out, "\nby task\n{header}");
-    for (task, goal, sum) in &read.tasks {
-        out.push_str(&sum.row(&format!("{task:>3} {}", clip(goal, 24))));
-    }
-    let _ = write!(out, "\nby agent\n{header}");
-    for (name, sum) in &read.streams {
-        out.push_str(&sum.row(&clip(name, 28)));
-    }
-    let _ = write!(out, "\nby model\n{header}");
-    for (name, sum) in &read.models {
-        out.push_str(&sum.row(&clip(name, 28)));
-    }
-    out.push_str(&misses(&read));
+    let tasks =
+        (read.tasks.iter()).map(|(task, goal, sum)| (format!("{task:>3} {}", clip(goal, 24)), sum));
+    table(&mut out, "by task", tasks);
+    table(&mut out, "by agent", named(&read.streams));
+    table(&mut out, "by model", named(&read.models));
+    misses(&mut out, &read);
     out.push_str("\ndearest requests\n");
     for (task, name, spent) in &read.dearest {
         let _ = writeln!(
@@ -202,14 +213,16 @@ pub(crate) fn report(session: &Session) -> String {
 }
 
 /// The misses: how many, what they cost, by cause, the dearest of them.
-fn misses(read: &Read) -> String {
+fn misses(out: &mut String, read: &Read) {
     if read.misses.is_empty() {
-        return "\ncache misses: none\n".to_string();
+        out.push_str("\ncache misses: none\n");
+        return;
     }
     let cost: f64 = read.misses.iter().map(|found| found.miss.cost).sum();
     let tokens: u64 = read.misses.iter().map(|found| found.miss.tokens).sum();
-    let mut out = format!(
-        "\ncache misses: {} · {} sent uncached · {} of {}\n",
+    let _ = writeln!(
+        out,
+        "\ncache misses: {} · {} sent uncached · {} of {}",
         read.misses.len(),
         short(tokens),
         dollars(cost),
@@ -246,7 +259,6 @@ fn misses(read: &Read) -> String {
             found.miss.cause.words(),
         );
     }
-    out
 }
 
 /// A miss as the run notes it.

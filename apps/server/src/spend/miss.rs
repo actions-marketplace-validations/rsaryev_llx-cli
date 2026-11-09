@@ -55,7 +55,7 @@ pub(crate) struct Miss {
 }
 
 /// A stream's last request: the session's own, or one agent's.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 struct Last {
     input: u64,
     ended_ms: u64,
@@ -70,20 +70,9 @@ pub(crate) struct Streams {
 }
 
 impl Streams {
-    fn entry(&mut self, agent: &str) -> &mut Last {
-        let at = match self.last.iter().position(|(name, _)| name == agent) {
-            Some(at) => at,
-            None => {
-                self.last.push((agent.to_string(), Last::default()));
-                self.last.len() - 1
-            }
-        };
-        &mut self.last[at].1
-    }
-
     /// `agent`'s context was elided: its next request is expected to miss.
     pub(crate) fn elided(&mut self, agent: &str) {
-        self.entry(agent).elided = true;
+        super::entry(&mut self.last, agent).elided = true;
     }
 
     /// A model request of `agent`'s, begun at `at_ms` (Unix milliseconds) and taking `ms`: a miss
@@ -101,7 +90,7 @@ impl Streams {
             model: model.to_string(),
             elided: false,
         };
-        let before = std::mem::replace(self.entry(agent), next);
+        let before = std::mem::replace(super::entry(&mut self.last, agent), next);
         let uncached = spent.input_tokens.saturating_sub(spent.cached_tokens);
         if uncached < MISSED || uncached * 2 < spent.input_tokens {
             return None;
