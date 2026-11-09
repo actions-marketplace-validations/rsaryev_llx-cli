@@ -165,12 +165,7 @@ impl Walk<'_> {
                 };
                 let every = objects.extra.applies();
                 // The fields and `properties` are met in one pass, as the walk meets them.
-                let mut cursor = Cursor {
-                    properties: &objects.properties,
-                    next: 0,
-                    passed: 0,
-                    last: "",
-                };
+                let mut cursor = Cursor::new(&objects.properties);
                 for ((name, _), seen) in fields.iter().zip(seen.iter_mut()) {
                     let named = !every && cursor.find(name).is_some();
                     let patterned = !every

@@ -11,15 +11,25 @@ use crate::node::Id;
 /// in that order (serde_json's map), so each is found where the last one was left, most in one
 /// comparison; one out of that order is searched for.
 pub(super) struct Cursor<'p, 'd> {
-    pub(super) properties: &'p [(Box<str>, Id, u64)],
-    pub(super) next: usize,
+    properties: &'p [(Box<str>, Id, u64)],
+    next: usize,
     /// The `required` bits of the properties gone past with no field met.
     pub(super) passed: u64,
     /// The last field's name: a name after it comes in order, and is not behind the cursor.
-    pub(super) last: &'d str,
+    last: &'d str,
 }
 
-impl<'d> Cursor<'_, 'd> {
+impl<'p, 'd> Cursor<'p, 'd> {
+    /// A cursor before the first of `properties`.
+    pub(super) fn new(properties: &'p [(Box<str>, Id, u64)]) -> Self {
+        Cursor {
+            properties,
+            next: 0,
+            passed: 0,
+            last: "",
+        }
+    }
+
     /// The node of the field `name`, with its `required` bit.
     pub(super) fn find(&mut self, name: &'d str) -> Option<(Id, u64)> {
         let in_order = order(name, self.last) == Ordering::Greater;

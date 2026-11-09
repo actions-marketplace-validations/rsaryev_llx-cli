@@ -252,6 +252,8 @@ pub(crate) const NUMBER: u8 = 1 << 3;
 pub(crate) const STRING: u8 = 1 << 4;
 pub(crate) const ARRAY: u8 = 1 << 5;
 pub(crate) const OBJECT: u8 = 1 << 6;
+/// Every type's bit: what a node that allows anything allows.
+pub(crate) const ALL: u8 = NULL | BOOLEAN | INTEGER | NUMBER | STRING | ARRAY | OBJECT;
 
 /// The bits of `value`'s kinds: a number with no fraction is an integer too (only one written
 /// so, where `strict`: draft 4).

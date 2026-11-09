@@ -6,6 +6,7 @@
 //! walk marks those parts whatever they find (`validate/unevaluated.rs`), so this is the same
 //! answer, known as the schema compiles.
 
+use super::each;
 use crate::node::{Node, Rules};
 
 /// How deep `$ref`s and `allOf`s are followed: a loop of them settles nothing.
@@ -20,24 +21,17 @@ enum Of {
 
 /// Each node that asks `unevaluated*` told whether its own parts take every field or item.
 pub(crate) fn settle(nodes: &mut [Node]) {
-    let settled: Vec<(usize, bool, bool)> = (nodes.iter().enumerate())
-        .filter_map(|(at, node)| match node {
-            Node::Rules(rules)
-                if rules.unevaluated_fields.is_some() || rules.unevaluated_items.is_some() =>
-            {
-                let fields = takes_all(nodes, rules, Of::Fields, DEPTH, Asker::Itself);
-                let items = takes_all(nodes, rules, Of::Items, DEPTH, Asker::Itself);
-                Some((at, fields, items))
-            }
-            Node::Rules(_) | Node::Any | Node::Never => None,
+    let settled = |nodes: &[Node], rules: &Rules| {
+        let asks = rules.unevaluated_fields.is_some() || rules.unevaluated_items.is_some();
+        asks.then(|| {
+            let fields = takes_all(nodes, rules, Of::Fields, DEPTH, Asker::Itself);
+            let items = takes_all(nodes, rules, Of::Items, DEPTH, Asker::Itself);
+            (fields, items)
         })
-        .collect();
-    for (at, fields, items) in settled {
-        if let Some(Node::Rules(rules)) = nodes.get_mut(at) {
-            rules.every_field_seen = fields;
-            rules.every_item_seen = items;
-        }
-    }
+    };
+    each(nodes, settled, |rules, (fields, items)| {
+        (rules.every_field_seen, rules.every_item_seen) = (fields, items);
+    });
 }
 
 /// Whether a schema's own `unevaluated*` counts: not for the one that asks it, which is

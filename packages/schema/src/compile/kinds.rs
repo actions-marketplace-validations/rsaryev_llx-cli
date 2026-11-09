@@ -7,39 +7,32 @@
 //! one test of the value's kind; where the value fails, the walk reads the union whole, so what
 //! it says is unchanged.
 
-use crate::node::{HAS_ARRAY, HAS_COMBINED, HAS_KIND, Id, Items, Node, PlainArray};
+use super::each;
+use crate::node::{ALL, HAS_ARRAY, HAS_COMBINED, HAS_KIND, Id, Items, Node, PlainArray, Rules};
 
-/// Every type bit: a branch that allows anything.
-const ALL: u8 = 0x7F;
 /// How many `$ref`s that are only a `$ref` a branch is followed through.
 const ALIASES: usize = 4;
 
 /// Every union of types alone in `nodes` given its types, nested ones first; then every array
 /// that asks only types and a count, its plan.
 pub(crate) fn fold(nodes: &mut [Node]) {
-    unions(nodes);
-    // An array of plain arrays is planned once its items are: each round one level more.
+    // A union of unions folds once its branches have, and an array of plain arrays is planned
+    // once its items are: each round one level more.
     for _ in 0..nodes.len() {
-        let plans: Vec<(usize, PlainArray)> = (nodes.iter().enumerate())
-            .filter_map(|(at, node)| plain(nodes, node).map(|plan| (at, plan)))
-            .collect();
-        if plans.is_empty() {
-            return;
+        if !each(nodes, folded, |rules, types| rules.only_types = Some(types)) {
+            break;
         }
-        for (at, plan) in plans {
-            if let Some(Node::Rules(rules)) = nodes.get_mut(at) {
-                rules.plain_array = Some(plan);
-            }
+    }
+    for _ in 0..nodes.len() {
+        if !each(nodes, plain, |rules, plan| rules.plain_array = Some(plan)) {
+            break;
         }
     }
 }
 
-/// The plan of `node`, where it is an array that asks only its type, its count and a type of
-/// its items.
-fn plain(nodes: &[Node], node: &Node) -> Option<PlainArray> {
-    let Node::Rules(rules) = node else {
-        return None;
-    };
+/// The plan of `rules`, where they are an array's that asks only its type, its count and a
+/// type of its items.
+fn plain(nodes: &[Node], rules: &Rules) -> Option<PlainArray> {
     let alone = rules.only_types.is_none()
         && rules.plain_array.is_none()
         && rules.has & !(HAS_KIND | HAS_ARRAY) == 0
@@ -77,29 +70,8 @@ fn items(nodes: &[Node], rest: Id) -> Option<Items> {
     None
 }
 
-/// Every union of types alone in `nodes` given its types, nested ones first.
-fn unions(nodes: &mut [Node]) {
-    // A union of unions folds once its branches have: each round folds one level more.
-    for _ in 0..nodes.len() {
-        let found: Vec<(usize, u8)> = (nodes.iter().enumerate())
-            .filter_map(|(at, node)| folded(nodes, node).map(|types| (at, types)))
-            .collect();
-        if found.is_empty() {
-            return;
-        }
-        for (at, types) in found {
-            if let Some(Node::Rules(rules)) = nodes.get_mut(at) {
-                rules.only_types = Some(types);
-            }
-        }
-    }
-}
-
-/// The types `node` asks for alone, where it is a union of types not yet folded.
-fn folded(nodes: &[Node], node: &Node) -> Option<u8> {
-    let Node::Rules(rules) = node else {
-        return None;
-    };
+/// The types `rules` ask for alone, where they are a union of types not yet folded.
+fn folded(nodes: &[Node], rules: &Rules) -> Option<u8> {
     // A `$ref` and nothing else asks what it lands on: the walk need not follow it to know.
     if rules.only_types.is_none()
         && let Some(target) = rules.alias
