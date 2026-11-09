@@ -35,7 +35,7 @@ pub(super) fn failed_for_load(body: &str) -> Option<ChatError> {
 }
 
 /// The completion in a streamed reply: its finished output items and the usage it ended with.
-pub(crate) fn read(body: &str, model: &str) -> Result<Completion, ChatError> {
+pub(super) fn read(body: &str, model: &str) -> Result<Completion, ChatError> {
     let mut completion = Completion::default();
     let mut said: Vec<String> = vec![];
     let mut ended = false;

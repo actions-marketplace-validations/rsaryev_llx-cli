@@ -1,7 +1,8 @@
-//! A model provider: OpenAI's models through a ChatGPT sign-in, billed to the person's plan.
+//! A model provider: OpenAI's models through a ChatGPT sign-in, billed to the person's plan, or
+//! an API key, billed per token.
 //! - [`auth`]: signing in (PKCE in the browser, a local callback) and refreshing the tokens.
 //! - [`tokens`]: the tokens, the account they belong to, and the file they are kept in.
-//! - [`responses`]: the chat port over the Responses API of the ChatGPT backend.
+//! - [`responses`]: the chat port over the Responses API: the ChatGPT backend's, or OpenAI's own.
 //!
 //! It knows nothing of the app that uses it beyond the [`provider_kit::App`] it is given.
 

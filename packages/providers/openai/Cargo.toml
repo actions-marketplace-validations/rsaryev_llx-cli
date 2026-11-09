@@ -1,6 +1,6 @@
 [package]
 name = "openai"
-description = "A model provider: OpenAI's models through a ChatGPT sign-in, over the Responses API"
+description = "A model provider: OpenAI's models through a ChatGPT sign-in or an API key, over the Responses API"
 publish = false
 version.workspace = true
 edition.workspace = true
