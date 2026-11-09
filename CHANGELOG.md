@@ -19,6 +19,7 @@
 
 - `--schema`: a `result` made just as an agent answers (or a background command or a monitor ends) waits for that answer, which reaches the model first; before, the data could be taken without it, the answer left unread.
 
+- A reply from OpenRouter or another OpenAI-compatible host that carries `"error": null` beside its completion is the completion; before, it was taken for a failure and asked again.
 - A token count from 999,950 to 999,999 reads `1.0M`, in `llx spend`, `/usage` and the footer; before, it read `1000k` or `1000.0k`.
 - `--schema`'s `format: "regex"` checks a valid pattern with no allocation when it holds a lookaround, a back-reference or a `\p{...}` too, as the schema package promises for valid data (`\p{L}` 155 ns to 65 ns).
 - With an OpenAI API key, a reply that fails, is withheld by the content filter or runs past the window names OpenAI; before, it said ChatGPT failed, as with a sign-in.

@@ -10,7 +10,9 @@ use contracts::chat::{Chat, ChatError, Completion, Ending, Request, ToolCall, Us
 use contracts::tool::{Input, ToolSpec};
 use serde_json::{Value, json};
 
-use crate::client::{ApiError, Messages};
+use provider_kit::failure::ApiError;
+
+use crate::client::Messages;
 use crate::request::{BLOCKS, body, signature, signatures, words};
 
 pub use crate::request::Thinking;

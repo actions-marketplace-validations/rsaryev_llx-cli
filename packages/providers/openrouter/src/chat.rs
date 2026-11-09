@@ -11,7 +11,9 @@ use contracts::chat::{
 use contracts::tool::{Image, Input, ToolSpec};
 use serde_json::{Value, json};
 
-use crate::client::{ApiError, OpenRouter, Wire};
+use provider_kit::failure::ApiError;
+
+use crate::client::{OpenRouter, Wire};
 use crate::level::{self, Switch};
 
 /// A model `selection` names, over the chat completions `client` reaches.

@@ -4,8 +4,9 @@
 use std::time::{Duration, Instant};
 
 use provider_kit::App;
+use provider_kit::failure::{ApiError, message_of, reported, said, transient};
 use provider_kit::http::{Http, HttpError, Web};
-use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, after, retried};
+use provider_kit::retry::{Attempt, PAUSE, Resend, after, retried};
 use serde_json::Value;
 
 /// The version of the API the requests are written for.
@@ -16,32 +17,6 @@ const TIMEOUT: Duration = Duration::from_secs(600);
 /// thinks, so a live one is not quiet this long; a connection a sleep or a network change left
 /// dead is.
 const IDLE: Duration = Duration::from_secs(300);
-
-#[derive(Debug, PartialEq)]
-pub(crate) enum ApiError {
-    /// The key was refused: `/login` again, or fix the key's variable.
-    Auth(String),
-    /// The host or the model answered with an error.
-    Http(u16, String),
-    /// No answer: offline, DNS, timeout.
-    Network(String),
-    /// An answer that does not have the expected shape.
-    Invalid(String),
-}
-
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Auth(message) => write!(
-                f,
-                "refused the key: {message}; type /login, or check the key's variable"
-            ),
-            Self::Http(status, message) => write!(f, "answered {status}: {message}"),
-            Self::Network(message) => write!(f, "unreachable: {message}"),
-            Self::Invalid(message) => write!(f, "unexpected answer: {message}"),
-        }
-    }
-}
 
 /// A client of the Messages API at one address.
 pub struct Messages {
@@ -121,7 +96,7 @@ impl Messages {
             };
             if status == 200 {
                 // An error the stream reported midway: one after its first words was billed.
-                if let Some(error) = parsed.as_ref().and_then(|value| value.get("error")) {
+                if let Some(error) = parsed.as_ref().and_then(reported) {
                     let code = overloaded(error);
                     let written = parsed.as_ref().and_then(|value| value.get("written"));
                     if written == Some(&Value::Bool(true)) {
@@ -135,11 +110,7 @@ impl Messages {
                         .ok_or_else(|| ApiError::Invalid("not JSON".into())),
                 );
             }
-            let message = parsed
-                .as_ref()
-                .and_then(|value| value.get("error"))
-                .map(message_of)
-                .unwrap_or_else(|| text.chars().take(300).collect());
+            let message = said(parsed.as_ref(), &text);
             // 403 is a permission the key lacks for this request, not a key refused.
             match status {
                 401 => Attempt::Done(Err(ApiError::Auth(message))),
@@ -157,19 +128,6 @@ fn overloaded(error: &Value) -> u16 {
         Some("rate_limit_error") => 429,
         _ => 500,
     }
-}
-
-/// Whether a wait may mend `status`: a rate limit of a moment, or what every host means so.
-fn transient(status: u16) -> bool {
-    status == 429 || TRANSIENT.contains(&status)
-}
-
-fn message_of(error: &Value) -> String {
-    let message = error
-        .get("message")
-        .and_then(Value::as_str)
-        .unwrap_or("no message");
-    message.chars().take(400).collect()
 }
 
 #[cfg(test)]

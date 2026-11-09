@@ -6,8 +6,9 @@
 use std::time::{Duration, Instant};
 
 use provider_kit::App;
+use provider_kit::failure::{ApiError, message_of, reported, said, transient};
 use provider_kit::http::{Http, HttpError, Web};
-use provider_kit::retry::{Attempt, PAUSE, Resend, TRANSIENT, after, retried};
+use provider_kit::retry::{Attempt, PAUSE, Resend, after, retried};
 use serde_json::Value;
 
 const BASE_URL: &str = "https://openrouter.ai/api/v1";
@@ -32,32 +33,6 @@ pub(crate) enum Wire {
     OpenAi,
     /// Any other host: `reasoning_effort` only; a field it does not know may be refused.
     Plain,
-}
-
-#[derive(Debug, PartialEq)]
-pub(crate) enum ApiError {
-    /// The key was refused: `/login` again, or fix the key's variable.
-    Auth(String),
-    /// The provider or the model answered with an error.
-    Http(u16, String),
-    /// No answer: offline, DNS, timeout.
-    Network(String),
-    /// An answer that does not have the expected shape.
-    Invalid(String),
-}
-
-impl std::fmt::Display for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Auth(message) => write!(
-                f,
-                "refused the key: {message}; type /login, or check the key's variable"
-            ),
-            Self::Http(status, message) => write!(f, "answered {status}: {message}"),
-            Self::Network(message) => write!(f, "unreachable: {message}"),
-            Self::Invalid(message) => write!(f, "unexpected answer: {message}"),
-        }
-    }
 }
 
 /// A client of OpenRouter's API, or of another host's chat completions, with its key.
@@ -180,7 +155,7 @@ impl OpenRouter {
             };
             if status == 200 {
                 // OpenRouter reports some upstream failures inside a 200 body.
-                if let Some(error) = parsed.as_ref().and_then(|value| value.get("error")) {
+                if let Some(error) = parsed.as_ref().and_then(reported) {
                     let code = error
                         .get("code")
                         .and_then(Value::as_u64)
@@ -200,11 +175,7 @@ impl OpenRouter {
                         .ok_or_else(|| ApiError::Invalid("not JSON".into())),
                 );
             }
-            let message = parsed
-                .as_ref()
-                .and_then(|value| value.get("error"))
-                .map(message_of)
-                .unwrap_or_else(|| text.chars().take(300).collect());
+            let message = said(parsed.as_ref(), &text);
             match status {
                 // 403 is a permission, a guardrail or a moderation flag, not a key refused.
                 401 => Attempt::Done(Err(ApiError::Auth(message))),
@@ -212,20 +183,6 @@ impl OpenRouter {
             }
         })
     }
-}
-
-/// Whether a wait may mend `status`: a 429 here is a rate limit of a moment, as are the
-/// statuses every host means so.
-fn transient(status: u16) -> bool {
-    status == 429 || TRANSIENT.contains(&status)
-}
-
-fn message_of(error: &Value) -> String {
-    let message = error
-        .get("message")
-        .and_then(Value::as_str)
-        .unwrap_or("no message");
-    message.chars().take(400).collect()
 }
 
 #[cfg(test)]
