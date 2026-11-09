@@ -46,7 +46,7 @@ pub(crate) fn read(path: &Path) -> Result<Attachment, String> {
         .ok_or_else(|| format!("{shown} is not a PNG, JPEG, GIF or WebP picture"))?;
     let name = path.file_name().map_or_else(
         || shown.to_string(),
-        |name| name.to_string_lossy().to_string(),
+        |name| name.to_string_lossy().into_owned(),
     );
     Ok(Attachment { name, image })
 }

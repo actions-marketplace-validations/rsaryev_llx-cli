@@ -1,8 +1,9 @@
 //! The providers llx can think with: every one the model catalog lists (`models`, from
 //! models.dev), and the one place that knows the provider packages: how each is signed in to,
 //! where its key is kept, and how its chat model is built. OpenAI is the ChatGPT backend with a
-//! ChatGPT sign-in, else its API with a key; every other provider is called over the OpenAI
-//! chat completions at the address the catalog gives (OpenRouter with its own extras).
+//! ChatGPT sign-in, else its API with a key; Anthropic's own models go over its Messages API;
+//! every other is called over chat completions at the address the catalog gives (OpenRouter with
+//! its own extras).
 
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
