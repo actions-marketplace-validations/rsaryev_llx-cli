@@ -279,7 +279,8 @@ pub(crate) fn noted(agent: &str, miss: &Miss) -> String {
 fn short(n: u64) -> String {
     match n {
         0..1_000 => n.to_string(),
-        1_000..1_000_000 => format!("{:.1}k", n as f64 / 1e3).replace(".0k", "k"),
+        // From 999,950 the tenth rounds up to `1000.0k`: a million, said as one.
+        1_000..999_950 => format!("{:.1}k", n as f64 / 1e3).replace(".0k", "k"),
         _ => format!("{:.1}M", n as f64 / 1e6),
     }
 }

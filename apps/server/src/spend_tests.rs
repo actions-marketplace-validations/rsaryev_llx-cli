@@ -106,6 +106,13 @@ fn the_report_sums_by_task_agent_and_model_and_lists_the_misses() {
 }
 
 #[test]
+fn a_count_just_short_of_a_million_reads_as_one_million() {
+    let shown = report(&session(vec![model("", (999_960, 0), 2.5, 0)]));
+    assert!(shown.contains("1.0M"), "{shown}");
+    assert!(!shown.contains("1000k"), "{shown}");
+}
+
+#[test]
 fn a_session_that_spent_nothing_says_so() {
     assert_eq!(report(&session(vec![])), "s1\nNothing spent yet.\n");
 }

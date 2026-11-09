@@ -24,6 +24,8 @@ fn the_spend_reads_as_tokens_in_the_share_from_the_cache_tokens_out_and_money() 
         spent(&total(6_800, 6_500, 70, 0.000_14)),
         "6.8k in · 95% cached · 70 out · $0.0001"
     );
+    // Just short of a million, the tenth rounds up: a million, said as one.
+    assert_eq!(spent(&total(999_960, 0, 999, 0.0)), "1.0M in · 999 out");
     // A subscription bills nothing per token: no money to show.
     assert_eq!(spent(&total(900, 0, 40, 0.0)), "900 in · 40 out");
     assert_eq!(spent(&Total::default()), "");

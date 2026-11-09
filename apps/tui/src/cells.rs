@@ -198,7 +198,8 @@ pub(crate) fn count(n: u64, noun: &str) -> String {
 pub(super) fn tokens(count: u64) -> String {
     match count {
         0..1000 => count.to_string(),
-        1000..1_000_000 => format!("{:.1}k", count as f64 / 1000.0),
+        // From 999,950 the tenth rounds up to `1000.0k`: a million, said as one.
+        1000..999_950 => format!("{:.1}k", count as f64 / 1000.0),
         _ => format!("{:.1}M", count as f64 / 1_000_000.0),
     }
 }
