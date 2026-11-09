@@ -155,12 +155,8 @@ fn not_found(lines: &[&str], old: &[String], shown: &str) -> String {
 fn missed(lines: &[&str], why: &str, old: &[String], shown: &str) -> String {
     let chars: usize = lines.iter().map(|line| line.len() + 1).sum();
     if lines.len() <= WHOLE_LINES && chars <= WHOLE_CHARS {
-        let mut out = format!("{why}{shown} as it is now:\n");
-        for (number, line) in lines.iter().enumerate() {
-            let _ = writeln!(out, "{:>6}\t{line}", number + 1);
-        }
-        out.push_str("Copy the file's lines exactly, indentation included, without the numbers");
-        return out;
+        let out = format!("{why}{shown} as it is now:\n");
+        return numbered(out, lines, 0, lines.len());
     }
     match nearest(lines, old) {
         Some(at) => {
@@ -168,20 +164,23 @@ fn missed(lines: &[&str], why: &str, old: &[String], shown: &str) -> String {
             // really comes before and after.
             let from = at.saturating_sub(AROUND);
             let to = (at + old.len() + AROUND).min(lines.len());
-            let mut out = format!(
+            let out = format!(
                 "{why}The nearest lines in {shown}, from line {}:\n",
                 from + 1
             );
-            for (number, line) in lines.iter().enumerate().take(to).skip(from) {
-                let _ = writeln!(out, "{:>6}\t{line}", number + 1);
-            }
-            out.push_str(
-                "Copy the file's lines exactly, indentation included, without the numbers",
-            );
-            out
+            numbered(out, lines, from, to)
         }
         None => format!("{why}Read the file again and copy them exactly, indentation included"),
     }
+}
+
+/// `out` followed by the file's lines `from..to`, each with its number, and how to copy them.
+fn numbered(mut out: String, lines: &[&str], from: usize, to: usize) -> String {
+    for (number, line) in lines.iter().enumerate().take(to).skip(from) {
+        let _ = writeln!(out, "{:>6}\t{line}", number + 1);
+    }
+    out.push_str("Copy the file's lines exactly, indentation included, without the numbers");
+    out
 }
 
 /// The edits one chunk makes where its old lines were found at `at`: the lines of context between

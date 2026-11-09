@@ -94,7 +94,7 @@ impl Running {
 
     /// How long it has run.
     #[must_use]
-    pub fn elapsed(&self) -> Duration {
+    pub(super) fn elapsed(&self) -> Duration {
         self.started.elapsed()
     }
 
