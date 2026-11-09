@@ -7,7 +7,8 @@
 //! - [`observer`]: what a run shows as it goes (calls, results, turns).
 //! - [`conversation`]: the messages, which only grow; a result too long for one keeps its head
 //!   and tail.
-//! - `schema`: the `result` call `--schema` forces after the answer, with its data.
+//! - `schema`: the `result` call of `--schema`, offered with every request and forced after an
+//!   answer in words, with its data.
 
 pub mod agent;
 mod calls;

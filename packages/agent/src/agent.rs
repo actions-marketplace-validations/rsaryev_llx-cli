@@ -235,7 +235,7 @@ impl Agent<'_> {
             if completion.calls.is_empty() || returned_data {
                 // A message with no call is the answer: the task ends with it, as a person's
                 // final message ends their turn, unless the advisor finds it unfinished.
-                let answer = completion.text.unwrap_or_default().trim().to_string();
+                let answer = completion.text.as_deref().map_or("", str::trim).to_string();
                 if turn + 1 < self.max_turns
                     && self.pushed_on(&begun, &answer, &mut pushes, &mut run)
                 {
@@ -310,23 +310,21 @@ impl Agent<'_> {
             return Waited::No;
         }
         let expecting = self.expecting();
-        let came = self.take();
-        let waits = came.is_empty() && expecting;
-        if waits || !came.is_empty() {
+        let mut came = self.take();
+        if came.is_empty() {
+            if !expecting {
+                return Waited::No;
+            }
+            self.say(completion);
+            came = self.inbox.map(|inbox| inbox.wait()).unwrap_or_default();
+            if came.is_empty() {
+                return Waited::Said;
+            }
+        } else {
             self.say(completion);
         }
-        let came = match waits {
-            true => self.inbox.map(|inbox| inbox.wait()).unwrap_or_default(),
-            false => came,
-        };
-        match (came.is_empty(), waits) {
-            (false, _) => {
-                Self::deliver(run, came);
-                Waited::Came
-            }
-            (true, true) => Waited::Said,
-            (true, false) => Waited::No,
-        }
+        Self::deliver(run, came);
+        Waited::Came
     }
 
     /// Show what the model said in a turn the run goes on from: it is not the answer.
