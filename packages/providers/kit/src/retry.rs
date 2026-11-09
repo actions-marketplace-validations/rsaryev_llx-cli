@@ -44,11 +44,10 @@ pub enum Resend {
 pub fn retried<T, E>(
     pause: Duration,
     until: Option<Instant>,
-    resend: Resend,
+    mut resend: Resend,
     mut attempt: impl FnMut() -> Attempt<T, E>,
 ) -> Result<T, E> {
     let mut wait = pause;
-    let mut resend = resend;
     let mut made = 0;
     loop {
         made += 1;
