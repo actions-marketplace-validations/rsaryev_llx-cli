@@ -85,8 +85,8 @@ pub(crate) fn copy(rig: &Rig) -> Option<&'static str> {
 /// The last answer that says something: a failed or stopped task leaves none, and copying
 /// nothing would empty the clipboard.
 fn last_answer(turns: &[contracts::history::Turn]) -> Option<String> {
-    let mut answers = turns.iter().rev().map(|turn| turn.answer.trim());
-    answers
+    (turns.iter().rev())
+        .map(|turn| turn.answer.trim())
         .find(|answer| !answer.is_empty())
         .map(str::to_string)
 }

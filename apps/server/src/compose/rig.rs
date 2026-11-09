@@ -225,9 +225,10 @@ impl Rig<'_> {
 
     /// Work in `mode` from the next question on.
     pub(crate) fn switch(&mut self, mode: Mode) {
+        let name = mode.name().to_string();
         self.mode.set(mode);
         if let Some(ui) = &self.ui {
-            ui.send(Event::Mode(self.mode.get().name().to_string()));
+            ui.send(Event::Mode(name));
         }
     }
 
@@ -240,8 +241,8 @@ impl Rig<'_> {
         if mode == self.told {
             return conversation;
         }
-        self.told = mode.clone();
         let note = mode::notice(&mode, self.shared.terminal, self.shared.asks);
+        self.told = mode;
         Some(self.agent.tell(conversation, &note))
     }
 }

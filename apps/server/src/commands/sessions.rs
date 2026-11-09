@@ -1,6 +1,6 @@
-//! `llx sessions` and `llx resume`: every run is a session, kept as a JSON file of its tasks
-//! and how each ended. The conversation itself is not kept, so `resume` starts a new one that is
-//! told what the session asked before, and records into the same session.
+//! `llx sessions` and `llx resume`: every run is a session, kept as a JSON Lines file of its
+//! tasks and how each ended. The conversation itself is not kept, so `resume` starts a new one
+//! that is told what the session asked before, and records into the same session.
 
 use std::path::{Path, PathBuf};
 
