@@ -209,7 +209,7 @@ fn a_fetched_catalog_goes_over_the_built_in_one_and_is_kept_cut_down() {
         "the chat models and the decision model"
     );
     let built_in = Catalog::built_in();
-    let merged = kept.clone().over_built_in();
+    let merged = Catalog::parse(&fetched.kept()).unwrap().over_built_in();
     assert_eq!(
         merged.provider("acme"),
         kept.provider("acme"),

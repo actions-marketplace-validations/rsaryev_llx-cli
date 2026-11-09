@@ -12,7 +12,7 @@ use serde_json::value::RawValue;
 use crate::types::Model;
 
 /// A provider, as the v2 API publishes it.
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Provider {
     name: String,
     #[serde(default)]
@@ -66,7 +66,7 @@ pub(crate) struct Kept<'a> {
 
 /// A model as the document has it, and what it reads as once asked (boxed: a slot never asked
 /// for costs a pointer, not a model's size).
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(from = "Box<RawValue>")]
 struct Slot {
     raw: Box<RawValue>,

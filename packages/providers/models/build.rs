@@ -60,8 +60,7 @@ fn main() {
         let mut models = Map::new();
         let folder = path.join("models");
         for (model_id, file) in files(&folder, &folder) {
-            let raw = read(&file);
-            let model = resolve(&raw, &provider, &data.join("models"));
+            let model = resolve(read(&file), &provider, &data.join("models"));
             // Cut by the types llx reads it with: one that does not read as a model is left out,
             // as a run would leave it out.
             if let Ok(model) = serde_json::from_value::<types::Model>(model) {
@@ -83,8 +82,7 @@ fn main() {
 }
 
 /// A provider model file, resolved.
-fn resolve(raw: &Map<String, Value>, provider: &Map<String, Value>, labs: &Path) -> Value {
-    let mut own = raw.clone();
+fn resolve(mut own: Map<String, Value>, provider: &Map<String, Value>, labs: &Path) -> Value {
     own.remove("schema");
     let base = own.remove("base_model");
     let omit = own.remove("base_model_omit");

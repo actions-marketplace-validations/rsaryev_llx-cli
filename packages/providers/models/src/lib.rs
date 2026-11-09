@@ -50,7 +50,7 @@ pub const RESPONSES: &str = "responses";
 pub const MESSAGES: &str = "messages";
 
 /// Every provider llx knows, by id.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Catalog {
     providers: BTreeMap<String, Provider>,
     /// The built-in files it lies over, read the first time a provider it lacks is asked for.
@@ -185,13 +185,14 @@ fn calls(model: &Model, protocol: &str) -> bool {
 }
 
 fn entry(id: &str, model: &Model) -> ModelEntry {
-    let reasoning = model.capabilities.reasoning.clone().unwrap_or_default();
-    let efforts = efforts(&reasoning);
+    // A model that says nothing of reasoning takes no level, and starts at `Off`.
+    let reasoning = model.capabilities.reasoning.as_ref();
+    let efforts = reasoning.map_or_else(Vec::new, efforts);
     let limit = model.limit.as_ref();
     ModelEntry {
         id: id.to_string(),
         name: model.name.clone(),
-        default: default(&reasoning, &efforts),
+        default: reasoning.map_or(Effort::Off, |reasoning| default(reasoning, &efforts)),
         efforts,
         context: limit.and_then(|l| l.input.or(l.context)).unwrap_or(0),
         output: limit.and_then(|l| l.output).unwrap_or(0),
