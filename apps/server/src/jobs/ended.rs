@@ -1,6 +1,6 @@
-//! A job that ended, a command in the background or a monitor, still listed with how and with
-//! what it printed last, for the person to look at, until they let it go (`x`) or later ones
-//! take its place.
+//! A job that ended, a command in the background or a monitor: its end given back once by who
+//! stopped it ([`finish`]), then still listed with how and with what it printed last, for the
+//! person to look at, until they let it go (`x`) or later ones take its place.
 
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
