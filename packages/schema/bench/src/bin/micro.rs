@@ -184,7 +184,15 @@ fn main() {
     }
     // A pattern as the `regex` format reads it: what this matcher cannot run (a lookaround, a
     // back-reference, a property it has no table of) is still a regular expression.
-    for value in ["^[a-z]+\\d$", "^\\p{L}+$", "(?=a)b", "(a)\\1"] {
+    for value in [
+        "^[a-z]+\\d$",
+        "^\\p{L}+$",
+        "^\\P{ASCII}+$",
+        "[\\P{Letter}]",
+        "(?=a)b",
+        "(a)\\1",
+        "(?<n>a)\\k<n>",
+    ] {
         row(
             &format!("`format: regex`, `{value}`"),
             &json!({"format": "regex"}),

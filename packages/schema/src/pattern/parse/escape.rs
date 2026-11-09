@@ -14,8 +14,21 @@ const NAME: usize = 32;
 /// What an escape stands for.
 pub(super) enum Escape {
     Char(char),
+    /// A surrogate's code point alone, which no string of UTF-8 holds: noted as unchecked.
+    Lone(u32),
     Set(Class),
     Assert(Assert),
+}
+
+impl Escape {
+    /// The code point a character or a lone surrogate stands for, which a range's ends compare.
+    pub(super) fn point(&self) -> Option<u32> {
+        match self {
+            Self::Char(c) => Some(u32::from(*c)),
+            Self::Lone(point) => Some(*point),
+            Self::Set(_) | Self::Assert(_) => None,
+        }
+    }
 }
 
 impl Parser<'_> {
@@ -46,13 +59,19 @@ impl Parser<'_> {
                 return Ok(Escape::Set(Class::empty()));
             }
             'p' => return self.property().map(Escape::Set),
-            'P' => return self.property().map(|class| Escape::Set(class.negated())),
+            'P' => {
+                let class = self.property()?;
+                return Ok(Escape::Set(self.set(|| class.negated())));
+            }
             'c' => self.control()?,
             'x' => match self.hex(2) {
                 Some(code) => char::from_u32(code).unwrap_or_default(),
                 None => return Err(self.invalid("a bad `\\x` escape")),
             },
-            'u' => self.unicode()?,
+            'u' => match self.unicode()? {
+                Ok(c) => c,
+                Err(point) => return Ok(Escape::Lone(point)),
+            },
             c if c.is_ascii_alphanumeric() => {
                 return Err(self.invalid(&format!("an unknown escape `\\{c}`")));
             }
@@ -118,8 +137,9 @@ impl Parser<'_> {
         Some(value)
     }
 
-    /// `\uHHHH` (a surrogate pair as one character) or `\u{H...}`.
-    fn unicode(&mut self) -> Result<char, Unsupported> {
+    /// `\uHHHH` (a surrogate pair as one character) or `\u{H...}`: the character, or a lone
+    /// surrogate's code point, noted as unchecked.
+    pub(super) fn unicode(&mut self) -> Result<Result<char, u32>, Unsupported> {
         if self.eat('{') {
             let mut value: u32 = 0;
             let mut digits = 0;
@@ -128,12 +148,10 @@ impl Parser<'_> {
                 digits += 1;
                 value = value.saturating_mul(16).saturating_add(digit);
             }
-            let read = digits > 0 && self.eat('}');
-            return match (read, char::from_u32(value)) {
-                (true, Some(c)) => Ok(c),
-                (true, None) if value <= 0x10_FFFF => Ok(self.lone()),
-                (true | false, _) => Err(self.invalid("a bad `\\u{...}` escape")),
-            };
+            if digits == 0 || !self.eat('}') || value > 0x10_FFFF {
+                return Err(self.invalid("a bad `\\u{...}` escape"));
+            }
+            return Ok(self.point(value));
         }
         let Some(high) = self.hex(4) else {
             return Err(self.invalid("a bad `\\u` escape"));
@@ -145,18 +163,20 @@ impl Parser<'_> {
             self.at += 2;
             match self.hex(4) {
                 Some(low) if (0xDC00..0xE000).contains(&low) => {
-                    let code = 0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                    return Ok(char::from_u32(code).unwrap_or_else(|| self.lone()));
+                    return Ok(self.point(0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00)));
                 }
                 Some(_) | None => self.at = back,
             }
         }
-        Ok(char::from_u32(high).unwrap_or_else(|| self.lone()))
+        Ok(self.point(high))
     }
 
-    /// A lone surrogate, which no string of UTF-8 holds: noted as unchecked, and read past.
-    fn lone(&mut self) -> char {
-        self.skip(|| "a lone surrogate".into());
-        '\0'
+    /// The character at `point`, else (a lone surrogate, which no string of UTF-8 holds) the
+    /// point, noted as unchecked and read past.
+    fn point(&mut self, point: u32) -> Result<char, u32> {
+        char::from_u32(point).ok_or_else(|| {
+            self.skip(|| "a lone surrogate".into());
+            point
+        })
     }
 }

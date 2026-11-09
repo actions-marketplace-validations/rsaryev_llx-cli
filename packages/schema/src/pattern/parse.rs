@@ -89,8 +89,9 @@ struct Parser<'s> {
     groups: u32,
     /// The highest group a `\N` named.
     referred: u32,
-    /// Whether a `\k<name>` was read: its group is looked for once the pattern is read.
-    named: bool,
+    /// The named groups read, and the names `\k<name>` gave: compared once the pattern is read.
+    names: refer::Spans,
+    referred_names: refer::Spans,
     /// The first thing read that this matcher cannot check.
     skipped: Option<Unsupported>,
 }
@@ -104,7 +105,8 @@ impl<'s> Parser<'s> {
             build,
             groups: 0,
             referred: 0,
-            named: false,
+            names: refer::Spans::default(),
+            referred_names: refer::Spans::default(),
             skipped: None,
         }
     }
@@ -218,6 +220,7 @@ impl<'s> Parser<'s> {
                 Escape::Char(c) => self.class_of(|| Class::one(c)),
                 Escape::Set(class) => self.class_of(|| class),
                 Escape::Assert(assert) => Node::Assert(assert),
+                Escape::Lone(_) => self.class_of(Class::empty),
             },
             Some('.') => self.class_of(Class::dot),
             Some('(') => self.group()?,

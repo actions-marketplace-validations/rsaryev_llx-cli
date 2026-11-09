@@ -19,7 +19,8 @@ impl Parser<'_> {
                     around = true;
                 }
                 Some('<') => {
-                    self.group_name()?;
+                    let name = self.group_name()?;
+                    self.named(&name);
                     self.groups += 1;
                 }
                 Some(_) | None => return Err(self.invalid("an unknown group")),
@@ -42,21 +43,5 @@ impl Parser<'_> {
         } else {
             inner
         })
-    }
-
-    pub(super) fn group_name(&mut self) -> Result<(), Unsupported> {
-        let start = self.at;
-        while self
-            .peek()
-            .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '$')
-        {
-            self.at += 1;
-        }
-        let named = self.at > start && self.chars.get(start).is_some_and(|c| !c.is_ascii_digit());
-        if named && self.eat('>') {
-            Ok(())
-        } else {
-            Err(self.invalid("a bad group name"))
-        }
     }
 }

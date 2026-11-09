@@ -286,3 +286,49 @@ fn the_syntax_alone_is_judged_as_the_whole_parse_judges_it() {
         assert_eq!(syntax(source).map_err(|why| why.kind), whole, "{source:?}");
     }
 }
+
+#[test]
+fn a_lone_surrogate_at_a_range_end_or_a_name_spelled_with_escapes_or_marks_is_not_called_invalid() {
+    for source in [
+        "[z-\\uD800]",
+        "[a-\\u{DFFF}]",
+        "(?<a>x)\\k<\\u{61}>",
+        "(?<\\u0061>x)\\k<a>",
+        "\\k<a\u{301}>(?<a\u{301}>x)",
+        "(?<a\u{200D}>x)\\k<a\u{200D}>",
+    ] {
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Unchecked),
+            "{source}"
+        );
+    }
+    for source in [
+        "[\\uDBFF-\\uD800]",
+        "[\\uE000-\\uD800]",
+        "(?<a>x)\\k<b\u{301}>",
+    ] {
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Invalid),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn a_long_pattern_of_named_references_and_lookbehinds_is_judged_in_one_pass() {
+    // `format: "regex"` judges data: a model's answer may be long.
+    let source = format!(
+        "{}{}(?<a>x)",
+        "\\k<a>".repeat(50_000),
+        "(?<=b)".repeat(50_000)
+    );
+    let started = std::time::Instant::now();
+    assert_eq!(
+        syntax(&source).map_err(|why| why.kind),
+        Err(Kind::Unchecked)
+    );
+    let took = started.elapsed();
+    assert!(took < std::time::Duration::from_secs(2), "{took:?}");
+}
