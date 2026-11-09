@@ -24,11 +24,8 @@ pub(super) fn write(dir: &Path, session: &str, agent: &str, mut event: Value) {
     if session.is_empty() {
         return;
     }
-    let at = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(u64::MAX));
     if let Some(fields) = event.as_object_mut() {
-        fields.insert("at_ms".into(), json!(at));
+        fields.insert("at_ms".into(), json!(crate::clock::now_ms()));
         if !agent.is_empty() {
             fields.insert("agent".into(), json!(agent));
         }

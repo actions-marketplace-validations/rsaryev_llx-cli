@@ -58,8 +58,10 @@ impl Observer for Watch<'_> {
 
     fn said(&self, text: &str) {
         logged::said(self.id, text);
-        self.output
-            .record(self.name, serde_json::json!({"kind": "said", "text": text}));
+        self.output.record(
+            self.name,
+            || serde_json::json!({"kind": "said", "text": text}),
+        );
         self.show(Event::Answer(text.to_string()));
     }
 

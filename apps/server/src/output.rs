@@ -212,7 +212,7 @@ impl Output {
         *lock(&self.session) = Arc::from(start.session);
         self.record(
             "",
-            serde_json::json!({"kind": "task", "goal": start.goal, "model": start.model}),
+            || serde_json::json!({"kind": "task", "goal": start.goal, "model": start.model}),
         );
         logged::started(start);
         if let Some(ui) = &self.ui {
@@ -242,10 +242,9 @@ impl Output {
     /// The task ended: the closing lines on stderr and the answer on stdout, or `run.completed`.
     pub(crate) fn completed(&self, summary: &Summary) {
         logged::completed(summary);
-        self.record(
-            "",
-            serde_json::json!({"kind": "answer", "status": summary.status, "text": summary.answer}),
-        );
+        self.record("", || {
+            serde_json::json!({"kind": "answer", "status": summary.status, "text": summary.answer})
+        });
         let error = summary.error.map(|error| Event::Error(error.to_string()));
         let ended = Event::TaskEnded {
             status: summary.status.to_string(),
@@ -301,10 +300,11 @@ impl Output {
         let _ = err.write_all(text.as_bytes()).and_then(|()| err.flush());
     }
 
-    /// `event` of `agent`'s (empty: the session's own) in the session's record, when one is kept.
-    pub(crate) fn record(&self, agent: &str, event: Value) {
+    /// `event` of `agent`'s (empty: the session's own) in the session's record, when one is kept:
+    /// built only then, as it may copy a whole output.
+    pub(crate) fn record(&self, agent: &str, event: impl FnOnce() -> Value) {
         if let Some(dir) = &self.record {
-            record::write(dir, &self.who(), agent, event);
+            record::write(dir, &self.who(), agent, event());
         }
     }
 
