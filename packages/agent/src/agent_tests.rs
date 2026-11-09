@@ -890,6 +890,52 @@ impl Inbox for Mail {
     }
 }
 
+/// An inbox whose agent answers, and is done, right after the run's second look (the one before
+/// it takes a `result`) finds nothing: the answer is there for the next look, and nothing more is
+/// expected.
+#[derive(Default)]
+struct AnsweredAfterALook {
+    looks: AtomicUsize,
+    answer: Mutex<Vec<String>>,
+}
+
+impl Inbox for AnsweredAfterALook {
+    fn take(&self) -> Vec<String> {
+        if self.looks.fetch_add(1, Ordering::SeqCst) == 1 {
+            (self.answer.lock().unwrap()).push("<agent_result>93 EUR</agent_result>".into());
+            return vec![];
+        }
+        std::mem::take(&mut *self.answer.lock().unwrap())
+    }
+
+    fn expecting(&self) -> bool {
+        self.looks.load(Ordering::SeqCst) < 2
+    }
+
+    fn wait(&self) -> Vec<String> {
+        std::mem::take(&mut *self.answer.lock().unwrap())
+    }
+}
+
+#[test]
+fn a_result_made_as_an_agent_answers_waits_for_its_answer() {
+    // The agent answers between the run's look at the inbox and its asking whether more is to
+    // come: the data is not taken without that answer, which reaches the model first.
+    let schema = Shaped(json!({"type": "object"}));
+    let inbox = AnsweredAfterALook::default();
+    let chat = Scripted::new(vec![data(&json!({"price": 90})), data(&json!({"price": 93}))]);
+    let run = Agent {
+        inbox: Some(&inbox),
+        ..agent(&chat, &[], Some(&schema), &Silent)
+    }
+    .run(None, "Find the price", &[]);
+    assert_eq!(
+        users(run.conversation.messages()),
+        ["Goal: Find the price", "<agent_result>93 EUR</agent_result>"]
+    );
+    assert_eq!(run.data, Some(Ok(json!({"price": 93}))));
+}
+
 #[test]
 fn what_comes_in_is_said_before_the_next_turn() {
     let mail = Mail::default();

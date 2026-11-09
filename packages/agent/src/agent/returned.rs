@@ -58,9 +58,11 @@ impl Agent<'_> {
                 .as_deref()
                 .is_some_and(|text| !text.trim().is_empty());
             // What reached the run, or is still to come, comes before the data, as before an
-            // answer in words.
+            // answer in words. Asked before the look, as a source that is done posted its last
+            // entry before it said so: one that ends in between is in what the look takes.
+            let expecting = self.expecting();
             let mut came = self.take();
-            if came.is_empty() && self.expecting() {
+            if came.is_empty() && expecting {
                 came = self.inbox.map(|inbox| inbox.wait()).unwrap_or_default();
             }
             if !came.is_empty() {
