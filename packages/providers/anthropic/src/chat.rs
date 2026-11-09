@@ -40,11 +40,10 @@ impl ChatModel {
         }
     }
 
-    fn forgotten(&self) -> HashSet<String> {
-        let forgotten = self
-            .forgotten
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
+    /// The blocks never sent again, `more` among them from now on.
+    fn forget(&self, more: Vec<String>) -> HashSet<String> {
+        let mut forgotten = (self.forgotten.lock()).unwrap_or_else(PoisonError::into_inner);
+        forgotten.extend(more);
         forgotten.clone()
     }
 }
@@ -58,7 +57,7 @@ impl Chat for ChatModel {
             let beta = (thinking == Some(Thinking::Budget)).then_some(INTERLEAVED);
             (self.client.post(&body, request.deadline, beta), body)
         };
-        let answered = match sent(Some(self.thinking), &self.forgotten()) {
+        let answered = match sent(Some(self.thinking), &self.forget(vec![])) {
             // Earlier thinking is bound to the history it was written in: the turn is asked once
             // more without the blocks this request sent, which are not sent again. A budgeted
             // model in a tool loop wants its last turn to start with thinking: it is asked with
@@ -68,14 +67,7 @@ impl Chat for ChatModel {
                     "{} refused earlier thinking, sent without it",
                     self.client.name
                 );
-                let forgotten = {
-                    let mut forgotten = self
-                        .forgotten
-                        .lock()
-                        .unwrap_or_else(PoisonError::into_inner);
-                    forgotten.extend(signatures(&refused));
-                    forgotten.clone()
-                };
+                let forgotten = self.forget(signatures(&refused));
                 let thinking = match self.thinking {
                     Thinking::Adaptive => Some(Thinking::Adaptive),
                     Thinking::Budget => None,
