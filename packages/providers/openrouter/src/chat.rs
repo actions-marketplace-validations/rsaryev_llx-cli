@@ -160,8 +160,6 @@ fn body(host: Wire, selection: &Selection, request: &Request, switch: Switch) ->
     let messages: Vec<Value> = (request.conversation.iter())
         .map(|message| wire(message, model, request.tools))
         .collect();
-    // An output limit as opencode's and Claude Code's: room for a whole file in one call, and
-    // a bound on a budgeted model's thinking, which OpenRouter sizes from it.
     let limit = level::output(selection);
     // OpenAI's reasoning models refuse `max_tokens`; every chat model of its takes this one.
     let cap = match host {
