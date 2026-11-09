@@ -7,6 +7,7 @@
 
 mod bracket;
 mod escape;
+mod group;
 mod refer;
 
 use std::borrow::Cow;
@@ -306,61 +307,6 @@ impl<'s> Parser<'s> {
             value = Some(value.unwrap_or(0).saturating_mul(10).saturating_add(digit));
         }
         value
-    }
-
-    fn group(&mut self) -> Result<Node, Unsupported> {
-        let mut around = false;
-        if self.eat('?') {
-            match self.bump() {
-                Some(':') => {}
-                Some('=' | '!') => {
-                    self.skip(|| "a lookahead".into());
-                    around = true;
-                }
-                Some('<') if self.eat('=') || self.eat('!') => {
-                    self.skip(|| "a lookbehind".into());
-                    around = true;
-                }
-                Some('<') => {
-                    self.group_name()?;
-                    self.groups += 1;
-                }
-                Some(_) | None => return Err(self.invalid("an unknown group")),
-            }
-        } else {
-            self.groups += 1;
-        }
-        self.depth += 1;
-        if self.depth > DEPTH {
-            return Err(self.unchecked(|| "groups nested too deep".into()));
-        }
-        let inner = self.alternation()?;
-        self.depth -= 1;
-        if !self.eat(')') {
-            return Err(self.invalid("an unclosed group"));
-        }
-        // A lookaround is an assertion, which nothing repeats; what it holds is not checked.
-        Ok(if around {
-            Node::Assert(Assert::Start)
-        } else {
-            inner
-        })
-    }
-
-    fn group_name(&mut self) -> Result<(), Unsupported> {
-        let start = self.at;
-        while self
-            .peek()
-            .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '$')
-        {
-            self.at += 1;
-        }
-        let named = self.at > start && self.chars.get(start).is_some_and(|c| !c.is_ascii_digit());
-        if named && self.eat('>') {
-            Ok(())
-        } else {
-            Err(self.invalid("a bad group name"))
-        }
     }
 }
 
