@@ -1,11 +1,13 @@
 //! ECMA-262's pattern syntax, as JSON Schema's `pattern` is written, read into the small tree the
 //! matchers take: what a character class holds is resolved here, groups are dropped (a yes or no
-//! needs no capture), and what this matcher cannot check is refused with why. Annex B's
+//! needs no capture), and what this matcher cannot check is refused with why, once the rest is
+//! read: a pattern invalid past it is invalid, as a back-reference to no group is. Annex B's
 //! leniencies that change no meaning are kept: a `{` or `]` that starts nothing is itself, and
 //! so is an escaped punctuation character.
 
 mod bracket;
 mod escape;
+mod refer;
 
 use std::borrow::Cow;
 
@@ -82,6 +84,14 @@ struct Parser<'s> {
     at: usize,
     depth: usize,
     build: Build,
+    /// The capturing groups read so far.
+    groups: u32,
+    /// The highest group a `\N` named.
+    referred: u32,
+    /// Whether a `\k<name>` was read: its group is looked for once the pattern is read.
+    named: bool,
+    /// The first thing read that this matcher cannot check.
+    skipped: Option<Unsupported>,
 }
 
 impl<'s> Parser<'s> {
@@ -91,14 +101,22 @@ impl<'s> Parser<'s> {
             at: 0,
             depth: 0,
             build,
+            groups: 0,
+            referred: 0,
+            named: false,
+            skipped: None,
         }
     }
 
     fn read(mut self) -> Result<Node, Unsupported> {
         let node = self.alternation()?;
-        match self.peek() {
+        if self.peek().is_some() {
+            return Err(self.invalid("an unmatched `)`"));
+        }
+        self.dangling()?;
+        match self.skipped {
             None => Ok(node),
-            Some(_) => Err(self.invalid("an unmatched `)`")),
+            Some(why) => Err(why),
         }
     }
 
@@ -118,6 +136,14 @@ impl<'s> Parser<'s> {
             Build::Tree => Cow::Owned(format!("{} is not checked", what())),
             Build::Nothing => Cow::Borrowed(""),
         })
+    }
+
+    /// What this matcher cannot check, noted (the first of them) and read past: the pattern is
+    /// refused for it only once the rest is read.
+    pub(super) fn skip(&mut self, what: impl FnOnce() -> String) {
+        if self.skipped.is_none() {
+            self.skipped = Some(self.unchecked(what));
+        }
     }
 
     pub(super) fn set(&self, make: impl FnOnce() -> Class) -> Class {
@@ -283,16 +309,26 @@ impl<'s> Parser<'s> {
     }
 
     fn group(&mut self) -> Result<Node, Unsupported> {
+        let mut around = false;
         if self.eat('?') {
             match self.bump() {
                 Some(':') => {}
-                Some('=' | '!') => return Err(self.unchecked(|| "a lookahead".into())),
-                Some('<') if matches!(self.peek(), Some('=' | '!')) => {
-                    return Err(self.unchecked(|| "a lookbehind".into()));
+                Some('=' | '!') => {
+                    self.skip(|| "a lookahead".into());
+                    around = true;
                 }
-                Some('<') => self.group_name()?,
+                Some('<') if self.eat('=') || self.eat('!') => {
+                    self.skip(|| "a lookbehind".into());
+                    around = true;
+                }
+                Some('<') => {
+                    self.group_name()?;
+                    self.groups += 1;
+                }
                 Some(_) | None => return Err(self.invalid("an unknown group")),
             }
+        } else {
+            self.groups += 1;
         }
         self.depth += 1;
         if self.depth > DEPTH {
@@ -303,7 +339,12 @@ impl<'s> Parser<'s> {
         if !self.eat(')') {
             return Err(self.invalid("an unclosed group"));
         }
-        Ok(inner)
+        // A lookaround is an assertion, which nothing repeats; what it holds is not checked.
+        Ok(if around {
+            Node::Assert(Assert::Start)
+        } else {
+            inner
+        })
     }
 
     fn group_name(&mut self) -> Result<(), Unsupported> {

@@ -1,7 +1,8 @@
 //! What follows a `\` in a pattern, as ECMA-262 reads it with the `u` flag: a character
 //! (`\t`, `\cX`, `\xHH`, `\uHHHH`, a surrogate pair, `\u{...}`, an escaped punctuation
 //! character), a class (`\d`, `\w`, `\s` and their negations) or an assertion (`\b`, `\B`).
-//! A back-reference and a property escape are refused as unchecked; an unknown letter as invalid.
+//! A back-reference (`refer.rs`) and a property escape are read and noted as unchecked; an
+//! unknown letter is invalid, as a back-reference inside a class is.
 
 use super::super::Unsupported;
 use super::super::class::Class;
@@ -40,7 +41,10 @@ impl Parser<'_> {
             'v' => '\u{B}',
             '0' if !self.peek().is_some_and(|c| c.is_ascii_digit()) => '\0',
             '0' => return Err(self.invalid("a legacy octal escape")),
-            '1'..='9' | 'k' => return Err(self.unchecked(|| "a back-reference".into())),
+            '1'..='9' | 'k' if !in_class => {
+                self.reference(c)?;
+                return Ok(Escape::Set(Class::empty()));
+            }
             'p' => return self.property().map(Escape::Set),
             'P' => return self.property().map(|class| Escape::Set(class.negated())),
             'c' => self.control()?,
@@ -82,10 +86,13 @@ impl Parser<'_> {
             .and_then(|bytes| std::str::from_utf8(bytes).ok());
         match name.and_then(Class::ranges) {
             Some(ranges) => Ok(self.set(|| Class::of(ranges))),
-            None => Err(self.unchecked(|| {
-                let name: String = chars.iter().collect();
-                format!("the Unicode property `{name}`")
-            })),
+            None => {
+                self.skip(|| {
+                    let name: String = chars.iter().collect();
+                    format!("the Unicode property `{name}`")
+                });
+                Ok(Class::empty())
+            }
         }
     }
 
@@ -124,9 +131,7 @@ impl Parser<'_> {
             let read = digits > 0 && self.eat('}');
             return match (read, char::from_u32(value)) {
                 (true, Some(c)) => Ok(c),
-                (true, None) if value <= 0x10_FFFF => {
-                    Err(self.unchecked(|| "a lone surrogate".into()))
-                }
+                (true, None) if value <= 0x10_FFFF => Ok(self.lone()),
                 (true | false, _) => Err(self.invalid("a bad `\\u{...}` escape")),
             };
         }
@@ -141,12 +146,17 @@ impl Parser<'_> {
             match self.hex(4) {
                 Some(low) if (0xDC00..0xE000).contains(&low) => {
                     let code = 0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                    return char::from_u32(code)
-                        .ok_or_else(|| self.unchecked(|| "a lone surrogate".into()));
+                    return Ok(char::from_u32(code).unwrap_or_else(|| self.lone()));
                 }
                 Some(_) | None => self.at = back,
             }
         }
-        char::from_u32(high).ok_or_else(|| self.unchecked(|| "a lone surrogate".into()))
+        Ok(char::from_u32(high).unwrap_or_else(|| self.lone()))
+    }
+
+    /// A lone surrogate, which no string of UTF-8 holds: noted as unchecked, and read past.
+    fn lone(&mut self) -> char {
+        self.skip(|| "a lone surrogate".into());
+        '\0'
     }
 }

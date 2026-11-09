@@ -193,6 +193,46 @@ fn what_is_not_a_regular_expression_is_invalid() {
 }
 
 #[test]
+fn what_is_not_checked_here_does_not_hide_what_is_invalid_after_it_or_a_reference_to_no_group() {
+    for source in [
+        "(?=a)\\1",
+        "\\2(a)",
+        "(?:a)\\1",
+        "(?=a)(",
+        "(?<=a)b)",
+        "(?=a)*",
+        "\\p{Letter}(",
+        "\\uD800[",
+        "\\k<n>",
+        "(?<m>a)\\k<n>",
+        "\\(?<n>a\\)\\k<n>",
+        "\\k",
+        "[\\1]",
+        "[\\k]",
+        "[(?<n>a)]\\k<n>",
+    ] {
+        assert!(
+            invalid(source),
+            "{source} should be invalid: {:?}",
+            parse(source)
+        );
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Invalid),
+            "{source}"
+        );
+    }
+    // A reference may come before its group, and an escaped `\` before a group leaves it one.
+    for source in ["\\1(a)", "\\k<n>(?<n>a)", "\\\\(?<n>a)\\k<n>", "(a)(b)\\2"] {
+        assert!(
+            unchecked(source),
+            "{source} should be unchecked: {:?}",
+            parse(source)
+        );
+    }
+}
+
+#[test]
 fn what_is_valid_but_not_checked_is_said() {
     for source in [
         "(a)\\1",
