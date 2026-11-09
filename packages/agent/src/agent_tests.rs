@@ -923,7 +923,10 @@ fn a_result_made_as_an_agent_answers_waits_for_its_answer() {
     // come: the data is not taken without that answer, which reaches the model first.
     let schema = Shaped(json!({"type": "object"}));
     let inbox = AnsweredAfterALook::default();
-    let chat = Scripted::new(vec![data(&json!({"price": 90})), data(&json!({"price": 93}))]);
+    let chat = Scripted::new(vec![
+        data(&json!({"price": 90})),
+        data(&json!({"price": 93})),
+    ]);
     let run = Agent {
         inbox: Some(&inbox),
         ..agent(&chat, &[], Some(&schema), &Silent)
@@ -931,7 +934,10 @@ fn a_result_made_as_an_agent_answers_waits_for_its_answer() {
     .run(None, "Find the price", &[]);
     assert_eq!(
         users(run.conversation.messages()),
-        ["Goal: Find the price", "<agent_result>93 EUR</agent_result>"]
+        [
+            "Goal: Find the price",
+            "<agent_result>93 EUR</agent_result>"
+        ]
     );
     assert_eq!(run.data, Some(Ok(json!({"price": 93}))));
 }
