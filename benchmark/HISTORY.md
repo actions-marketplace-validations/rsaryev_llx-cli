@@ -25,3 +25,7 @@ A row per agent per run of `run.ts`, its medians over the runs: whether it solve
 | [2026-11-08 04:00](results/2026-11-08_0400-shopkit/summary.md) | shopkit | claude | 2.1.319 (Claude Code) | — | 1 | 1/1 | 69, 69 of 69 | 52.3 | 6 | 0.1149 | 69 | 8380 | 6.1 |
 | [2026-11-10 01:55](results/2026-11-10_0155-shopkit/summary.md) | shopkit | llx | 5eef02d7 | off | 1 | 1/1 | 69, 69 of 69 | 65.5 | 4 | 0.0114 | 57 | 16531 | 17.2 |
 | [2026-11-10 01:56](results/2026-11-10_0156-evalkit/summary.md) | evalkit | llx | 5eef02d7 | off | 1 | 1/1 | 238, 238 of 238 | 272.3 | 10 | 0.0456 | 83 | 66300 | 21.2 |
+| [2026-11-10 02:03](results/2026-11-10_0203-shopkit/summary.md) | shopkit | llx | f0b338c5 | off | 1 | 1/1 | 69, 69 of 69 | 69.1 | 5 | 0.0118 | 71 | 16630 | 14.7 |
+| [2026-11-10 02:03](results/2026-11-10_0203-shopkit/summary.md) | shopkit | claude | 2.1.321 (Claude Code) | — | 1 | 1/1 | 69, 69 of 69 | 67.1 | 4 | 0.0110 | 43 | 15963 | 14.7 |
+| [2026-11-10 02:04](results/2026-11-10_0204-evalkit/summary.md) | evalkit | llx | f0b338c5 | off | 1 | 1/1 | 238, 238 of 238 | 285.8 | 14 | 0.0500 | 87 | 70262 | 11.9 |
+| [2026-11-10 02:04](results/2026-11-10_0204-evalkit/summary.md) | evalkit | claude | 2.1.321 (Claude Code) | — | 1 | 1/1 | 238, 238 of 238 | 477.6 | 25 | 0.4604 | 89 | 112299 | 11.9 |
