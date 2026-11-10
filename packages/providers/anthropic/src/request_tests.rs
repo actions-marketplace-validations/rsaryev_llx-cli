@@ -196,12 +196,11 @@ fn a_turn_goes_back_in_the_order_the_model_wrote_it_with_its_calls_as_they_are_n
 }
 
 #[test]
-fn the_deepest_levels_get_room_for_their_thinking() {
+fn every_level_gets_room_for_its_thinking_and_the_files_after_it() {
     let messages = [Message::User("hi".into())];
-    assert_eq!(
-        sent(&messages, &[], Effort::High, &[])["max_tokens"],
-        32_000
-    );
+    for effort in [Effort::Low, Effort::High] {
+        assert_eq!(sent(&messages, &[], effort, &[])["max_tokens"], 64_000);
+    }
     let deep = selection("m", vec![Effort::High, Effort::Max], Effort::Max);
     let request = Request {
         conversation: &messages,
@@ -297,4 +296,12 @@ fn a_call_asked_for_alone_is_left_to_the_model_as_the_current_models_refuse_a_fo
         json!(["source"])
     );
     assert_eq!(offered["stream"], true);
+}
+
+#[test]
+fn each_tools_input_is_streamed_as_it_is_written_so_a_cut_call_keeps_what_it_wrote() {
+    let offered = sent(&[Message::User("go".into())], &tools(), Effort::Low, &[]);
+    for tool in offered["tools"].as_array().unwrap() {
+        assert_eq!(tool["eager_input_streaming"], true, "{tool}");
+    }
 }

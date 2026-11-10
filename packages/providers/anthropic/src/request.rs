@@ -9,11 +9,10 @@ use contracts::chat::{Calling, Message, Request, ToolCall};
 use contracts::tool::{Image, ToolSpec};
 use serde_json::{Value, json};
 
-/// The most a reply may write, in tokens, or the model's own limit when it is smaller: room for a
-/// whole file in one call, and a bound on its thinking.
-const MAX_OUTPUT: u64 = 32_000;
-/// The same at the deepest levels, whose thinking takes much of it (the API's advice: 64k).
-const DEEP_OUTPUT: u64 = 64_000;
+/// The most a reply may write, in tokens, or the model's own limit when it is smaller: room for
+/// its thinking and the files it writes after it, at every level. At 32k a reply that thought long
+/// was cut before its first call and was lost whole, some 150 s of a small model's writing.
+const MAX_OUTPUT: u64 = 64_000;
 /// Where `carried` keeps this wire's turn as the model wrote it: its signed thinking, its words
 /// and its calls in their order. Another provider's has no such field.
 pub(crate) const BLOCKS: &str = "anthropic";
@@ -37,13 +36,9 @@ pub(crate) fn body(
     forgotten: &HashSet<String>,
 ) -> Value {
     let model = &selection.model().id;
-    let most = match selection.effort() {
-        Effort::XHigh | Effort::Max | Effort::Ultra => DEEP_OUTPUT,
-        Effort::Off | Effort::Minimal | Effort::Low | Effort::Medium | Effort::High => MAX_OUTPUT,
-    };
     let limit = match selection.model().output {
-        0 => most,
-        own => own.min(most),
+        0 => MAX_OUTPUT,
+        own => own.min(MAX_OUTPUT),
     };
     let (system, mut messages) = conversation(request, model, forgotten);
     marked(&mut messages);
@@ -258,9 +253,12 @@ fn picture(caption: &str, image: &Image) -> Vec<Value> {
     ]
 }
 
+/// A tool as the API takes it. Its input is streamed as the model writes it
+/// (`eager_input_streaming`): else the API holds a string back until it is whole, and a call the
+/// output limit cut arrives empty, with nothing of it to carry out (B7).
 fn tool(spec: &ToolSpec) -> Value {
     json!({"name": spec.name, "description": spec.description,
-        "input_schema": spec.input.schema()})
+        "input_schema": spec.input.schema(), "eager_input_streaming": true})
 }
 
 /// The cache's marks, past the system prompt's: the first message (the context, the same for

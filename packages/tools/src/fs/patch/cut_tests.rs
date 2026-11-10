@@ -126,3 +126,35 @@ fn a_wrong_line_in_the_whole_part_is_numbered_as_the_text_has_it() {
         assert!(!dir.path().join("a").exists());
     }
 }
+
+#[test]
+fn a_file_deleted_to_be_written_again_stays_when_the_cut_fell_in_its_new_text() {
+    let dir = Scratch::new();
+    dir.file("a.txt", "kept\n");
+    let patch = "*** Begin Patch\n*** Add File: new.txt\n+one\n*** Delete File: a.txt\n\
+        *** Add File: a.txt\n+the start of the new a";
+    let report = salvaged(&dir, patch).unwrap().report;
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("a.txt")).unwrap(),
+        "kept\n",
+        "{report}"
+    );
+    assert!(dir.path().join("new.txt").exists());
+    assert!(report.contains("'*** Add File: a.txt'"), "{report}");
+    // With nothing whole before the pair, no file is changed.
+    let alone = "*** Begin Patch\n*** Delete File: a.txt\n*** Add File: a.txt\n+the start";
+    let error = salvaged(&dir, alone).unwrap_err();
+    assert!(matches!(&error, ToolError::Failed(why) if why.contains("No file was changed")));
+    assert!(dir.path().join("a.txt").exists());
+}
+
+#[test]
+fn a_patch_ended_after_each_file_and_cut_in_a_later_one_leaves_that_one_out() {
+    let dir = Scratch::new();
+    let patch = "*** Begin Patch\n*** Add File: a.txt\n+one\n*** End Patch\n\
+        *** Add File: c.txt\n+the start of c";
+    let report = salvaged(&dir, patch).unwrap().report;
+    assert!(dir.path().join("a.txt").exists());
+    assert!(!dir.path().join("c.txt").exists(), "{report}");
+    assert!(report.contains("cut off"), "{report}");
+}

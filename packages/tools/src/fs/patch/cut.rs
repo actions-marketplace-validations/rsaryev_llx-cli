@@ -5,7 +5,7 @@
 use contracts::gate::Gate;
 use contracts::tool::{ToolError, ToolOutput};
 
-use super::{BEGIN, END, UPDATE, header, probed, run};
+use super::{ADD, BEGIN, DELETE, END, UPDATE, header, probed, run};
 use crate::workspace::Workspace;
 
 /// What the model is told of the section the cut fell in.
@@ -21,7 +21,7 @@ pub(super) fn salvage(
     let lines: Vec<&str> = patch.lines().collect();
     let probes = probes(&lines);
     // The cut fell after the end: the patch is whole.
-    if probes.contains(&END) {
+    if probes.iter().rev().find(|probe| !probe.is_empty()) == Some(&END) {
         return run(workspace, gate, patch);
     }
     let begin = probes.iter().position(|probe| *probe == BEGIN);
@@ -34,6 +34,20 @@ pub(super) fn salvage(
         )));
     };
     let fell_in = probes[last];
+    // A file deleted to be written again in the section the cut fell in stays: the two are one
+    // rewrite, and the deletion alone would leave no file.
+    let path =
+        |probe: &str, kind: &str| probe.strip_prefix(kind).map(|path| path.trim().to_string());
+    let before = (probes.get(..last).unwrap_or_default().iter()).rposition(|probe| header(probe));
+    let last = match before {
+        Some(before)
+            if path(fell_in, ADD).is_some()
+                && path(probes[before], DELETE) == path(fell_in, ADD) =>
+        {
+            before
+        }
+        Some(_) | None => last,
+    };
     let whole = lines.get(begin..last).unwrap_or_default();
     if !(probes.get(begin..last).unwrap_or_default().iter()).any(|probe| header(probe)) {
         return Err(ToolError::Failed(format!(

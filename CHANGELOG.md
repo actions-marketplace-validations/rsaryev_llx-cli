@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- **On Anthropic's API, a reply the output limit cut off no longer loses its last call.** A tool's input is now streamed as the model writes it (`eager_input_streaming`); before, the API held a long string back until it was whole, so a cut `apply_patch` arrived empty and the files it had written whole were never applied.
+- **Anthropic's models write up to 64,000 tokens a reply at every level** (or the model's own limit when smaller); before, 32,000 below `xhigh`, where a reply that thought long was cut before its first call and lost whole.
+- **`apply_patch` reads a patch ended after each file as one patch**: a `*** End Patch` between two files' sections, with or without a new `*** Begin Patch`, is a separator. Text after the end that starts no file is still refused, with its line.
+- **`apply_patch` takes its text whatever else the model wrote beside it** where it is offered as a function: a call with a `description` next to the patch was refused as "not JSON arguments", and the model wrote the patch again.
+- **A patch cut off while it rewrote a file keeps that file.** A `*** Delete File` followed by an `*** Add File` of the same path, the cut falling in the new text, deleted the file and wrote nothing; the pair is now left out together. A cut patch whose earlier files each ended with `*** End Patch` no longer applies the file the cut fell in.
+
 ## 0.5.0
 
 - **`LLX_RECORD=<dir>`** keeps each session's run whole as JSON lines: every call and its whole output as the model read it, before any elision, the model's words, each turn's usage, each elision and the answer, an agent's events named by it. Off by default; for reading a session again (what an elision took, what the agent read again after one).

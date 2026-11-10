@@ -43,11 +43,13 @@ impl Input {
     }
 
     /// The arguments of a function call as a call to the tool: a text tool's text taken out of
-    /// its one argument. What is not that shape stays as it is, for the tool to refuse.
+    /// its argument, whatever else the model wrote beside it (a `description`, as another tool
+    /// takes one: the text is whole, and refusing it costs the model writing it again). What is
+    /// not that shape stays as it is, for the tool to refuse.
     #[must_use]
     pub fn from_function(&self, arguments: Value) -> Value {
         let text = match (self, &arguments) {
-            (Self::Text(_), Value::Object(map)) if map.len() == 1 => map.get(TEXT_ARGUMENT),
+            (Self::Text(_), Value::Object(map)) => map.get(TEXT_ARGUMENT),
             _ => None,
         };
         match text {

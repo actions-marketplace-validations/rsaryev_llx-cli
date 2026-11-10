@@ -76,15 +76,38 @@ fn parse(text: &str) -> Result<Vec<Hunk>, String> {
     let all: Vec<&str> = text.trim().lines().collect();
     let (first, body) = inside(&all)?;
     let mut hunks = vec![];
+    let mut ended = Ended::No;
     for (index, line) in body.iter().enumerate() {
         let number = blank + first + index + 1;
-        step(&mut hunks, line).map_err(|why| format!("invalid patch, line {number}: {why}"))?;
+        let probe = probed(line, matches!(hunks.last(), Some(Hunk::Update { .. })));
+        ended = match (ended, probe) {
+            (_, END) => Ended::Yes,
+            (Ended::Yes | Ended::Begun, "") => ended,
+            (Ended::Yes, BEGIN) => Ended::Begun,
+            (Ended::Yes | Ended::Begun, _) if !header(probe) => {
+                return Err(format!("invalid patch, line {number}: text after '{END}'"));
+            }
+            (Ended::No | Ended::Yes | Ended::Begun, _) => {
+                step(&mut hunks, line)
+                    .map_err(|why| format!("invalid patch, line {number}: {why}"))?;
+                Ended::No
+            }
+        };
     }
     closed(&mut hunks)?;
     if hunks.is_empty() {
         return Err("invalid patch: it changes no file".into());
     }
     Ok(hunks)
+}
+
+/// Whether the line before was the patch's end: a model that ends its patch after each file, or
+/// writes one patch per file in one text, still wrote one list of files, read as one patch.
+#[derive(Clone, Copy)]
+enum Ended {
+    No,
+    Yes,
+    Begun,
 }
 
 /// The lines between the markers, the heredoc taken off when there is one, and where in `all`
@@ -116,9 +139,7 @@ fn step(hunks: &mut Vec<Hunk>, line: &str) -> Result<(), String> {
             .strip_prefix(prefix)
             .map(|path| path.trim().to_string())
     };
-    let header = if probe == END {
-        return Err(format!("text after '{END}'"));
-    } else if let Some(path) = named(ADD) {
+    let header = if let Some(path) = named(ADD) {
         Some(Hunk::Add {
             path,
             content: String::new(),
