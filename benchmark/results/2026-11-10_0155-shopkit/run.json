@@ -1,0 +1,51 @@
+{
+ "when": "2026-11-10 01:55",
+ "task": "shopkit",
+ "tests": 69,
+ "provider": "anthropic",
+ "model": "claude-haiku-5-5",
+ "reasoning": "low",
+ "advice": false,
+ "timeout_s": 1200,
+ "repeat": 1,
+ "note": "Haiku 5.5 over Anthropic's Messages API, after the 2026-11-10 cleanup",
+ "machine": "Darwin arm64 26.6.2",
+ "load": 17.2,
+ "agents": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "path": "/Users/okak/Documents/llx/target/release/llx",
+   "version": "llx 0.4.0",
+   "commit": "5eef02d7",
+   "bytes": 2774144,
+   "sha256": "b4d47a512be0"
+  }
+ ],
+ "runs": [
+  {
+   "label": "llx",
+   "kind": "llx",
+   "run": 0,
+   "exit": 0,
+   "wall_s": 65.5,
+   "pass": 69,
+   "fail": 0,
+   "solved": true,
+   "tampered": [],
+   "status": "done",
+   "turns": 4,
+   "input_tokens": 63771,
+   "cached_tokens": 36355,
+   "output_tokens": 16531,
+   "cost_usd": 0.0114,
+   "cache_pct": 57,
+   "calls": 3,
+   "failed_commands": 0,
+   "patches": 0,
+   "failed_patches": 0,
+   "model_s": 65.4,
+   "advised": 0
+  }
+ ]
+}

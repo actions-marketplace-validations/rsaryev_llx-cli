@@ -211,3 +211,27 @@ fn a_declined_request_is_an_error_that_says_why() {
     )]);
     assert!(ask(&unfinished, &[Message::User("go".into())], &[]).is_err());
 }
+
+#[test]
+fn an_old_turns_thinking_may_go_its_words_and_calls_stay_in_order() {
+    let mut kept = json!({"model": "claude", "anthropic": [
+        {"type": "thinking", "thinking": "Plan", "signature": "s1"},
+        {"type": "text", "text": "Reading it."},
+        {"type": "redacted_thinking", "data": "sealed"},
+        {"type": "tool_use", "id": "t1", "name": "bash", "input": {}},
+    ]});
+    assert!(shed(&mut kept));
+    assert_eq!(
+        kept,
+        json!({"model": "claude", "anthropic": [
+            {"type": "text", "text": "Reading it."},
+            {"type": "tool_use", "id": "t1", "name": "bash", "input": {}},
+        ]})
+    );
+    assert!(!shed(&mut kept), "nothing more to go");
+    let mut other =
+        json!({"model": "gpt", "item": {"type": "reasoning", "encrypted_content": "e"}});
+    let before = other.clone();
+    assert!(!shed(&mut other));
+    assert_eq!(other, before);
+}

@@ -179,7 +179,7 @@ impl Chat for ChatModel {
                 }
             };
             if reply.status == 200
-                && let Some(error) = failed_for_load(&reply.body)
+                && let Some(error) = failed_for_load(&reply.body, host)
             {
                 return Attempt::Again(error);
             }
@@ -194,33 +194,50 @@ impl Chat for ChatModel {
                 200 => Attempt::Done({
                     route::trace(&session, routed.as_deref(), &reply);
                     self.routes.keep(&task, &reply);
-                    read(&reply.body, self.selection.model().id.as_str()).map(|mut completion| {
-                        completion.calls = (completion.calls.into_iter())
-                            .map(|call| offer.incoming(call))
-                            .collect();
-                        completion.usage.millis =
-                            u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-                        completion
-                    })
+                    read(&reply.body, self.selection.model().id.as_str(), host).map(
+                        |mut completion| {
+                            completion.calls = (completion.calls.into_iter())
+                                .map(|call| offer.incoming(call))
+                                .collect();
+                            completion.usage.millis =
+                                u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
+                            completion
+                        },
+                    )
                 }),
                 // A 429 is a key's rate limit of a moment; with a sign-in it is the plan's usage
                 // limit, hours away: not worth a second try.
-                429 if matches!(self.access, Access::Key(_)) => {
-                    Attempt::Again(ChatError::Unavailable(rejected(&reply.body)))
+                status if matches!(self.access, Access::Key(_)) => {
+                    let message = rejected(&reply.body);
+                    let error =
+                        ChatError::Unavailable(format!("OpenAI answered {status}: {message}"));
+                    if status == 429 || TRANSIENT.contains(&status) {
+                        Attempt::Again(error)
+                    } else {
+                        Attempt::Done(Err(error))
+                    }
                 }
                 status if TRANSIENT.contains(&status) => {
                     Attempt::Again(ChatError::Unavailable(refusal(status, &reply.body)))
-                }
-                status if matches!(self.access, Access::Key(_)) => {
-                    let message = rejected(&reply.body);
-                    Attempt::Done(Err(ChatError::Unavailable(format!(
-                        "OpenAI answered {status}: {message}"
-                    ))))
                 }
                 status => Attempt::Done(Err(ChatError::Unavailable(refusal(status, &reply.body)))),
             }
         })
     }
+}
+
+/// What of `kept`, a value a turn carried back, may go once the turn is old (the history's
+/// `Shed`): a sealed reasoning, whole (the value left null), as the API drops it itself once the
+/// person speaks again; nothing is stored, so no item names it. A message with its phase stays,
+/// and a value of another provider's is not this one's to change.
+pub fn shed(kept: &mut Value) -> bool {
+    let reasoning = kept
+        .get("item")
+        .is_some_and(|item| item["type"] == "reasoning");
+    if reasoning {
+        *kept = Value::Null;
+    }
+    reasoning
 }
 
 /// The host's own words for a refusal, where it sent some.

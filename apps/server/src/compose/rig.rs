@@ -44,6 +44,8 @@ pub(crate) struct Rig<'a> {
     pub jobs: &'a Jobs<'a>,
     /// The model's context window, for the agents (set at each task).
     pub window: &'a AtomicU64,
+    /// The model the requests go to, for the agents (set at each task).
+    pub model: &'a Mutex<String>,
     /// Each task of the conversation, oldest first, and where the conversation stood before it:
     /// what `/rewind` goes back to.
     pub checkpoints: Vec<crate::checkpoints::Task>,
@@ -159,6 +161,7 @@ pub(super) fn drive(
                 schema: schema.as_ref().map(|schema| schema as &dyn Shape),
                 inbox: Some(lane.inbox),
                 window: 0,
+                model: String::new(),
                 strategy: lane.kit.strategy,
                 advisor: advisor.as_ref().map(|advisor| advisor as &dyn Advisor),
             };
@@ -171,6 +174,7 @@ pub(super) fn drive(
                 agents: lane.registry,
                 jobs: lane.jobs,
                 window: lane.kit.window,
+                model: lane.kit.model,
                 checkpoints: vec![],
                 spent: contracts::chat::Spend::default(),
                 begun: std::time::Instant::now(),
@@ -221,9 +225,10 @@ impl Rig<'_> {
 
     /// Work in `mode` from the next question on.
     pub(crate) fn switch(&mut self, mode: Mode) {
+        let name = mode.name().to_string();
         self.mode.set(mode);
         if let Some(ui) = &self.ui {
-            ui.send(Event::Mode(self.mode.get().name().to_string()));
+            ui.send(Event::Mode(name));
         }
     }
 
@@ -236,8 +241,8 @@ impl Rig<'_> {
         if mode == self.told {
             return conversation;
         }
-        self.told = mode.clone();
         let note = mode::notice(&mode, self.shared.terminal, self.shared.asks);
+        self.told = mode;
         Some(self.agent.tell(conversation, &note))
     }
 }

@@ -43,6 +43,7 @@ fn agent<'a>(
         schema: None,
         inbox: None,
         window: 0,
+        model: String::new(),
         strategy: &Keep,
         advisor,
     }

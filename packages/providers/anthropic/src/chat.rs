@@ -10,7 +10,9 @@ use contracts::chat::{Chat, ChatError, Completion, Ending, Request, ToolCall, Us
 use contracts::tool::{Input, ToolSpec};
 use serde_json::{Value, json};
 
-use crate::client::{ApiError, Messages};
+use provider_kit::failure::ApiError;
+
+use crate::client::Messages;
 use crate::request::{BLOCKS, body, signature, signatures, words};
 
 pub use crate::request::Thinking;
@@ -40,11 +42,10 @@ impl ChatModel {
         }
     }
 
-    fn forgotten(&self) -> HashSet<String> {
-        let forgotten = self
-            .forgotten
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner);
+    /// The blocks never sent again, `more` among them from now on.
+    fn forget(&self, more: Vec<String>) -> HashSet<String> {
+        let mut forgotten = (self.forgotten.lock()).unwrap_or_else(PoisonError::into_inner);
+        forgotten.extend(more);
         forgotten.clone()
     }
 }
@@ -58,7 +59,7 @@ impl Chat for ChatModel {
             let beta = (thinking == Some(Thinking::Budget)).then_some(INTERLEAVED);
             (self.client.post(&body, request.deadline, beta), body)
         };
-        let answered = match sent(Some(self.thinking), &self.forgotten()) {
+        let answered = match sent(Some(self.thinking), &self.forget(vec![])) {
             // Earlier thinking is bound to the history it was written in: the turn is asked once
             // more without the blocks this request sent, which are not sent again. A budgeted
             // model in a tool loop wants its last turn to start with thinking: it is asked with
@@ -68,14 +69,7 @@ impl Chat for ChatModel {
                     "{} refused earlier thinking, sent without it",
                     self.client.name
                 );
-                let forgotten = {
-                    let mut forgotten = self
-                        .forgotten
-                        .lock()
-                        .unwrap_or_else(PoisonError::into_inner);
-                    forgotten.extend(signatures(&refused));
-                    forgotten.clone()
-                };
+                let forgotten = self.forget(signatures(&refused));
                 let thinking = match self.thinking {
                     Thinking::Adaptive => Some(Thinking::Adaptive),
                     Thinking::Budget => None,
@@ -204,6 +198,24 @@ fn salvage(calls: &mut [ToolCall], ending: Ending, tools: &[ToolSpec]) {
             call.arguments = spec.input.from_function(call.arguments.take());
         }
     }
+}
+
+/// What of `kept`, a value a turn carried back, may go once the turn is old (the history's
+/// `Shed`): its thinking blocks, as the API takes a turn without them but the last (which the
+/// history never reaches); the turn's words and calls stay in their order. A value of another
+/// provider's is not this one's to change.
+pub fn shed(kept: &mut Value) -> bool {
+    let Some(layout) = kept.get_mut(BLOCKS).and_then(Value::as_array_mut) else {
+        return false;
+    };
+    let before = layout.len();
+    layout.retain(|block| {
+        !matches!(
+            block["type"].as_str(),
+            Some("thinking" | "redacted_thinking")
+        )
+    });
+    layout.len() != before
 }
 
 #[cfg(test)]

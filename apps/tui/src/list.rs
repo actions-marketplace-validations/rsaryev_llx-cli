@@ -19,7 +19,7 @@ use super::wrap::cut;
 impl App {
     /// The list's last row drawn (the jobs past the first few are only counted); `None` while
     /// it draws none, and has no row to choose.
-    pub(super) fn last_row(&self) -> Option<usize> {
+    fn last_row(&self) -> Option<usize> {
         let rows = self.views.order().len() + self.views.jobs.len().min(super::tree::ROWS);
         rows.checked_sub(1)
     }
@@ -36,7 +36,7 @@ impl App {
 
     /// Give the list the keys, on the session shown.
     pub(super) fn enter_list(&mut self) {
-        let shown = self.views.find(&self.views.shown).unwrap_or(0);
+        let shown = self.views.shown_at();
         let row = self.views.order().iter().position(|&at| at == shown);
         self.views.focus = self.views.at(row.unwrap_or(0));
     }

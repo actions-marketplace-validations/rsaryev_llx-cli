@@ -11,8 +11,7 @@ mod unevaluated;
 use serde_json::Value;
 
 use crate::node::{
-    ARRAY, BOOLEAN, HAS_ARRAY, HAS_COMBINED, HAS_KIND, HAS_NUMBER, HAS_OBJECT, HAS_STRING, Id,
-    NULL, NUMBER, Node, OBJECT, Rules, STRING, kind_of,
+    HAS_ARRAY, HAS_COMBINED, HAS_KIND, HAS_NUMBER, HAS_OBJECT, HAS_STRING, Id, Node, Rules,
 };
 use crate::number::{self, json_eq};
 use crate::pattern::Pattern;
@@ -209,17 +208,7 @@ impl Walk<'_> {
         at: &At<'_>,
         r: &mut Report<'_, F>,
     ) -> bool {
-        // A number asked to be any number is one, whole or not: whether it is an integer is
-        // read only where the schema asks for one.
-        let kind = match value {
-            Value::Null => NULL,
-            Value::Bool(_) => BOOLEAN,
-            Value::String(_) => STRING,
-            Value::Array(_) => ARRAY,
-            Value::Object(_) => OBJECT,
-            Value::Number(_) if rules.types.is_some_and(|types| types & NUMBER != 0) => NUMBER,
-            Value::Number(_) => kind_of(value, self.strict),
-        };
+        let kind = self.kind_for(rules.types.unwrap_or(0), value);
         if let Some(types) = rules.types
             && types & kind == 0
             && !r.no(|| {
@@ -295,16 +284,13 @@ fn short_text(text: &str) -> String {
     short(&Value::String(text.to_string()))
 }
 
-/// The number bounds, then `multipleOf`.
+/// The number bounds, then `multipleOf` (read only where the node has either: `HAS_NUMBER`).
 fn bounds<const F: bool>(
     rules: &Rules,
     n: &serde_json::Number,
     at: &At<'_>,
     r: &mut Report<'_, F>,
 ) -> bool {
-    if rules.limits.is_empty() && rules.multiple.is_none() {
-        return true;
-    }
     for (limit, sign) in &rules.limits {
         if !sign.holds(n, limit) && !r.no(|| said!("{at} must be {} {limit} (is {n})", sign.said()))
         {

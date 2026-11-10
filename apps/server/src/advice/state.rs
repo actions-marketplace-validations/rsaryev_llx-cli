@@ -7,7 +7,7 @@ use contracts::chat::{Message, ToolCall};
 use serde_json::{Value, json};
 
 /// Characters of the whole state at most: the decision model reads some 64k tokens.
-pub(super) const MAX_STATE: usize = 60_000;
+const MAX_STATE: usize = 60_000;
 /// Characters kept of a call's input, of the end of its result, and of the goal and the answer.
 const INPUT: usize = 400;
 const OUTPUT: usize = 800;

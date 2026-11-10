@@ -128,12 +128,7 @@ impl Walk<'_> {
         let mut met = 0;
         let unread = open && objects.properties.is_empty();
         let sparse = objects.properties.len() > fields.len().saturating_mul(4);
-        let mut cursor = Cursor {
-            properties: &objects.properties,
-            next: 0,
-            passed: 0,
-            last: "",
-        };
+        let mut cursor = Cursor::new(&objects.properties);
         for (name, value) in fields.iter().filter(|_| !unread) {
             let here = At::Key(at, name);
             if let Some(names) = objects.names {

@@ -40,8 +40,12 @@ pub fn load(app: App) -> Catalog {
 
 /// When the fetched catalog was last written (or found unchanged); `None` when there is none.
 pub fn written(app: App) -> Option<SystemTime> {
-    let (cache, _) = paths(app)?;
-    std::fs::metadata(cache)
+    modified(&paths(app)?.0)
+}
+
+/// When `path` was last written; `None` when it cannot be told.
+fn modified(path: &Path) -> Option<SystemTime> {
+    std::fs::metadata(path)
         .and_then(|meta| meta.modified())
         .ok()
 }
@@ -66,9 +70,7 @@ fn settle(
     etag_path: &Path,
     fetch: impl FnOnce(Option<&str>) -> Result<Reply, String>,
 ) -> Result<bool, String> {
-    let fresh = std::fs::metadata(cache)
-        .and_then(|meta| meta.modified())
-        .ok()
+    let fresh = modified(cache)
         .and_then(|at| SystemTime::now().duration_since(at).ok())
         .is_some_and(|age| age < STALE);
     if fresh {

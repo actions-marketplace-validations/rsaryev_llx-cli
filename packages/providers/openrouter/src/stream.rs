@@ -14,7 +14,8 @@ pub(crate) fn assembled(body: &str) -> Option<Value> {
     events.peek()?;
     let mut whole = Whole::default();
     for mut event in events {
-        if let Some(error) = event.get_mut("error") {
+        // A `null` one is none: a compatible host may send it beside the deltas.
+        if let Some(error) = event.get_mut("error").filter(|error| !error.is_null()) {
             return Some(match whole.written() {
                 true => json!({ "error": error.take(), "written": true }),
                 false => json!({ "error": error.take() }),

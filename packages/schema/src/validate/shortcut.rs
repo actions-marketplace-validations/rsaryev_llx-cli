@@ -6,13 +6,10 @@ use serde_json::Value;
 use super::Walk;
 use crate::compile::tags::Tag;
 use crate::node::{
-    ARRAY, BOOLEAN, HAS_KIND, HAS_STRING, Id, Items, NULL, NUMBER, Node, OBJECT, PlainArray,
+    ALL, ARRAY, BOOLEAN, HAS_KIND, HAS_STRING, Id, Items, NULL, NUMBER, Node, OBJECT, PlainArray,
     STRING, kind_of,
 };
 use crate::report::{At, Report, said};
-
-/// Every type's bit: a node that allows anything.
-const ALL: u8 = 0x7F;
 
 impl Walk<'_> {
     /// A field's `name` held to `propertyNames`' node `id`, read where it is, with no string
@@ -47,14 +44,14 @@ impl Walk<'_> {
     /// Whether `value` surely matches node `id` without walking it: the node allows anything,
     /// or asks only for types the value has. `false` says only that the walk must decide.
     #[inline]
-    pub(crate) fn fits(&self, id: Id, value: &Value) -> bool {
+    pub(super) fn fits(&self, id: Id, value: &Value) -> bool {
         self.types_of(id)
             .is_some_and(|types| self.has_type(types, value))
     }
 
     /// Whether `value` matches the array `plan` describes: its type, its count, its items' type.
     #[inline]
-    pub(crate) fn plain(&self, plan: &PlainArray, value: &Value) -> bool {
+    pub(super) fn plain(&self, plan: &PlainArray, value: &Value) -> bool {
         match value {
             Value::Array(items) => {
                 let len = items.len() as u64;
@@ -84,7 +81,7 @@ impl Walk<'_> {
     /// The types node `id` asks for, where that is all it asks (a `$ref` that is all a node
     /// asks was given its target's types as it compiled); every type for one that allows all.
     #[inline(always)]
-    pub(crate) fn types_of(&self, id: Id) -> Option<u8> {
+    pub(super) fn types_of(&self, id: Id) -> Option<u8> {
         match self.nodes.get(id) {
             Some(Node::Any) => Some(ALL),
             Some(Node::Rules(rules)) => rules.only_types,
@@ -92,11 +89,17 @@ impl Walk<'_> {
         }
     }
 
-    /// Whether `value` is of one of `types`: whether a number is whole is read only where the
-    /// types tell an integer from a number.
+    /// Whether `value` is of one of `types`.
     #[inline(always)]
-    pub(crate) fn has_type(&self, types: u8, value: &Value) -> bool {
-        let kind = match value {
+    pub(super) fn has_type(&self, types: u8, value: &Value) -> bool {
+        types & self.kind_for(types, value) != 0
+    }
+
+    /// The bits of `value`'s kind as `types` reads it: whether a number is whole is read only
+    /// where the types tell an integer from a number (a number asked to be any number is one).
+    #[inline(always)]
+    pub(super) fn kind_for(&self, types: u8, value: &Value) -> u8 {
+        match value {
             Value::Null => NULL,
             Value::Bool(_) => BOOLEAN,
             Value::String(_) => STRING,
@@ -104,8 +107,7 @@ impl Walk<'_> {
             Value::Object(_) => OBJECT,
             Value::Number(_) if types & NUMBER != 0 => NUMBER,
             Value::Number(_) => kind_of(value, self.strict),
-        };
-        types & kind != 0
+        }
     }
 }
 

@@ -33,10 +33,13 @@ impl Parser<'_> {
                 None => return Err(self.invalid("an unclosed class")),
             };
             match (first, last) {
-                (Escape::Char(a), Escape::Char(b)) if !tree && a > b => {
-                    return Err(self.invalid("a range out of order"));
+                (first, last) if !tree => {
+                    if let (Some(a), Some(b)) = (first.point(), last.point())
+                        && a > b
+                    {
+                        return Err(self.invalid("a range out of order"));
+                    }
                 }
-                (_, _) if !tree => {}
                 (Escape::Char(a), Escape::Char(b)) => match Class::range(a, b) {
                     Some(range) => set.union(&range),
                     None => return Err(self.invalid("a range out of order")),
@@ -72,7 +75,8 @@ fn add(set: &mut Class, item: Escape) {
     match item {
         Escape::Char(c) => set.union(&Class::one(c)),
         Escape::Set(class) => set.union(&class),
-        // `\b` in a class is a backspace and `\B` is refused, so no assertion comes here.
-        Escape::Assert(_) => {}
+        // `\b` in a class is a backspace and `\B` is refused, so no assertion comes here; a lone
+        // surrogate leaves the pattern unchecked, so its class is never matched.
+        Escape::Assert(_) | Escape::Lone(_) => {}
     }
 }

@@ -51,24 +51,13 @@ impl Watched {
         let end = how(&waited, self.stop.by(), started.elapsed());
         let last = waited.last.unwrap_or_default();
         let entry = crate::arrivals::monitor(&self.name, &end.how, &said(&last));
-        // Posted while it is still listed: `exec` waits for as long as it is.
-        let over = jobs.over.load(Ordering::SeqCst);
-        match (over, self.stop.by()) {
-            (true, _) | (false, Some(By::Run)) => {}
-            (false, Some(By::Person)) => kit.queue.post(crate::arrivals::with_the_next_task(entry)),
-            (false, None) => kit.queue.post(entry),
-        }
-        jobs.lock().jobs.retain(|job| job.id != self.id);
-        if !over {
-            let of = Of {
-                id: &self.id,
-                name: &self.name,
-                kind: JobKind::Monitor,
-                detail: &self.command,
-            };
-            ended::keep(jobs, &of, end, last.output);
-        }
-        jobs.show();
+        let of = Of {
+            id: &self.id,
+            name: &self.name,
+            kind: JobKind::Monitor,
+            detail: &self.command,
+        };
+        ended::finish(jobs, &of, &self.stop, entry, || (end, last.output));
     }
 }
 

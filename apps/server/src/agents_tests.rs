@@ -505,6 +505,14 @@ fn an_agent_is_offered_the_main_tools_so_its_requests_start_as_the_main_ones_but
             answered[1..].iter().all(|(failed, _)| *failed),
             "{answered:?}"
         );
+        // The refusal names the tools the agent works with, and no tool it has not got.
+        let refused = &answered[1].1;
+        assert!(
+            refused.contains("bash")
+                && refused.contains("apply_patch")
+                && !refused.contains("grep"),
+            "{refused}"
+        );
         assert!(
             !chat.tools.lock().unwrap().contains_key("b"),
             "no agent of an agent"

@@ -5,7 +5,10 @@
 //! an answer in words, the data is asked for (`conclude`): the call forced where the host takes
 //! that, any other call answered unrun, words asked again.
 
+use std::borrow::Cow;
+
 use contracts::chat::{Calling, Completion, Ending, Message, Request, TaskId, ToolCall};
+use contracts::shape::Shape;
 use contracts::tool::{ToolError, ToolOutput, ToolSpec};
 
 use super::{Agent, DATA_NOW, MAX_FIXES, RETURNED, Run};
@@ -22,7 +25,7 @@ const NOT_YET: &str = "The result is not taken yet: what is still to come arrive
 
 /// What became of the `result` calls of a turn.
 #[derive(Debug, PartialEq)]
-pub(super) enum Returned {
+pub(super) enum Returned<'c> {
     /// A `result` alone, its data matching: the run has it, and the turn is the answer; whether
     /// its words were shown as it came.
     Data { said: bool },
@@ -31,22 +34,22 @@ pub(super) enum Returned {
     /// A `result` alone that did not match, or came before what was still to come: it went
     /// back, and the run goes on.
     Again,
-    /// The calls left to run (all of them, when none was `result`), and how the reply ended
-    /// for them: whole when the call the cut fell in was the `result` left out.
-    Rest(Vec<ToolCall>, Ending),
+    /// The calls left to run (all of them, borrowed, when none was `result`), and how the reply
+    /// ended for them: whole when the call the cut fell in was the `result` left out.
+    Rest(Cow<'c, [ToolCall]>, Ending),
 }
 
 impl Agent<'_> {
     /// The `result` calls of `completion` answered, and what is left of the turn.
-    pub(super) fn returned(
+    pub(super) fn returned<'c>(
         &self,
-        completion: &Completion,
+        completion: &'c Completion,
         fixes: &mut usize,
         run: &mut Run,
-    ) -> Returned {
+    ) -> Returned<'c> {
         let calls = &completion.calls;
         let Some(schema) = self.schema.filter(|_| calls.iter().any(is_result)) else {
-            return Returned::Rest(calls.clone(), completion.ending);
+            return Returned::Rest(Cow::Borrowed(calls), completion.ending);
         };
         if let ([call], Ending::Whole) = (calls.as_slice(), completion.ending) {
             self.say(completion);
@@ -55,9 +58,11 @@ impl Agent<'_> {
                 .as_deref()
                 .is_some_and(|text| !text.trim().is_empty());
             // What reached the run, or is still to come, comes before the data, as before an
-            // answer in words.
+            // answer in words. Asked before the look, as a source that is done posted its last
+            // entry before it said so: one that ends in between is in what the look takes.
+            let expecting = self.expecting();
             let mut came = self.take();
-            if came.is_empty() && self.expecting() {
+            if came.is_empty() && expecting {
                 came = self.inbox.map(|inbox| inbox.wait()).unwrap_or_default();
             }
             if !came.is_empty() {
@@ -65,29 +70,15 @@ impl Agent<'_> {
                 Self::deliver(run, came);
                 return Returned::Again;
             }
-            self.observer.call(call);
-            return match schema::take(&call.arguments, schema) {
-                Ok(data) => {
-                    let outcome = Ok(ToolOutput::from(RETURNED.to_string()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.result(&call.id, RETURNED);
-                    run.data = Some(Ok(data));
-                    Returned::Data { said }
-                }
-                Err(why) => {
-                    let said = format!("The result is not taken: {why}.");
-                    let outcome = Err(ToolError::Failed(said.clone()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.failure(&call.id, &said);
-                    *fixes += 1;
-                    if *fixes <= MAX_FIXES {
-                        return Returned::Again;
-                    }
-                    let why = format!("the result did not match the schema: {why}");
-                    run.data = Some(Err(why));
-                    Returned::Failed
-                }
+            let Err(why) = self.answer_result(call, schema, run) else {
+                return Returned::Data { said };
             };
+            *fixes += 1;
+            if *fixes <= MAX_FIXES {
+                return Returned::Again;
+            }
+            run.data = Some(Err(format!("the result did not match the schema: {why}")));
+            return Returned::Failed;
         }
         // Not alone, or cut off at the output limit: answered unrun, and the rest goes on.
         let cut = (completion.ending == Ending::Cut)
@@ -109,7 +100,7 @@ impl Agent<'_> {
             .filter(|call| !is_result(call))
             .cloned()
             .collect();
-        Returned::Rest(rest, ending)
+        Returned::Rest(Cow::Owned(rest), ending)
     }
 
     /// The calls of a reply to the data's request that are not `result`, answered unrun: only
@@ -162,27 +153,41 @@ impl Agent<'_> {
                 }
                 continue;
             };
-            self.observer.call(call);
-            match schema::take(&call.arguments, schema) {
-                Ok(data) => {
-                    let outcome = Ok(ToolOutput::from(RETURNED.to_string()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.result(&call.id, RETURNED);
-                    run.data = Some(Ok(data));
-                    return;
-                }
-                Err(why) => {
-                    let said = format!("The result is not taken: {why}.");
-                    let outcome = Err(ToolError::Failed(said.clone()));
-                    self.observer.result(call, &outcome);
-                    run.conversation.failure(&call.id, &said);
-                    problems = why;
-                }
+            match self.answer_result(call, schema, run) {
+                Ok(()) => return,
+                Err(why) => problems = why,
             }
         }
         run.data = Some(Err(format!(
             "the result did not match the schema: {problems}"
         )));
+    }
+
+    /// The data of the `result` call `call`, checked against `schema` and answered: the run has
+    /// it, or the model is told what to fix, and the caller why it did not match.
+    fn answer_result(
+        &self,
+        call: &ToolCall,
+        schema: &dyn Shape,
+        run: &mut Run,
+    ) -> Result<(), String> {
+        self.observer.call(call);
+        match schema::take(&call.arguments, schema) {
+            Ok(data) => {
+                let outcome = Ok(ToolOutput::from(RETURNED.to_string()));
+                self.observer.result(call, &outcome);
+                run.conversation.result(&call.id, RETURNED);
+                run.data = Some(Ok(data));
+                Ok(())
+            }
+            Err(why) => {
+                let said = format!("The result is not taken: {why}.");
+                let outcome = Err(ToolError::Failed(said.clone()));
+                self.observer.result(call, &outcome);
+                run.conversation.failure(&call.id, &said);
+                Err(why)
+            }
+        }
     }
 
     /// `call` answered as failed, with `why`.

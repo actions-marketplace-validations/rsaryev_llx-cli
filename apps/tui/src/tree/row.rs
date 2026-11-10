@@ -137,8 +137,7 @@ pub(super) fn row(row: Row, names: usize, width: usize) -> Line<'static> {
     // Time and tokens, or how a job runs, end at the right edge, as the footer's spend does; a
     // row too narrow for both says them after what it does.
     let beside = names + 4 + MIN_DETAIL + 2 + text_width(&right);
-    let (said, right) = match right.is_empty() || beside > room {
-        true if right.is_empty() => (row.detail, String::new()),
+    let (said, right) = match !right.is_empty() && beside > room {
         true => (format!("{} · {right}", row.detail), String::new()),
         false => (row.detail, right),
     };

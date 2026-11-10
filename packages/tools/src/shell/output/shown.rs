@@ -9,16 +9,7 @@ use super::{Captured, Cut, Entry, LINE, REPEAT_NOTE, Spill, Window};
 impl Window {
     pub(super) fn finish(&mut self) -> Captured {
         let spill = self.spill.as_mut().map(Spill::finish);
-        let mut text = String::new();
-        for entry in &self.head {
-            show(&mut text, entry);
-        }
-        if let Some(cut) = self.cut {
-            self.say_cut(&mut text, cut, spill.as_deref());
-        }
-        for entry in &self.tail {
-            show(&mut text, entry);
-        }
+        let mut text = self.shown(spill.as_deref());
         if let (None, Some(path)) = (self.cut, &spill) {
             let _ = writeln!(
                 text,
@@ -35,17 +26,23 @@ impl Window {
 
     /// The window as the model reads it while its command still runs: what it holds so far.
     pub(super) fn so_far(&self) -> String {
+        let text = self.shown(self.spill.as_ref().map(Spill::path));
+        text.trim_end().to_string()
+    }
+
+    /// The start, the cut with where `spill` keeps it, and the end.
+    fn shown(&self, spill: Option<&Path>) -> String {
         let mut text = String::new();
         for entry in &self.head {
             show(&mut text, entry);
         }
         if let Some(cut) = self.cut {
-            self.say_cut(&mut text, cut, self.spill.as_ref().map(Spill::path));
+            self.say_cut(&mut text, cut, spill);
         }
         for entry in &self.tail {
             show(&mut text, entry);
         }
-        text.trim_end().to_string()
+        text
     }
 
     fn say_cut(&self, text: &mut String, cut: Cut, spill: Option<&Path>) {

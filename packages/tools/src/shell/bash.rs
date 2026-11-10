@@ -291,11 +291,10 @@ pub(super) fn report(finished: Finished, place: Option<&str>) -> String {
         out.push(format!("Total output lines: {lines}"));
     }
     out.push("Output:".into());
-    let open = finished.open;
     if !finished.output.is_empty() {
         out.push(finished.output);
     }
-    if open {
+    if finished.open {
         out.push(
             "(a background process still holds the output: what it prints later is not shown)"
                 .into(),

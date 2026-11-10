@@ -1,17 +1,34 @@
 //! What follows a `\` in a pattern, as ECMA-262 reads it with the `u` flag: a character
 //! (`\t`, `\cX`, `\xHH`, `\uHHHH`, a surrogate pair, `\u{...}`, an escaped punctuation
 //! character), a class (`\d`, `\w`, `\s` and their negations) or an assertion (`\b`, `\B`).
-//! A back-reference and a property escape are refused as unchecked; an unknown letter as invalid.
+//! A back-reference (`refer.rs`) and a property escape are read and noted as unchecked; an
+//! unknown letter is invalid, as a back-reference inside a class is.
 
 use super::super::Unsupported;
 use super::super::class::Class;
-use super::{Assert, Parser, unchecked};
+use super::{Assert, Parser};
+
+/// The longest name of a property checked here, `General_Category=Space_Separator`.
+const NAME: usize = 32;
 
 /// What an escape stands for.
 pub(super) enum Escape {
     Char(char),
+    /// A surrogate's code point alone, which no string of UTF-8 holds: noted as unchecked.
+    Lone(u32),
     Set(Class),
     Assert(Assert),
+}
+
+impl Escape {
+    /// The code point a character or a lone surrogate stands for, which a range's ends compare.
+    pub(super) fn point(&self) -> Option<u32> {
+        match self {
+            Self::Char(c) => Some(u32::from(*c)),
+            Self::Lone(point) => Some(*point),
+            Self::Set(_) | Self::Assert(_) => None,
+        }
+    }
 }
 
 impl Parser<'_> {
@@ -37,15 +54,24 @@ impl Parser<'_> {
             'v' => '\u{B}',
             '0' if !self.peek().is_some_and(|c| c.is_ascii_digit()) => '\0',
             '0' => return Err(self.invalid("a legacy octal escape")),
-            '1'..='9' | 'k' => return Err(unchecked("a back-reference")),
+            '1'..='9' | 'k' if !in_class => {
+                self.reference(c)?;
+                return Ok(Escape::Set(Class::empty()));
+            }
             'p' => return self.property().map(Escape::Set),
-            'P' => return self.property().map(|class| Escape::Set(class.negated())),
+            'P' => {
+                let class = self.property()?;
+                return Ok(Escape::Set(self.set(|| class.negated())));
+            }
             'c' => self.control()?,
             'x' => match self.hex(2) {
                 Some(code) => char::from_u32(code).unwrap_or_default(),
                 None => return Err(self.invalid("a bad `\\x` escape")),
             },
-            'u' => self.unicode()?,
+            'u' => match self.unicode()? {
+                Ok(c) => c,
+                Err(point) => return Ok(Escape::Lone(point)),
+            },
             c if c.is_ascii_alphanumeric() => {
                 return Err(self.invalid(&format!("an unknown escape `\\{c}`")));
             }
@@ -64,16 +90,29 @@ impl Parser<'_> {
         while self.peek().is_some_and(|c| c != '}') {
             self.at += 1;
         }
-        let name: String = self
-            .chars
-            .get(start..self.at)
-            .unwrap_or_default()
-            .iter()
-            .collect();
+        let chars = self.chars.get(start..self.at).unwrap_or_default();
         if !self.eat('}') {
             return Err(self.invalid("an unclosed `\\p{`"));
         }
-        Class::property(&name).ok_or_else(|| unchecked(&format!("the Unicode property `{name}`")))
+        // Read on the stack: the names checked here are short and ASCII, and judging a pattern's
+        // syntax allocates nothing.
+        let mut bytes = [0; NAME];
+        let ascii = chars.len() <= NAME
+            && (bytes.iter_mut().zip(chars))
+                .all(|(byte, &c)| c.is_ascii() && u8::try_from(c).map(|b| *byte = b).is_ok());
+        let name = (bytes.get(..chars.len()))
+            .filter(|_| ascii)
+            .and_then(|bytes| std::str::from_utf8(bytes).ok());
+        match name.and_then(Class::ranges) {
+            Some(ranges) => Ok(self.set(|| Class::of(ranges))),
+            None => {
+                self.skip(|| {
+                    let name: String = chars.iter().collect();
+                    format!("the Unicode property `{name}`")
+                });
+                Ok(Class::empty())
+            }
+        }
     }
 
     /// `\cX`: the control character of an ASCII letter.
@@ -98,8 +137,9 @@ impl Parser<'_> {
         Some(value)
     }
 
-    /// `\uHHHH` (a surrogate pair as one character) or `\u{H...}`.
-    fn unicode(&mut self) -> Result<char, Unsupported> {
+    /// `\uHHHH` (a surrogate pair as one character) or `\u{H...}`: the character, or a lone
+    /// surrogate's code point, noted as unchecked.
+    pub(super) fn unicode(&mut self) -> Result<Result<char, u32>, Unsupported> {
         if self.eat('{') {
             let mut value: u32 = 0;
             let mut digits = 0;
@@ -108,12 +148,10 @@ impl Parser<'_> {
                 digits += 1;
                 value = value.saturating_mul(16).saturating_add(digit);
             }
-            let read = digits > 0 && self.eat('}');
-            return match (read, char::from_u32(value)) {
-                (true, Some(c)) => Ok(c),
-                (true, None) if value <= 0x10_FFFF => Err(unchecked("a lone surrogate")),
-                (true | false, _) => Err(self.invalid("a bad `\\u{...}` escape")),
-            };
+            if digits == 0 || !self.eat('}') || value > 0x10_FFFF {
+                return Err(self.invalid("a bad `\\u{...}` escape"));
+            }
+            return Ok(self.point(value));
         }
         let Some(high) = self.hex(4) else {
             return Err(self.invalid("a bad `\\u` escape"));
@@ -125,12 +163,20 @@ impl Parser<'_> {
             self.at += 2;
             match self.hex(4) {
                 Some(low) if (0xDC00..0xE000).contains(&low) => {
-                    let code = 0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00);
-                    return char::from_u32(code).ok_or_else(|| unchecked("a lone surrogate"));
+                    return Ok(self.point(0x1_0000 + ((high - 0xD800) << 10) + (low - 0xDC00)));
                 }
                 Some(_) | None => self.at = back,
             }
         }
-        char::from_u32(high).ok_or_else(|| unchecked("a lone surrogate"))
+        Ok(self.point(high))
+    }
+
+    /// The character at `point`, else (a lone surrogate, which no string of UTF-8 holds) the
+    /// point, noted as unchecked and read past.
+    fn point(&mut self, point: u32) -> Result<char, u32> {
+        char::from_u32(point).ok_or_else(|| {
+            self.skip(|| "a lone surrogate".into());
+            point
+        })
     }
 }

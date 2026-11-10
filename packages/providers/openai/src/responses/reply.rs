@@ -7,9 +7,9 @@ use serde_json::{Value, json};
 
 use super::offer::custom_call;
 
-/// The failure a reply reports before any of it was written, when a wait may mend it: an
-/// overload or a rate limit of a moment, or a code not known (as Codex asks again).
-pub(super) fn failed_for_load(body: &str) -> Option<ChatError> {
+/// The failure a reply of `host` reports before any of it was written, when a wait may mend it:
+/// an overload or a rate limit of a moment, or a code not known (as Codex asks again).
+pub(super) fn failed_for_load(body: &str, host: &str) -> Option<ChatError> {
     const LASTING: [&str; 5] = [
         "context_length_exceeded",
         "insufficient_quota",
@@ -24,7 +24,7 @@ pub(super) fn failed_for_load(body: &str) -> Option<ChatError> {
                 let code = error["code"].as_str().unwrap_or("");
                 let message = error["message"].as_str().unwrap_or("no message");
                 return (!LASTING.contains(&code))
-                    .then(|| ChatError::Unavailable(format!("ChatGPT failed: {message}")));
+                    .then(|| ChatError::Unavailable(format!("{host} failed: {message}")));
             }
             // Words or an item written: billed, never asked again.
             kind if kind.starts_with("response.output") => return None,
@@ -34,8 +34,9 @@ pub(super) fn failed_for_load(body: &str) -> Option<ChatError> {
     None
 }
 
-/// The completion in a streamed reply: its finished output items and the usage it ended with.
-pub(crate) fn read(body: &str, model: &str) -> Result<Completion, ChatError> {
+/// The completion in a streamed reply of `host`: its finished output items and the usage it
+/// ended with.
+pub(super) fn read(body: &str, model: &str, host: &str) -> Result<Completion, ChatError> {
     let mut completion = Completion::default();
     let mut said: Vec<String> = vec![];
     let mut ended = false;
@@ -90,9 +91,9 @@ pub(crate) fn read(body: &str, model: &str) -> Result<Completion, ChatError> {
                 if event.pointer("/response/incomplete_details/reason")
                     == Some(&json!("content_filter"))
                 {
-                    return Err(ChatError::Invalid(
-                        "ChatGPT withheld the reply (content filter)".into(),
-                    ));
+                    return Err(ChatError::Invalid(format!(
+                        "{host} withheld the reply (content filter)"
+                    )));
                 }
                 completion.usage = usage(&event["response"], model);
                 completion.ending = Ending::Cut;
@@ -108,7 +109,7 @@ pub(crate) fn read(body: &str, model: &str) -> Result<Completion, ChatError> {
                     _ => "",
                 };
                 return Err(ChatError::Unavailable(format!(
-                    "ChatGPT failed: {message}{window}"
+                    "{host} failed: {message}{window}"
                 )));
             }
             _ => {}

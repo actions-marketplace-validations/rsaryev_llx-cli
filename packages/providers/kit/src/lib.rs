@@ -1,11 +1,12 @@
 //! What the model providers share, so a new provider is mostly its wire format: an HTTP client on
 //! the OS's own TLS ([`http`]), the pieces of an OAuth sign-in ([`oauth`], [`loopback`] and its
 //! pages), private credential files ([`store`]), server-sent events ([`sse`]), a call the output
-//! limit cut off ([`cut`]), when a request is asked again ([`retry`]) and the prompt cache's key
-//! ([`cache`]). It implements no port and knows no provider.
+//! limit cut off ([`cut`]), when a request is asked again ([`retry`]), a host's failure
+//! ([`failure`]) and the prompt cache's key ([`cache`]). It implements no port and knows no provider.
 
 pub mod cache;
 pub mod cut;
+pub mod failure;
 pub mod http;
 pub mod loopback;
 pub mod oauth;

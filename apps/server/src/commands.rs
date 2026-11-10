@@ -76,6 +76,7 @@ pub(crate) fn dispatch(cli: Cli, front: &'static dyn Front) -> Result<i32, Failu
         Some(Command::Decide(args)) => decide::decide(&args),
         Some(Command::Resume(args)) => resumed(*args, Kind::Session, front),
         Some(Command::Sessions) => sessions::list(),
+        Some(Command::Spend { id }) => sessions::spend(id.as_deref()),
         Some(Command::Logout) => signin::logout(),
         Some(Command::Doctor(args)) => doctor::doctor(&args),
     }

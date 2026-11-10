@@ -1,12 +1,13 @@
-//! A job that ended, a command in the background or a monitor, still listed with how and with
-//! what it printed last, for the person to look at, until they let it go (`x`) or later ones
-//! take its place.
+//! A job that ended, a command in the background or a monitor: its end given back once by who
+//! stopped it ([`finish`]), then still listed with how and with what it printed last, for the
+//! person to look at, until they let it go (`x`) or later ones take its place.
 
 use std::sync::Arc;
+use std::sync::atomic::Ordering;
 
 use protocol::{JobEnd, JobKind, JobRow};
 
-use super::stop::Stop;
+use super::stop::{By, Stop};
 use super::{Jobs, outputs};
 
 /// Jobs that ended still listed, at most: the latest.
@@ -49,9 +50,37 @@ impl Ended {
     }
 }
 
+/// Job `of`, stopped by `stop`, ended: what it gives back (`entry`) is posted by who stopped it
+/// (B10), while it is still listed (`exec` waits for as long as it is); then it leaves the jobs,
+/// listed as ended with what `end` says unless the session is over.
+pub(super) fn finish(
+    jobs: &Jobs<'_>,
+    of: &Of<'_>,
+    stop: &Stop,
+    entry: queue::Entry,
+    end: impl FnOnce() -> (JobEnd, String),
+) {
+    let over = jobs.over.load(Ordering::SeqCst);
+    match (over, stop.by()) {
+        (true, _) | (false, Some(By::Run)) => {}
+        (false, Some(By::Person)) => {
+            jobs.kit
+                .queue
+                .post(crate::arrivals::with_the_next_task(entry));
+        }
+        (false, None) => jobs.kit.queue.post(entry),
+    }
+    jobs.lock().jobs.retain(|job| job.id != of.id);
+    if !over {
+        let (end, printed) = end();
+        keep(jobs, of, end, printed);
+    }
+    jobs.show();
+}
+
 /// List job `of` as ended with `end`, what it printed last `printed`: in a session only (in
 /// `exec` no one looks), the oldest let go past [`MAX_ENDED`].
-pub(super) fn keep(jobs: &Jobs<'_>, of: &Of<'_>, end: JobEnd, printed: String) {
+fn keep(jobs: &Jobs<'_>, of: &Of<'_>, end: JobEnd, printed: String) {
     if !jobs.kit.session {
         return;
     }

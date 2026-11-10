@@ -1,6 +1,6 @@
-//! `llx sessions` and `llx resume`: every run is a session, kept as a JSON file of its tasks
-//! and how each ended. The conversation itself is not kept, so `resume` starts a new one that is
-//! told what the session asked before, and records into the same session.
+//! `llx sessions`, `llx resume` and `llx spend`: every run is a session, kept as a JSON Lines
+//! file of its tasks and how each ended. The conversation itself is not kept, so `resume` starts a
+//! new one that is told what the session asked before, and records into the same session.
 
 use std::path::{Path, PathBuf};
 
@@ -140,21 +140,7 @@ pub(crate) fn resume(
 ) -> Result<i32, Failure> {
     let root = run::root(&options)?;
     let here = root.root().display().to_string();
-    let store = store();
-    let session = match id {
-        Some(id) => store.load(id),
-        None => {
-            // Read once, newest first: the newest here, else the newest of all; an agent's
-            // session goes on only through its parent.
-            let mut all = store.list();
-            let ran_here = |s: &Session| s.workspace == here && !s.is_agent();
-            let at =
-                (all.iter().position(ran_here)).or_else(|| all.iter().position(|s| !s.is_agent()));
-            at.map(|at| all.swap_remove(at)).ok_or(HistoryError::Empty)
-        }
-    };
-    let session = session
-        .map_err(|why| Failure::Usage(format!("{why}: `llx sessions` lists the saved ones")))?;
+    let session = chosen(id, &here)?;
     if !session.workspace.is_empty() && session.workspace != here {
         error::note(&format!(
             "llx: session {} ran in {}; this one runs in {here}\n",
@@ -163,6 +149,35 @@ pub(crate) fn resume(
         ));
     }
     run::run(prompt, options, Some(session), kind, front)
+}
+
+/// `llx spend`: what the session `id` names spent, else the newest one of this directory (else
+/// the newest of all), on stdout.
+pub(crate) fn spend(id: Option<&str>) -> Result<i32, Failure> {
+    let here = std::env::current_dir()
+        .map(|dir| dir.display().to_string())
+        .unwrap_or_default();
+    error::print(&crate::spend::report(&chosen(id, &here)?))?;
+    Ok(exit::OK)
+}
+
+/// The session `id` names, else the newest one that ran `here`, else the newest of all.
+fn chosen(id: Option<&str>, here: &str) -> Result<Session, Failure> {
+    let store = store();
+    let session = match id {
+        Some(id) => store.load(id),
+        None => {
+            // Read once, newest first: the newest here, else the newest of all; an agent's
+            // session is reached only through its parent's (it goes on there, its turns are
+            // counted there).
+            let mut all = store.list();
+            let ran_here = |s: &Session| s.workspace == here && !s.is_agent();
+            let at =
+                (all.iter().position(ran_here)).or_else(|| all.iter().position(|s| !s.is_agent()));
+            at.map(|at| all.swap_remove(at)).ok_or(HistoryError::Empty)
+        }
+    };
+    session.map_err(|why| Failure::Usage(format!("{why}: `llx sessions` lists the saved ones")))
 }
 
 #[cfg(test)]

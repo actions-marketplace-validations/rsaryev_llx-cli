@@ -1,6 +1,6 @@
 [package]
 name = "provider-kit"
-description = "What the model providers share: HTTP and its retries, PKCE, the sign-in callback, credential files, SSE, the prompt cache's key"
+description = "What the model providers share: HTTP, its retries and a host's failures, PKCE, the sign-in callback, credential files, SSE, the prompt cache's key"
 publish = false
 version.workspace = true
 edition.workspace = true

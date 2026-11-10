@@ -2,6 +2,7 @@
 //! one appended (ARCHITECTURE.md K8). Its one writer holds the file's lock for as long as it
 //! lives, and the operating system lets the lock go when the process ends, however it ends.
 
+use std::borrow::Cow;
 use std::fs::{File, OpenOptions, TryLockError};
 use std::io::Write;
 use std::os::unix::fs::FileExt;
@@ -11,10 +12,11 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use contracts::history::{HistoryError, Record, Session, Turn};
 use serde::{Deserialize, Serialize};
 
-/// One line of a session's file.
+/// One line of a session's file: a task and a title borrowed as they are written, owned as they
+/// are read.
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-enum Line {
+enum Line<'a> {
     /// The first line: which session this is, and where it ran.
     Session {
         id: String,
@@ -26,9 +28,9 @@ enum Line {
         name: String,
     },
     /// A task that ended.
-    Turn(Turn),
+    Turn(Cow<'a, Turn>),
     /// The session's title, as it was made.
-    Title { title: String },
+    Title { title: Cow<'a, str> },
 }
 
 /// Session `id` read back from its file's `text`: the header first, then each line in order. A
@@ -63,8 +65,8 @@ pub(crate) fn read(id: &str, text: &str) -> Result<Session, HistoryError> {
         match line {
             // A header past the first line was never written by a writer: nothing to keep.
             Line::Session { .. } => {}
-            Line::Turn(turn) => session.record(turn),
-            Line::Title { title } => session.title = title,
+            Line::Turn(turn) => session.record(turn.into_owned()),
+            Line::Title { title } => session.title = title.into_owned(),
         }
     }
     Ok(session)
@@ -86,12 +88,9 @@ impl Journal {
     /// another. A new file starts with the header; one a crash cut short is given its line's end,
     /// so the next line is whole.
     pub(crate) fn hold(path: PathBuf, session: &Session) -> Result<Self, HistoryError> {
-        let options = OpenOptions::new()
-            .read(true)
-            .append(true)
-            .create(true)
-            .clone();
-        let file = options.open(&path).map_err(|error| written(&error))?;
+        let file = (OpenOptions::new().read(true).append(true).create(true))
+            .open(&path)
+            .map_err(|error| written(&error))?;
         match file.try_lock() {
             Ok(()) => {}
             Err(TryLockError::WouldBlock) => return Err(HistoryError::Held(session.id.clone())),
@@ -137,14 +136,14 @@ impl Journal {
 
 impl Record for Journal {
     fn turn(&self, turn: &Turn) -> Result<(), HistoryError> {
-        self.append(&Line::Turn(turn.clone()))?;
+        self.append(&Line::Turn(Cow::Borrowed(turn)))?;
         self.turned.store(true, Ordering::SeqCst);
         Ok(())
     }
 
     fn title(&self, title: &str) -> Result<(), HistoryError> {
         self.append(&Line::Title {
-            title: title.to_string(),
+            title: Cow::Borrowed(title),
         })
     }
 }

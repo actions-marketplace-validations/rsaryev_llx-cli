@@ -35,6 +35,7 @@ mod providers;
 mod rules;
 mod server;
 mod shape;
+mod spend;
 mod sync;
 #[cfg(any(test, feature = "testing"))]
 pub mod test_support;

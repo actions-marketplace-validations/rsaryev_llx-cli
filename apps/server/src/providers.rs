@@ -1,8 +1,9 @@
 //! The providers llx can think with: every one the model catalog lists (`models`, from
 //! models.dev), and the one place that knows the provider packages: how each is signed in to,
 //! where its key is kept, and how its chat model is built. OpenAI is the ChatGPT backend with a
-//! ChatGPT sign-in, else its API with a key; every other provider is called over the OpenAI
-//! chat completions at the address the catalog gives (OpenRouter with its own extras).
+//! ChatGPT sign-in, else its API with a key; Anthropic's own models go over its Messages API;
+//! every other is called over chat completions at the address the catalog gives (OpenRouter with
+//! its own extras).
 
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock};
@@ -252,6 +253,13 @@ impl Provider {
 
 /// OpenRouter's client for `key`, at the address the session's environment names for a server
 /// standing in for it, else at its own.
+/// What of a value an old turn carried back may go (the history's `Shed`): each provider that
+/// takes it knows its own; chat completions' hosts let none go (DeepSeek and Kimi ask for their
+/// reasoning back through a task's calls, Gemini for its signatures).
+pub(crate) fn shed(kept: &mut serde_json::Value) -> bool {
+    openai::responses::shed(kept) || anthropic::chat::shed(kept)
+}
+
 pub(crate) fn openrouter_client(key: String, vars: Vars) -> openrouter::client::OpenRouter {
     match var(vars, "OPENROUTER_BASE_URL") {
         Some(base) => openrouter::client::OpenRouter::standing_in(&base, key, APP),

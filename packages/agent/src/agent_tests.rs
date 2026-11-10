@@ -9,6 +9,7 @@ use serde_json::{Value, json};
 use super::*;
 use crate::fakes::{Echo, Recorder, Scripted, calls, data, done, ok, says, users};
 use crate::fakes::{Shaped, Silent};
+use crate::history::Limits;
 
 fn agent<'a>(
     chat: &'a dyn Chat,
@@ -25,6 +26,7 @@ fn agent<'a>(
         schema,
         inbox: None,
         window: 0,
+        model: String::new(),
         strategy: &crate::fakes::Keep,
         advisor: None,
     }
@@ -531,8 +533,8 @@ fn what_the_model_says_beside_its_calls_is_shown() {
 struct Measured(Mutex<Vec<(u64, f64)>>);
 
 impl Strategy for Measured {
-    fn prepare(&self, _: &mut Conversation, ceiling: u64, ratio: f64) -> history::Report {
-        self.0.lock().unwrap().push((ceiling, ratio));
+    fn prepare(&self, _: &mut Conversation, limits: Limits, ratio: f64) -> history::Report {
+        self.0.lock().unwrap().push((limits.ceiling, ratio));
         vec![]
     }
 }
@@ -613,6 +615,49 @@ fn a_follow_up_task_sizes_its_first_request_by_what_the_last_one_measured() {
         seen[1].1 < 1.0,
         "the follow-up's first request is not sized as if nothing were known: ratio {}",
         seen[1].1
+    );
+}
+
+#[test]
+fn a_conversation_that_changed_model_lets_go_of_what_only_the_other_would_be_sent() {
+    let strategy = Measured::default();
+    let measured = |input_tokens, completion: Completion| Completion {
+        usage: Usage {
+            input_tokens,
+            ..Usage::default()
+        },
+        ..completion
+    };
+    // The first task on `sol`, its turn carrying 100k of sealed reasoning back.
+    let sealed = Completion {
+        carried: vec![json!({"model": "sol", "encrypted_content": "x".repeat(400_000)})],
+        ..calls("echo", json!({}))
+    };
+    let chat = Scripted::new(vec![
+        measured(11_300, sealed),
+        measured(111_400, done("Opened.")),
+        // The second on `sonnet`: as it counts the conversation, with no reasoning of `sol`'s.
+        measured(11_500, calls("echo", json!({}))),
+        measured(11_520, done("Done.")),
+    ]);
+    let on = |model: &str| Agent {
+        window: 128_000,
+        model: model.into(),
+        strategy: &strategy,
+        ..agent(&chat, &[&Wordy], None, &Silent)
+    };
+    let first = on("sol").run(None, "Open it", &[]);
+    let second = on("sonnet").run(Some(first.conversation), "Again", &[]);
+    assert_eq!(second.status, Status::Done);
+    let carried = second.conversation.messages().iter().any(
+        |message| matches!(message, Message::Assistant { carried, .. } if !carried.is_empty()),
+    );
+    assert!(!carried, "sol's reasoning went with the switch");
+    let seen = strategy.0.into_inner().unwrap();
+    let last = seen.last().unwrap().1;
+    assert!(
+        (0.9..1.1).contains(&last),
+        "the conversation is measured as sonnet counts it: ratio {last}"
     );
 }
 
@@ -843,6 +888,58 @@ impl Inbox for Mail {
         self.waiting.store(false, Ordering::SeqCst);
         std::mem::take(&mut *self.later.lock().unwrap())
     }
+}
+
+/// An inbox whose agent answers, and is done, right after the run's second look (the one before
+/// it takes a `result`) finds nothing: the answer is there for the next look, and nothing more is
+/// expected.
+#[derive(Default)]
+struct AnsweredAfterALook {
+    looks: AtomicUsize,
+    answer: Mutex<Vec<String>>,
+}
+
+impl Inbox for AnsweredAfterALook {
+    fn take(&self) -> Vec<String> {
+        if self.looks.fetch_add(1, Ordering::SeqCst) == 1 {
+            (self.answer.lock().unwrap()).push("<agent_result>93 EUR</agent_result>".into());
+            return vec![];
+        }
+        std::mem::take(&mut *self.answer.lock().unwrap())
+    }
+
+    fn expecting(&self) -> bool {
+        self.looks.load(Ordering::SeqCst) < 2
+    }
+
+    fn wait(&self) -> Vec<String> {
+        std::mem::take(&mut *self.answer.lock().unwrap())
+    }
+}
+
+#[test]
+fn a_result_made_as_an_agent_answers_waits_for_its_answer() {
+    // The agent answers between the run's look at the inbox and its asking whether more is to
+    // come: the data is not taken without that answer, which reaches the model first.
+    let schema = Shaped(json!({"type": "object"}));
+    let inbox = AnsweredAfterALook::default();
+    let chat = Scripted::new(vec![
+        data(&json!({"price": 90})),
+        data(&json!({"price": 93})),
+    ]);
+    let run = Agent {
+        inbox: Some(&inbox),
+        ..agent(&chat, &[], Some(&schema), &Silent)
+    }
+    .run(None, "Find the price", &[]);
+    assert_eq!(
+        users(run.conversation.messages()),
+        [
+            "Goal: Find the price",
+            "<agent_result>93 EUR</agent_result>"
+        ]
+    );
+    assert_eq!(run.data, Some(Ok(json!({"price": 93}))));
 }
 
 #[test]

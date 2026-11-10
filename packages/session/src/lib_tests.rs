@@ -211,6 +211,7 @@ fn what_a_task_spent_is_kept_and_a_step_that_spent_nothing_says_nothing() {
             cached_tokens: 9_000,
             output_tokens: 300,
             cost: 0.0125,
+            ..Default::default()
         },
         ..Default::default()
     };

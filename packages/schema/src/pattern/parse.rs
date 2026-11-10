@@ -1,11 +1,16 @@
 //! ECMA-262's pattern syntax, as JSON Schema's `pattern` is written, read into the small tree the
 //! matchers take: what a character class holds is resolved here, groups are dropped (a yes or no
-//! needs no capture), and what this matcher cannot check is refused with why. Annex B's
+//! needs no capture), and what this matcher cannot check is refused with why, once the rest is
+//! read: a pattern invalid past it is invalid, as a back-reference to no group is. Annex B's
 //! leniencies that change no meaning are kept: a `{` or `]` that starts nothing is itself, and
 //! so is an escaped punctuation character.
 
 mod bracket;
 mod escape;
+mod group;
+mod refer;
+
+use std::borrow::Cow;
 
 use super::Unsupported;
 use super::class::Class;
@@ -80,6 +85,15 @@ struct Parser<'s> {
     at: usize,
     depth: usize,
     build: Build,
+    /// The capturing groups read so far.
+    groups: u32,
+    /// The highest group a `\N` named.
+    referred: u32,
+    /// The named groups read, and the names `\k<name>` gave: compared once the pattern is read.
+    names: refer::Spans,
+    referred_names: refer::Spans,
+    /// The first thing read that this matcher cannot check.
+    skipped: Option<Unsupported>,
 }
 
 impl<'s> Parser<'s> {
@@ -89,14 +103,23 @@ impl<'s> Parser<'s> {
             at: 0,
             depth: 0,
             build,
+            groups: 0,
+            referred: 0,
+            names: refer::Spans::default(),
+            referred_names: refer::Spans::default(),
+            skipped: None,
         }
     }
 
     fn read(mut self) -> Result<Node, Unsupported> {
         let node = self.alternation()?;
-        match self.peek() {
+        if self.peek().is_some() {
+            return Err(self.invalid("an unmatched `)`"));
+        }
+        self.dangling()?;
+        match self.skipped {
             None => Ok(node),
-            Some(_) => Err(self.invalid("an unmatched `)`")),
+            Some(why) => Err(why),
         }
     }
 
@@ -109,6 +132,23 @@ impl<'s> Parser<'s> {
     }
 
     /// The class `make` makes, or an empty one when nothing is built (it holds no allocation).
+    /// What this matcher cannot check, `what` said only where the pattern is built: judging the
+    /// syntax asks only the kind, so a valid pattern costs it no allocation.
+    pub(super) fn unchecked(&self, what: impl FnOnce() -> String) -> Unsupported {
+        Unsupported::unchecked(match self.build {
+            Build::Tree => Cow::Owned(format!("{} is not checked", what())),
+            Build::Nothing => Cow::Borrowed(""),
+        })
+    }
+
+    /// What this matcher cannot check, noted (the first of them) and read past: the pattern is
+    /// refused for it only once the rest is read.
+    pub(super) fn skip(&mut self, what: impl FnOnce() -> String) {
+        if self.skipped.is_none() {
+            self.skipped = Some(self.unchecked(what));
+        }
+    }
+
     pub(super) fn set(&self, make: impl FnOnce() -> Class) -> Class {
         match self.build {
             Build::Tree => make(),
@@ -180,6 +220,7 @@ impl<'s> Parser<'s> {
                 Escape::Char(c) => self.class_of(|| Class::one(c)),
                 Escape::Set(class) => self.class_of(|| class),
                 Escape::Assert(assert) => Node::Assert(assert),
+                Escape::Lone(_) => self.class_of(Class::empty),
             },
             Some('.') => self.class_of(Class::dot),
             Some('(') => self.group()?,
@@ -270,50 +311,6 @@ impl<'s> Parser<'s> {
         }
         value
     }
-
-    fn group(&mut self) -> Result<Node, Unsupported> {
-        if self.eat('?') {
-            match self.bump() {
-                Some(':') => {}
-                Some('=' | '!') => return Err(unchecked("a lookahead")),
-                Some('<') if matches!(self.peek(), Some('=' | '!')) => {
-                    return Err(unchecked("a lookbehind"));
-                }
-                Some('<') => self.group_name()?,
-                Some(_) | None => return Err(self.invalid("an unknown group")),
-            }
-        }
-        self.depth += 1;
-        if self.depth > DEPTH {
-            return Err(unchecked("groups nested too deep"));
-        }
-        let inner = self.alternation()?;
-        self.depth -= 1;
-        if !self.eat(')') {
-            return Err(self.invalid("an unclosed group"));
-        }
-        Ok(inner)
-    }
-
-    fn group_name(&mut self) -> Result<(), Unsupported> {
-        let start = self.at;
-        while self
-            .peek()
-            .is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '$')
-        {
-            self.at += 1;
-        }
-        let named = self.at > start && self.chars.get(start).is_some_and(|c| !c.is_ascii_digit());
-        if named && self.eat('>') {
-            Ok(())
-        } else {
-            Err(self.invalid("a bad group name"))
-        }
-    }
-}
-
-fn unchecked(what: &str) -> Unsupported {
-    Unsupported::unchecked(format!("{what} is not checked"))
 }
 
 fn concat(mut items: Vec<Node>) -> Node {

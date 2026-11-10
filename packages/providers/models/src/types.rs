@@ -129,12 +129,12 @@ pub struct ApiTools {
 
 impl Model {
     /// A decision model (typed answers, no text), as `llx decide` uses.
-    pub fn decides(&self) -> bool {
+    pub(crate) fn decides(&self) -> bool {
         self.kind.as_deref() == Some("decision") && self.status.as_deref() != Some("deprecated")
     }
 
     /// What llx can work with: a chat model that calls tools, writes text, is not deprecated.
-    pub fn usable(&self) -> bool {
+    pub(crate) fn usable(&self) -> bool {
         self.kind.as_deref().unwrap_or("chat") == "chat"
             && self
                 .capabilities

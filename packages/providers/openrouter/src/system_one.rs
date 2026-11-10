@@ -6,7 +6,9 @@ use std::collections::BTreeMap;
 use contracts::model::{Answer, DecideError, Decider, Decision, Question};
 use serde_json::{Map, Value, json};
 
-use crate::client::{ApiError, OpenRouter};
+use provider_kit::failure::ApiError;
+
+use crate::client::OpenRouter;
 
 /// Decision model `model`, asked through `client`.
 pub struct SystemOne {

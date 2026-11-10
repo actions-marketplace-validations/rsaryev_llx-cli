@@ -10,6 +10,7 @@ pub(crate) mod human;
 mod json;
 pub(crate) mod logged;
 mod observer;
+mod record;
 mod spent;
 
 use std::borrow::Cow;
@@ -89,6 +90,10 @@ pub(crate) struct Output {
     done: Mutex<Vec<(String, contracts::history::Step)>>,
     /// What the session spent in all (`spent.rs`).
     total: Mutex<contracts::history::Spent>,
+    /// Each model stream's last request, to tell a prompt cache's miss (`crate::spend`).
+    streams: Mutex<crate::spend::Streams>,
+    /// `LLX_RECORD`'s directory: each event of the run kept whole (`record.rs`).
+    record: Option<std::path::PathBuf>,
     /// Where stderr is read: a CI runner may take a line of it as a command.
     runner: Runner,
     /// The session of the task running, as the log names it: copied out, so no line is written
@@ -167,6 +172,8 @@ impl Output {
             trace: None,
             answer: None,
             total: Mutex::default(),
+            streams: Mutex::default(),
+            record: record::dir(),
             runner: Runner::Plain,
             session: Mutex::default(),
         }
@@ -203,6 +210,10 @@ impl Output {
         *lock(&self.started) = Instant::now();
         lock(&self.done).clear();
         *lock(&self.session) = Arc::from(start.session);
+        self.record(
+            "",
+            || serde_json::json!({"kind": "task", "goal": start.goal, "model": start.model}),
+        );
         logged::started(start);
         if let Some(ui) = &self.ui {
             ui.send(Event::TaskStarted(crate::server::wire::shown(start.goal)));
@@ -231,6 +242,9 @@ impl Output {
     /// The task ended: the closing lines on stderr and the answer on stdout, or `run.completed`.
     pub(crate) fn completed(&self, summary: &Summary) {
         logged::completed(summary);
+        self.record("", || {
+            serde_json::json!({"kind": "answer", "status": summary.status, "text": summary.answer})
+        });
         let error = summary.error.map(|error| Event::Error(error.to_string()));
         let ended = Event::TaskEnded {
             status: summary.status.to_string(),
@@ -284,6 +298,14 @@ impl Output {
         let text = self.runner.inert(text);
         let mut err = lock(&self.err);
         let _ = err.write_all(text.as_bytes()).and_then(|()| err.flush());
+    }
+
+    /// `event` of `agent`'s (empty: the session's own) in the session's record, when one is kept:
+    /// built only then, as it may copy a whole output.
+    pub(crate) fn record(&self, agent: &str, event: impl FnOnce() -> Value) {
+        if let Some(dir) = &self.record {
+            record::write(dir, &self.who(), agent, event());
+        }
     }
 
     /// What the task did since it began, in the order each step began.

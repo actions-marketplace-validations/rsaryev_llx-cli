@@ -242,11 +242,6 @@ fn waiting(text: &str) -> String {
 
 fn footer(app: &App, now: Instant) -> String {
     let window = |at: Instant| super::time::in_quit_window(at, now);
-    let mode = format!("{} mode · shift+tab to cycle", app.lane().mode);
-    let mode = match running(app) {
-        Some(running) => format!("{mode} · {running}"),
-        None => mode,
-    };
     if app.quitting.is_some_and(window) {
         let back = if app.discarded {
             "↑ brings it back · "
@@ -266,6 +261,11 @@ fn footer(app: &App, now: Instant) -> String {
     if app.escaped.is_some_and(window) && app.composer.is_empty() && app.busy().is_none() {
         return "esc again to rewind".into();
     }
+    let mode = format!("{} mode · shift+tab to cycle", app.lane().mode);
+    let mode = match running(app) {
+        Some(running) => format!("{mode} · {running}"),
+        None => mode,
+    };
     if app.busy().is_some() && !app.composer.is_empty() {
         return format!("{mode} · enter tells the task now · tab keeps it for after");
     }
@@ -284,9 +284,9 @@ fn footer(app: &App, now: Instant) -> String {
 /// What the lane shown runs in the background, counted: `2 shells, 1 monitor`.
 fn running(app: &App) -> Option<String> {
     let lane = app.lane_id();
-    let ours = || (app.views.jobs.iter()).filter(move |(of, _)| of == lane);
     // A command that ended is listed for a look: nothing of it runs.
-    let ours = || ours().filter(|(_, job)| job.ended.is_none());
+    let ours =
+        || (app.views.jobs.iter()).filter(move |(of, job)| of == lane && job.ended.is_none());
     let of = |kind| ours().filter(|(_, job)| job.kind == kind).count() as u64;
     let counted = [
         (of(protocol::JobKind::Shell), "shell"),

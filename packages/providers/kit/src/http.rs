@@ -112,10 +112,9 @@ impl Web {
     /// GET `address` with `headers`, given the client's whole timeout; `Err` as for a POST. Its
     /// answer is sent whole (the catalog): no silence limit.
     pub fn get(&self, address: &str, headers: &[(&str, &str)]) -> Result<Reply, HttpError> {
-        let mut request = self.agent.get(address);
-        for (name, value) in headers {
-            request = request.header(*name, *value);
-        }
+        let request = (headers.iter()).fold(self.agent.get(address), |request, (name, value)| {
+            request.header(*name, *value)
+        });
         reply(request.call().map_err(|error| sent_or_not(&error))?)
     }
 }
@@ -140,10 +139,9 @@ impl Http for Web {
                 left.min(self.timeout)
             }
         };
-        let mut request = self.agent.post(address);
-        for (name, value) in headers {
-            request = request.header(*name, *value);
-        }
+        let request = (headers.iter()).fold(self.agent.post(address), |request, (name, value)| {
+            request.header(*name, *value)
+        });
         let request = (request.config())
             .timeout_global(Some(timeout))
             .timeout_per_read(self.idle)

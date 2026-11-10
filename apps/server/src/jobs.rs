@@ -239,10 +239,7 @@ fn line(job: &Job) -> String {
             job.name,
             job.id,
             checks.load(Ordering::SeqCst),
-            until
-                .saturating_duration_since(Instant::now())
-                .as_secs()
-                .div_ceil(60)
+            minutes_left(*until)
         ),
         What::Schedule {
             prompt, cron, next, ..
@@ -264,12 +261,16 @@ fn line(job: &Job) -> String {
             job.name,
             job.id,
             started.elapsed().as_secs(),
-            until
-                .saturating_duration_since(Instant::now())
-                .as_secs()
-                .div_ceil(60)
+            minutes_left(*until)
         ),
     }
+}
+
+/// The minutes left until `until`, rounded up.
+fn minutes_left(until: Instant) -> u64 {
+    (until.saturating_duration_since(Instant::now()))
+        .as_secs()
+        .div_ceil(60)
 }
 
 /// A new job's id and name (the name given, else its id).
@@ -291,47 +292,45 @@ fn epoch_ms(until: Instant) -> u64 {
 
 /// A job as the interface lists it.
 fn row(job: &Job) -> JobRow {
-    match &job.what {
+    let (kind, detail, until_at, next, events) = match &job.what {
         What::Monitor {
             command,
             until,
             checks,
             ..
-        } => JobRow {
-            id: job.id.clone(),
-            name: job.name.clone(),
-            kind: JobKind::Monitor,
-            detail: command.clone(),
-            until_at: Some(epoch_ms(*until)),
-            next: None,
-            events: checks.load(Ordering::SeqCst),
-            ended: None,
-        },
+        } => (
+            JobKind::Monitor,
+            command.clone(),
+            Some(epoch_ms(*until)),
+            None,
+            checks.load(Ordering::SeqCst),
+        ),
         What::Schedule {
             prompt, cron, next, ..
-        } => JobRow {
-            id: job.id.clone(),
-            name: job.name.clone(),
-            kind: JobKind::Schedule,
-            detail: match cron {
+        } => {
+            let detail = match cron {
                 Some(cron) => format!("{} · {prompt}", cron.text()),
                 None => prompt.clone(),
-            },
-            until_at: None,
-            next: Some(cron::clock(*next)),
-            events: 0,
-            ended: None,
-        },
-        What::Shell { command, until, .. } => JobRow {
-            id: job.id.clone(),
-            name: job.name.clone(),
-            kind: JobKind::Shell,
-            detail: command.clone(),
-            until_at: Some(epoch_ms(*until)),
-            next: None,
-            events: 0,
-            ended: None,
-        },
+            };
+            (JobKind::Schedule, detail, None, Some(cron::clock(*next)), 0)
+        }
+        What::Shell { command, until, .. } => (
+            JobKind::Shell,
+            command.clone(),
+            Some(epoch_ms(*until)),
+            None,
+            0,
+        ),
+    };
+    JobRow {
+        id: job.id.clone(),
+        name: job.name.clone(),
+        kind,
+        detail,
+        until_at,
+        next,
+        events,
+        ended: None,
     }
 }
 

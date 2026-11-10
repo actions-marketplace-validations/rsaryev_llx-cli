@@ -56,6 +56,29 @@ pub(crate) fn compile(root: &Value, documents: &[(String, Value)]) -> Compiled {
     }
 }
 
+/// One pass over the built nodes (`tags::mark`, `kinds::fold`, `evaluated::settle`): what
+/// `find` finds in each node's rules, all found before `put` gives any of it, so the pass reads
+/// the nodes as they stood. Whether it found any.
+fn each<T>(
+    nodes: &mut [Node],
+    find: impl Fn(&[Node], &Rules) -> Option<T>,
+    put: impl Fn(&mut Rules, T),
+) -> bool {
+    let found: Vec<(usize, T)> = (nodes.iter().enumerate())
+        .filter_map(|(at, node)| match node {
+            Node::Rules(rules) => find(nodes, rules).map(|it| (at, it)),
+            Node::Any | Node::Never => None,
+        })
+        .collect();
+    let any = !found.is_empty();
+    for (at, it) in found {
+        if let Some(Node::Rules(rules)) = nodes.get_mut(at) {
+            put(rules, it);
+        }
+    }
+    any
+}
+
 struct Compiler<'j> {
     draft: Draft,
     /// Whether the validation vocabulary is in force (the metaschema's `$vocabulary`).
@@ -144,11 +167,11 @@ impl<'j> Compiler<'j> {
             .as_deref()
             .filter(|base| !base.is_empty())
             .unwrap_or(base);
-        let reference = match (referred, self.dynamic(rules)) {
-            (Some(text), _) => self.reference(text, base),
-            (None, Some(text)) => self.reference(text, base),
-            (None, None) => None,
-        };
+        // `$dynamicRef` is read even beside a `$ref`, so what it cannot hold to is noted.
+        let dynamic = self.dynamic(rules);
+        let reference = referred
+            .or(dynamic)
+            .and_then(|text| self.reference(text, base));
         let (types, type_names) = types(get("type"));
         let condition = get("if").map(|when| {
             let when = self.node(when, base);
@@ -160,6 +183,9 @@ impl<'j> Compiler<'j> {
             )
         });
         let options = get("enum").filter(|options| options.is_array()).cloned();
+        let listed = options.as_ref().and_then(Value::as_array);
+        let table = listed.and_then(|o| Table::of(o));
+        let option_kinds = (listed.into_iter().flatten()).fold(0, |all, o| all | kind_of(o, false));
         let format = get("format").and_then(Value::as_str);
         if format.is_some_and(format::unchecked) {
             self.note("format");
@@ -172,16 +198,8 @@ impl<'j> Compiler<'j> {
             reference,
             types,
             type_names,
-            table: options
-                .as_ref()
-                .and_then(Value::as_array)
-                .and_then(|o| Table::of(o)),
-            option_kinds: (options
-                .as_ref()
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten())
-            .fold(0, |all, option| all | kind_of(option, false)),
+            table,
+            option_kinds,
             options,
             constant: get("const").cloned(),
             all_of: self.many(get("allOf"), base),
@@ -216,10 +234,9 @@ impl<'j> Compiler<'j> {
         if !self.validation {
             built.without_validation();
         }
-        // A schema that is only a `$ref` (a description beside it asks nothing) is its target.
-        built.alias = (built.has == 0 && built.options.is_none() && built.constant.is_none())
-            .then_some(built.reference)
-            .flatten();
+        // A schema that is only a `$ref` (a description beside it asks nothing) is its target:
+        // no group bit, so no `enum` or `const` either (`HAS_KIND`).
+        built.alias = (built.has == 0).then_some(built.reference).flatten();
         built.only_types = (built.has == HAS_KIND
             && built.reference.is_none()
             && built.options.is_none()

@@ -181,8 +181,9 @@ fn cut_start(text: &str, columns: usize) -> String {
 /// `48s`, `1m 05s`, `1h 02m`.
 pub(crate) fn duration(millis: u64) -> String {
     match millis {
-        0..10_000 => format!("{:.1}s", millis as f64 / 1000.0),
-        _ => clock(millis / 1000),
+        // Where the tenth would round up to ten seconds, the clock says them.
+        0..9_950 => format!("{:.1}s", millis as f64 / 1000.0),
+        _ => clock(millis.max(10_000) / 1000),
     }
 }
 
@@ -198,7 +199,8 @@ pub(crate) fn count(n: u64, noun: &str) -> String {
 pub(super) fn tokens(count: u64) -> String {
     match count {
         0..1000 => count.to_string(),
-        1000..1_000_000 => format!("{:.1}k", count as f64 / 1000.0),
+        // From 999,950 the tenth rounds up to `1000.0k`: a million, said as one.
+        1000..999_950 => format!("{:.1}k", count as f64 / 1000.0),
         _ => format!("{:.1}M", count as f64 / 1_000_000.0),
     }
 }

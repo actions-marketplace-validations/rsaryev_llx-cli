@@ -32,17 +32,16 @@ pub struct Conversation {
     /// task, so a follow-up's first request is not sized as if nothing were known (an estimate
     /// that runs high would open the history's gate and rewrite a prefix the cache holds).
     ratio: f64,
+    /// Real tokens the history's last pass left it at: a pass that could not get down to its
+    /// target (what no stage elides came to more) opens again only once the conversation has
+    /// grown a pass's headroom past it.
+    settled: u64,
 }
 
 impl Conversation {
     pub(crate) fn new(system: &str) -> Self {
-        let system = Message::System(system.to_string());
-        Self {
-            sizes: vec![fit::tokens(&system)],
-            messages: vec![system],
-            effort: None,
-            ratio: 1.0,
-        }
+        // A system prompt alone leaves no call open.
+        Self::of(vec![Message::System(system.to_string())], "")
     }
 
     /// Real tokens per estimated one, as last measured.
@@ -54,6 +53,47 @@ impl Conversation {
         self.ratio = ratio;
     }
 
+    /// Real tokens the history's last pass left the conversation at.
+    pub(crate) fn settled(&self) -> u64 {
+        self.settled
+    }
+
+    pub(crate) fn settle(&mut self, tokens: u64) {
+        self.settled = tokens;
+    }
+
+    /// Let go of what earlier turns carried back for a model other than `model` (each value
+    /// names its own): no provider sends it to another.
+    pub fn for_model(&mut self, model: &str) {
+        for at in 0..self.messages.len() {
+            if let Some(Message::Assistant { carried, .. }) = self.messages.get_mut(at) {
+                let before = carried.len();
+                carried.retain(|kept| kept["model"] == model);
+                if carried.len() != before {
+                    self.resized(at);
+                }
+            }
+        }
+    }
+
+    /// Let message `at`'s carried go as far as `shed` says it may (see `history`): 1 when it
+    /// changed. A value `shed` left null had nothing else, and goes.
+    pub(crate) fn shed(&mut self, at: usize, shed: &fit::Shed) -> usize {
+        let Some(Message::Assistant { carried, .. }) = self.messages.get_mut(at) else {
+            return 0;
+        };
+        let mut changed = false;
+        for kept in carried.iter_mut() {
+            changed |= shed(kept);
+        }
+        carried.retain(|kept| !kept.is_null());
+        if !changed {
+            return 0;
+        }
+        self.resized(at);
+        1
+    }
+
     /// A conversation that goes on from `messages` (another's, as its last request sent them):
     /// the calls they leave open are answered with `unanswered`, as results, not failures.
     pub fn of(messages: Vec<Message>, unanswered: &str) -> Self {
@@ -62,6 +102,7 @@ impl Conversation {
             messages,
             effort: None,
             ratio: 1.0,
+            settled: 0,
         };
         for id in conversation.open_calls() {
             conversation.push(Message::ToolResult {
@@ -91,6 +132,8 @@ impl Conversation {
     pub fn truncate(&mut self, len: usize) {
         self.messages.truncate(len.max(1));
         self.sizes.truncate(self.messages.len());
+        // What the last pass left is no measure of a conversation taken back.
+        self.settled = 0;
     }
 
     pub(crate) fn push(&mut self, message: Message) {

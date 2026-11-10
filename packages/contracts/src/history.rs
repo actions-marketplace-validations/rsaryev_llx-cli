@@ -39,14 +39,22 @@ pub struct Turn {
     pub steps: Vec<Step>,
 }
 
-/// One step of a task: a tool call or a model turn, when it began and how long it took.
+/// One step of a task: a tool call, a model turn or an elision (`elided`), when it began and how
+/// long it took.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Step {
-    /// The tool's name, or `model` for a model turn.
+    /// The tool's name, `model` for a model turn, `elided` for the context elided before one.
     pub what: String,
     /// What the call did, in a few words (`ls src`), or a turn's tokens.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub detail: String,
+    /// The agent whose step it is, by its short name: an agent's model turns are its parent's
+    /// steps. Empty for the session's own.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub agent: String,
+    /// The model that answered a model turn, as the provider names it.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub model: String,
     /// Milliseconds from the task's start.
     pub at_ms: u64,
     pub ms: u64,
@@ -63,6 +71,9 @@ pub struct Spent {
     pub input_tokens: u64,
     /// Input tokens read from the provider's prompt cache.
     pub cached_tokens: u64,
+    /// Input tokens written to the provider's prompt cache, where it bills them apart.
+    #[serde(default)]
+    pub written_tokens: u64,
     pub output_tokens: u64,
     /// US dollars.
     pub cost: f64,
@@ -80,6 +91,7 @@ impl From<&Usage> for Spent {
         Self {
             input_tokens: usage.input_tokens,
             cached_tokens: usage.cached_tokens,
+            written_tokens: usage.written_tokens,
             output_tokens: usage.output_tokens,
             cost: usage.cost,
         }

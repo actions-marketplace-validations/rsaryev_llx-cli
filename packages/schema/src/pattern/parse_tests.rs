@@ -119,12 +119,12 @@ fn class_escapes_and_assertions() {
 
 #[test]
 fn the_properties_known_exactly() {
-    assert_eq!(class("\\p{Zs}"), Class::property("Zs").unwrap());
+    assert_eq!(class("\\p{Zs}"), Class::of(Class::ranges("Zs").unwrap()));
     assert_eq!(
         class("\\P{ASCII}"),
-        Class::property("ASCII").unwrap().negated()
+        Class::of(Class::ranges("ASCII").unwrap()).negated()
     );
-    let mut both = Class::property("Zs").unwrap();
+    let mut both = Class::of(Class::ranges("Zs").unwrap());
     both.union(&Class::one('a'));
     assert_eq!(class("[\\p{Zs}a]"), both);
 }
@@ -193,6 +193,46 @@ fn what_is_not_a_regular_expression_is_invalid() {
 }
 
 #[test]
+fn what_is_not_checked_here_does_not_hide_what_is_invalid_after_it_or_a_reference_to_no_group() {
+    for source in [
+        "(?=a)\\1",
+        "\\2(a)",
+        "(?:a)\\1",
+        "(?=a)(",
+        "(?<=a)b)",
+        "(?=a)*",
+        "\\p{Letter}(",
+        "\\uD800[",
+        "\\k<n>",
+        "(?<m>a)\\k<n>",
+        "\\(?<n>a\\)\\k<n>",
+        "\\k",
+        "[\\1]",
+        "[\\k]",
+        "[(?<n>a)]\\k<n>",
+    ] {
+        assert!(
+            invalid(source),
+            "{source} should be invalid: {:?}",
+            parse(source)
+        );
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Invalid),
+            "{source}"
+        );
+    }
+    // A reference may come before its group, and an escaped `\` before a group leaves it one.
+    for source in ["\\1(a)", "\\k<n>(?<n>a)", "\\\\(?<n>a)\\k<n>", "(a)(b)\\2"] {
+        assert!(
+            unchecked(source),
+            "{source} should be unchecked: {:?}",
+            parse(source)
+        );
+    }
+}
+
+#[test]
 fn what_is_valid_but_not_checked_is_said() {
     for source in [
         "(a)\\1",
@@ -245,4 +285,50 @@ fn the_syntax_alone_is_judged_as_the_whole_parse_judges_it() {
         let whole = parse(source).map(|_| ()).map_err(|why| why.kind);
         assert_eq!(syntax(source).map_err(|why| why.kind), whole, "{source:?}");
     }
+}
+
+#[test]
+fn a_lone_surrogate_at_a_range_end_or_a_name_spelled_with_escapes_or_marks_is_not_called_invalid() {
+    for source in [
+        "[z-\\uD800]",
+        "[a-\\u{DFFF}]",
+        "(?<a>x)\\k<\\u{61}>",
+        "(?<\\u0061>x)\\k<a>",
+        "\\k<a\u{301}>(?<a\u{301}>x)",
+        "(?<a\u{200D}>x)\\k<a\u{200D}>",
+    ] {
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Unchecked),
+            "{source}"
+        );
+    }
+    for source in [
+        "[\\uDBFF-\\uD800]",
+        "[\\uE000-\\uD800]",
+        "(?<a>x)\\k<b\u{301}>",
+    ] {
+        assert_eq!(
+            syntax(source).map_err(|why| why.kind),
+            Err(Kind::Invalid),
+            "{source}"
+        );
+    }
+}
+
+#[test]
+fn a_long_pattern_of_named_references_and_lookbehinds_is_judged_in_one_pass() {
+    // `format: "regex"` judges data: a model's answer may be long.
+    let source = format!(
+        "{}{}(?<a>x)",
+        "\\k<a>".repeat(50_000),
+        "(?<=b)".repeat(50_000)
+    );
+    let started = std::time::Instant::now();
+    assert_eq!(
+        syntax(&source).map_err(|why| why.kind),
+        Err(Kind::Unchecked)
+    );
+    let took = started.elapsed();
+    assert!(took < std::time::Duration::from_secs(2), "{took:?}");
 }

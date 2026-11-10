@@ -30,9 +30,7 @@ pub(crate) fn serve(incoming: &Receiver<ToServer>, peer: &Peer, desk: &Sender<Re
 fn guarded(command: Command, peer: &Peer, desk: &Sender<Request>) -> Done {
     let doing = std::panic::AssertUnwindSafe(|| done(command, peer, desk));
     std::panic::catch_unwind(doing).unwrap_or_else(|panic| {
-        let what = (panic.downcast_ref::<&str>().map(|why| why.to_string()))
-            .or_else(|| panic.downcast_ref::<String>().cloned())
-            .unwrap_or_default();
+        let what = crate::error::panic_text(panic.as_ref()).unwrap_or_default();
         Done::Failed {
             why: format!("the server failed doing it: {what}"),
         }

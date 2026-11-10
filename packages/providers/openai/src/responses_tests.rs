@@ -248,7 +248,7 @@ fn a_streamed_reply_becomes_text_calls_and_usage() {
             "call_id": "c2", "name": "bash", "arguments": "{\"command\": \"l"}}),
         completed(),
     ]);
-    let completion = read(&reply, "fallback").unwrap();
+    let completion = read(&reply, "fallback", "ChatGPT").unwrap();
     assert_eq!(completion.text.as_deref(), Some("Done."));
     assert_eq!(completion.calls[0].id, "c2");
     assert_eq!(
@@ -270,10 +270,13 @@ fn a_failed_or_cut_stream_is_an_error() {
         json!({"type": "response.failed", "response": {"error": {"message": "overloaded"}}}),
     ]);
     assert!(
-        matches!(read(&failed, "m"), Err(ChatError::Unavailable(m)) if m.contains("overloaded"))
+        matches!(read(&failed, "m", "ChatGPT"), Err(ChatError::Unavailable(m)) if m.contains("overloaded"))
     );
     let cut = streamed(&[json!({"type": "response.created"})]);
-    assert!(matches!(read(&cut, "m"), Err(ChatError::Invalid(_))));
+    assert!(matches!(
+        read(&cut, "m", "ChatGPT"),
+        Err(ChatError::Invalid(_))
+    ));
 }
 
 #[test]
@@ -350,6 +353,74 @@ fn with_a_key_the_apis_own_responses_are_called_with_the_key_alone() {
     assert_eq!(sent[1].header("authorization"), Some("Bearer sk-key"));
     for backend_only in ["chatgpt-account-id", "originator", "session-id"] {
         assert_eq!(sent[1].header(backend_only), None, "{backend_only}");
+    }
+}
+
+#[test]
+fn with_a_key_a_reply_that_fails_names_openai_not_chatgpt() {
+    let failed = streamed(&[json!({"type": "response.failed", "response": {"error": {
+        "code": "context_length_exceeded", "message": "too long"}}})]);
+    let filtered = streamed(&[json!({"type": "response.incomplete", "response": {
+        "incomplete_details": {"reason": "content_filter"}}})]);
+    let overloaded = streamed(&[json!({"type": "response.failed", "response": {"error": {
+        "code": "server_is_overloaded", "message": "busy"}}})]);
+    let replies = [
+        failed,
+        filtered,
+        overloaded.clone(),
+        overloaded.clone(),
+        overloaded,
+    ];
+    let http = Arc::new(Scripted::new(replies.map(|body| (200, body)).to_vec()));
+    let model = ChatModel {
+        pause: Duration::ZERO,
+        ..ChatModel::keyed(
+            Box::new(Shared(Arc::clone(&http))),
+            APP,
+            "sk-key".into(),
+            "https://api.openai.com/v1/",
+            Selection::new(entry("gpt-6-sol")),
+            Texts::Functions,
+        )
+    };
+    let conversation = conversation();
+    for _ in 0..3 {
+        let error = (model.complete(asking(&conversation, Calling::Nothing)))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains("OpenAI") && !error.contains("ChatGPT"),
+            "{error}"
+        );
+    }
+}
+
+#[test]
+fn with_a_key_a_status_a_wait_may_mend_names_openai_once_the_tries_run_out() {
+    let body = r#"{"error": {"message": "busy"}}"#.to_string();
+    let replies = [503, 503, 503, 429, 429, 429].map(|status| (status, body.clone()));
+    let http = Arc::new(Scripted::new(replies.to_vec()));
+    let model = ChatModel {
+        pause: Duration::ZERO,
+        ..ChatModel::keyed(
+            Box::new(Shared(Arc::clone(&http))),
+            APP,
+            "sk-key".into(),
+            "https://api.openai.com/v1/",
+            Selection::new(entry("gpt-6-sol")),
+            Texts::Functions,
+        )
+    };
+    let conversation = conversation();
+    for status in [503, 429] {
+        let error = (model.complete(asking(&conversation, Calling::Nothing)))
+            .unwrap_err()
+            .to_string();
+        assert!(
+            error.contains(&format!("OpenAI answered {status}: busy"))
+                && !error.contains("ChatGPT"),
+            "{error}"
+        );
     }
 }
 
@@ -487,12 +558,12 @@ fn a_reply_cut_at_the_output_limit_stands_and_a_filtered_one_is_an_error() {
         streamed(&[json!({"type": "response.incomplete", "response": {
             "incomplete_details": {"reason": reason}, "usage": {"output_tokens": 9}}})])
     };
-    let cut = read(&incomplete("max_output_tokens"), "m").unwrap();
+    let cut = read(&incomplete("max_output_tokens"), "m", "ChatGPT").unwrap();
     assert_eq!(cut.usage.output_tokens, 9);
     assert_eq!(cut.ending, Ending::Cut, "the agent goes on from it");
-    let whole = read(&streamed(&[completed()]), "m").unwrap();
+    let whole = read(&streamed(&[completed()]), "m", "ChatGPT").unwrap();
     assert_eq!(whole.ending, Ending::Whole);
-    let filtered = read(&incomplete("content_filter"), "m");
+    let filtered = read(&incomplete("content_filter"), "m", "ChatGPT");
     assert!(matches!(filtered, Err(ChatError::Invalid(m)) if m.contains("content filter")));
 }
 
@@ -580,7 +651,7 @@ fn a_note_the_model_wrote_beside_its_calls_goes_back_in_its_phase() {
             "call_id": "c1", "name": "bash", "arguments": "{}"}}),
         completed(),
     ]);
-    let completion = read(&reply, "gpt-6-sol").unwrap();
+    let completion = read(&reply, "gpt-6-sol", "ChatGPT").unwrap();
     assert_eq!(completion.text.as_deref(), Some("Tests next."));
     let conversation = vec![
         Message::User("goal".into()),
@@ -618,7 +689,7 @@ fn the_models_reasoning_goes_back_with_the_next_request() {
             "call_id": "c2", "name": "read", "arguments": "{}"}}),
         completed(),
     ]);
-    let completion = read(&reply, "gpt-6-sol").unwrap();
+    let completion = read(&reply, "gpt-6-sol", "ChatGPT").unwrap();
     let conversation = vec![
         Message::User("goal".into()),
         completion.message(),
@@ -896,4 +967,26 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
         .unwrap();
     let sent: Value = serde_json::from_str(&http.sent()[0].body).unwrap();
     assert_eq!(sent["reasoning"]["effort"], "low");
+}
+
+#[test]
+fn an_old_turns_sealed_reasoning_may_go_its_messages_stay() {
+    let mut reasoning = json!({"model": "gpt-6-sol",
+        "item": {"type": "reasoning", "encrypted_content": "sealed", "summary": []}});
+    assert!(shed(&mut reasoning));
+    assert!(reasoning.is_null());
+    let mut message = json!({"model": "gpt-6-sol",
+        "item": {"type": "message", "phase": "commentary", "content": []}});
+    let before = message.clone();
+    assert!(!shed(&mut message));
+    assert_eq!(message, before);
+    // Another provider's: Anthropic's turn, chat completions' fields.
+    for mut other in [
+        json!({"model": "m", "anthropic": [{"type": "thinking", "thinking": "t", "signature": "s"}]}),
+        json!({"model": "m", "fields": {"reasoning": "t"}}),
+    ] {
+        let before = other.clone();
+        assert!(!shed(&mut other));
+        assert_eq!(other, before);
+    }
 }

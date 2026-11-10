@@ -6,6 +6,7 @@
 
 use serde_json::Value;
 
+use super::each;
 use crate::node::{Id, Node, Rules};
 
 /// A value of the tag with the places of the branches that allow it.
@@ -43,22 +44,13 @@ impl Tag {
 
 /// Every union of `nodes` given its tag, where its branches have one.
 pub(crate) fn mark(nodes: &mut [Node]) {
-    let found: Vec<(usize, Option<Tag>, Option<Tag>)> = (nodes.iter().enumerate())
-        .filter_map(|(at, node)| match node {
-            Node::Rules(rules) => {
-                let any = tag(nodes, &rules.any_of);
-                let one = tag(nodes, &rules.one_of);
-                (any.is_some() || one.is_some()).then_some((at, any, one))
-            }
-            Node::Any | Node::Never => None,
-        })
-        .collect();
-    for (at, any, one) in found {
-        if let Some(Node::Rules(rules)) = nodes.get_mut(at) {
-            rules.any_tag = any.map(Box::new);
-            rules.one_tag = one.map(Box::new);
-        }
-    }
+    let tags = |nodes: &[Node], rules: &Rules| {
+        let (any, one) = (tag(nodes, &rules.any_of), tag(nodes, &rules.one_of));
+        (any.is_some() || one.is_some()).then_some((any, one))
+    };
+    each(nodes, tags, |rules, (any, one)| {
+        (rules.any_tag, rules.one_tag) = (any.map(Box::new), one.map(Box::new));
+    });
 }
 
 /// The tag of a union of `branches`, where one field settles all but at most one of them.

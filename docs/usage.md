@@ -167,6 +167,10 @@ Every run is saved as a session in `~/.llx/sessions/<id>.jsonl` (JSON Lines: the
 
 A session at the terminal runs in the `llx` process that shows it, with its agents and jobs: in its directory, with its environment and the options its command line gave. Quitting ends its work (asked first while something runs); `llx resume` or `llx -c` goes on with it later from its file. A session is open in one `llx` at a time: another that resumes it while it is open is refused (`session <id> is open in another llx: quit it there first`), and the file is left as it was.
 
+`llx spend [ID]` says what a session spent (the newest of this directory without an ID): by task, by agent (an agent's turns are counted in the session that started it) and by model, with the share read from the prompt cache and what was written to it; then each miss of the cache with its likely cause and the dearest requests. `/usage` in a session ends with the same report. A miss is also noted as it happens (`✻ The prompt cache missed…`), with its cause and cost.
+
+`LLX_RECORD=<dir>` keeps each session's run whole, for reading it again later (how the history was fitted, what an elision cost): `<dir>/<id>.jsonl`, a JSON line per event as it happens, the task's goal, each call and its whole output as the model read it (before any elision changed it), the model's words, each model turn's usage, each elision, the answer, an agent's events named by the agent. It is off by default; the file is yours alone (0600), and holds what the tools read, so keep the directory out of a workspace you share.
+
 ## Project instructions
 
 llx reads instruction files, so a repository that already has them works as it is:

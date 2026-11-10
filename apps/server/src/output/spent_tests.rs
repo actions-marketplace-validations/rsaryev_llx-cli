@@ -13,6 +13,7 @@ fn spent(input_tokens: u64, cached_tokens: u64, output_tokens: u64, cost: f64) -
         cached_tokens,
         output_tokens,
         cost,
+        ..Spent::default()
     }
 }
 

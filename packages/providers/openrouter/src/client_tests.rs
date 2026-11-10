@@ -318,6 +318,24 @@ fn a_conversations_own_level_goes_out_where_the_model_offers_it() {
 }
 
 #[test]
+fn a_reply_with_a_null_error_is_the_completion_not_a_failure() {
+    // A compatible host may say `"error": null` beside a completion that went well.
+    let whole = r#"{"choices":[{"message":{"content":"Hi"}}],"error":null}"#;
+    let streamed = "data: {\"choices\":[{\"delta\":{\"content\":\"Hi\"}}],\"error\":null}\n\n\
+        data: [DONE]\n\n";
+    for body in [whole, streamed] {
+        let (client, sent) = scripted(lab(), vec![Ok((200, body))]);
+        let (completion, _) = client.post("/x", &json!({}), None).unwrap();
+        assert_eq!(
+            completion.pointer("/choices/0/message/content"),
+            Some(&json!("Hi")),
+            "{body}"
+        );
+        assert_eq!(sent.lock().unwrap().len(), 1, "sent once");
+    }
+}
+
+#[test]
 fn a_stream_that_failed_after_its_first_words_is_not_sent_again_and_one_before_them_is() {
     // Its words were written, and billed: sending it again would pay for them twice.
     let midway = "data: {\"choices\":[{\"delta\":{\"content\":\"Half\"}}]}\n\n\

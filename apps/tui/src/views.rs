@@ -111,7 +111,7 @@ impl SessionView {
     }
 
     /// A lane with no name is named by the first line of its first task.
-    pub(crate) fn named_by(&mut self, goal: &str) {
+    fn named_by(&mut self, goal: &str) {
         if self.lane.is_none() || !self.name.is_empty() {
             return;
         }
@@ -220,9 +220,14 @@ impl Views {
         parent.and_then(|parent| self.find(parent)).unwrap_or(at)
     }
 
+    /// Where the session shown is: the first when it is gone.
+    pub(crate) fn shown_at(&self) -> usize {
+        self.find(&self.shown).unwrap_or(0)
+    }
+
     /// The lane of the session shown.
     pub(crate) fn home(&self) -> usize {
-        self.lane_of(self.find(&self.shown).unwrap_or(0))
+        self.lane_of(self.shown_at())
     }
 
     /// The sessions the tree draws, in its order: the lane shown and the agents it started, or

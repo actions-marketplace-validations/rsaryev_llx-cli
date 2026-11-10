@@ -88,13 +88,17 @@ pub fn guarded(work: impl FnOnce() -> i32 + std::panic::UnwindSafe) -> i32 {
     }
 }
 
-/// What a panic said, when it said text.
+/// What a panic said, or that its cause is unknown.
 fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
-    payload
+    panic_text(payload).unwrap_or_else(|| "unknown cause".into())
+}
+
+/// What a panic said, when it said text: either payload `panic!` makes.
+pub(crate) fn panic_text(payload: &(dyn std::any::Any + Send)) -> Option<String> {
+    (payload
         .downcast_ref::<&str>()
-        .map(|text| (*text).to_string())
-        .or_else(|| payload.downcast_ref::<String>().cloned())
-        .unwrap_or_else(|| "unknown cause".into())
+        .map(|text| (*text).to_string()))
+    .or_else(|| payload.downcast_ref::<String>().cloned())
 }
 
 #[cfg(test)]

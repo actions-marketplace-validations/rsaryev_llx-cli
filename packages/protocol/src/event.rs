@@ -25,8 +25,8 @@ pub enum Event {
         label: Label,
         outcome: Outcome,
     },
-    /// One step under the call running (what an agent it started does). Live only: never
-    /// replayed (W6).
+    /// One step under the call running (what an agent it started does). Live only: never saved
+    /// with the session.
     Step(String),
     /// The model's answer.
     Answer(String),
@@ -125,8 +125,7 @@ pub struct Total {
 pub enum Outcome {
     Done {
         report: String,
-        /// What only the person reads under the call (an edit's diff). Optional (W3): an older
-        /// server sends none.
+        /// What only the person reads under the call (an edit's diff); empty for none.
         shown: String,
     },
     /// The model is told why; `declined` when the person refused the call.

@@ -76,32 +76,14 @@ impl Background for Shells<'_, '_> {
         let thread = std::thread::Builder::new().name("llx-background".into());
         let waited = thread.spawn_scoped(self.scope, move || {
             let report = running.report(until, &|| stop.asked());
-            let over = jobs.over.load(Ordering::SeqCst);
-            // Posted while it is still listed: `exec` waits for as long as it is. A stop the
-            // model asked for, it knows of (B10).
+            let of = Of {
+                id: &id,
+                name: &label,
+                kind: JobKind::Shell,
+                detail: &command,
+            };
             let entry = crate::arrivals::background(&label, &report);
-            match (over, stop.by()) {
-                (true, _) | (false, Some(By::Run)) => {}
-                (false, Some(By::Person)) => {
-                    jobs.kit
-                        .queue
-                        .post(crate::arrivals::with_the_next_task(entry));
-                }
-                (false, None) => jobs.kit.queue.post(entry),
-            }
-            jobs.lock().jobs.retain(|job| job.id != id);
-            // The person may look at how it ended and what it printed.
-            if !over {
-                let (end, printed) = ended_with(&report, stop.by());
-                let of = Of {
-                    id: &id,
-                    name: &label,
-                    kind: JobKind::Shell,
-                    detail: &command,
-                };
-                ended::keep(jobs, &of, end, printed);
-            }
-            jobs.show();
+            ended::finish(jobs, &of, &stop, entry, || ended_with(&report, stop.by()));
         });
         // The OS refused a thread: the command, let go, is killed with all it started.
         if waited.is_err() {

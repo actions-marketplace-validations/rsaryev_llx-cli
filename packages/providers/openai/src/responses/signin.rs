@@ -28,8 +28,8 @@ struct Held {
 /// The tokens of a sign-in, refreshed at its issuer and kept where it says.
 pub(super) struct SignIn {
     /// The token endpoint, on a client of its own: a refresh is short.
-    pub(super) issuer: Box<dyn Http>,
-    pub(super) keep: Box<dyn Keep>,
+    issuer: Box<dyn Http>,
+    keep: Box<dyn Keep>,
     tokens: Mutex<Held>,
     /// Rung when a refresh ends.
     renewed: Condvar,

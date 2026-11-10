@@ -2,8 +2,8 @@
 //! answer is posted to the main agent, and the task is recorded in its session.
 
 use std::fmt::Write as _;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::{Arc, PoisonError};
 use std::time::Instant;
 
 use agent::agent::{Agent, Run, Status};
@@ -110,6 +110,11 @@ pub(super) fn work(kit: &Kit, registry: &Registry, id: &str, message: &str) {
             context: kit.context,
             max_turns: kit.max_turns,
             window: kit.window.load(Ordering::SeqCst),
+            model: kit
+                .model
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .clone(),
             strategy: kit.strategy,
             advisor: advisor.as_ref().map(|advisor| advisor as &dyn Advisor),
             observer: &watch,

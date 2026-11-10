@@ -37,7 +37,7 @@ pub(crate) enum Request {
 }
 
 /// What wakes the desk: a request, the interface's connection gone, a lane's end.
-pub(super) enum Wake {
+enum Wake {
     Asked(Request),
     Gone,
     Left,
@@ -184,11 +184,11 @@ impl<'e> Desk<'e> {
         let id = seat.session.id.clone();
         self.lanes.join(&id);
         // A resumed session is known by its title, else by its first task.
-        let first_task = seat.session.turns.first().map(|turn| turn.goal.clone());
-        let name = Some(seat.session.title.clone())
-            .filter(|title| !title.is_empty())
-            .or(first_task)
-            .unwrap_or_else(|| seat.session.name.clone());
+        let session = &seat.session;
+        let name = (!session.title.is_empty())
+            .then(|| session.title.clone())
+            .or_else(|| session.turns.first().map(|turn| turn.goal.clone()))
+            .unwrap_or_else(|| session.name.clone());
         self.ui.send(Event::LaneStarted {
             id: id.clone(),
             name,
