@@ -43,3 +43,5 @@ A row per agent per run of `run.ts`, its medians over the runs: whether it solve
 | [2026-11-10 03:08](results/2026-11-10_0308-shopkit/summary.md) | shopkit | new | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 67.3 | 6 | 0.0125 | 74 | 16475 | 6.1 |
 | [2026-11-10 03:09](results/2026-11-10_0309-evalkit/summary.md) | evalkit | base | llx 0.5.0 | off | 3 | 3/3 | 238, 238 of 238 | 477.9 | 19 | 0.1716 | 93 | 116139 | 3.7 |
 | [2026-11-10 03:09](results/2026-11-10_0309-evalkit/summary.md) | evalkit | new | llx 0.5.0 | off | 3 | 3/3 | 238, 238 of 238 | 268.8 | 13 | 0.0477 | 88 | 66748 | 3.7 |
+| [2026-11-10 03:28](results/2026-11-10_0328-shopkit/summary.md) | shopkit | llx | 3ca3ebc2 | off | 2 | 2/2 | 69, 69 of 69 | 45.25 | 4 | 0.1045 | 70.5 | 7858.5 | 7.8 |
+| [2026-11-10 03:28](results/2026-11-10_0328-shopkit/summary.md) | shopkit | claude | 2.1.321 (Claude Code) | — | 2 | 2/2 | 69, 69 of 69 | 78.55 | 9.5 | 0.1751 | 76.5 | 13207.5 | 7.8 |
