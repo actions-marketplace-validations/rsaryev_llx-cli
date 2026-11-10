@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.5.1
+
 - **The GitHub Action drops privileges on Ubuntu 26.04**, today's `ubuntu-latest`. Its sudo is sudo-rs, which ignores `-E`: the lockdown lost the run's directory and every run with `privileges: drop` (the default on a hosted runner) ended not ready. The directory now goes to it as an argument, and the step's variables come back as they always did for those sudo resets.
 - **The session redraws only what changed.** A frame with nothing finished to print writes just the live rows that differ, and none when nothing does; before, every tick of the spinner erased and drew the whole live area again. The same session writes about a third of the bytes to the terminal.
 - **A mode switch says one short line**, `Mode: plan. Read-only.`; before, Shift+Tab printed the whole text the model is given, three rows for `plan`. `/mode` and the modes `/mode ` offers read the same way.
