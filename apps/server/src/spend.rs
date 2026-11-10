@@ -294,6 +294,8 @@ fn percent(part: u64, of: u64) -> String {
 
 fn dollars(cost: f64) -> String {
     match cost {
+        // Under a cent the third digit says nothing: a cheap request would read `$0.000`.
+        c if c < 0.01 => format!("${c:.4}"),
         c if c < 1.0 => format!("${c:.3}"),
         c => format!("${c:.2}"),
     }

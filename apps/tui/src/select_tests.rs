@@ -96,7 +96,42 @@ fn a_long_option_wraps_under_its_label() {
     );
     insta::assert_snapshot!(shown(&select, 30), @"
     ❯ 1. A choice whose label is
-         long and its detail too
+         long
+         and its detail too
+
+      enter select · esc skip
+    ");
+}
+
+#[test]
+fn details_too_long_for_one_row_go_under_every_label() {
+    // The bug: a row that did not fit was wrapped on its own, its padding lost, so the details
+    // started at a different column on each row.
+    let select = Select::new(
+        vec![],
+        vec![
+            Choice::new("Smallest value (Recommended)")
+                .detail("Return the lowest of the tied values, whatever the order they came in."),
+            Choice::new("First seen").detail("Return the tied value that appears first."),
+            Choice::new("Something else").types(),
+        ],
+        "esc skip",
+    );
+    insta::assert_snapshot!(shown(&select, 60), @"
+    ❯ 1. Smallest value (Recommended)
+         Return the lowest of the tied values, whatever the
+         order they came in.
+      2. First seen
+         Return the tied value that appears first.
+      3. Something else
+
+      enter select · esc skip
+    ");
+    // Wide enough for every row, they are columns again.
+    insta::assert_snapshot!(shown(&select, 110), @"
+    ❯ 1. Smallest value (Recommended)  Return the lowest of the tied values, whatever the order they came in.
+      2. First seen                    Return the tied value that appears first.
+      3. Something else
 
       enter select · esc skip
     ");

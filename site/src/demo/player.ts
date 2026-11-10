@@ -24,7 +24,7 @@ export const THEME: ITheme = {
   magenta: '#c3a6f0',
   cyan: '#7fd0d6',
   white: '#cfcfcf',
-  brightBlack: '#6b6b6b',
+  brightBlack: '#7c7c7c', // dim text: 4.5:1 on the background (WCAG AA)
   brightRed: '#f39185',
   brightGreen: '#a3e0b1',
   brightYellow: '#f0d897',

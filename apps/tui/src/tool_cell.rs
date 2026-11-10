@@ -90,8 +90,11 @@ pub(crate) fn body(name: &str, outcome: &Outcome, width: usize) -> Vec<Line<'sta
         && let Outcome::Done { report, shown } = outcome
         && let Some(diffs) = shown.strip_prefix("Diff of ")
     {
-        let mut out = rows_block(output_rows(name, report), width);
         let diffs: Vec<&str> = diffs.split("\n\nDiff of ").collect();
+        // One file changed: the head names it and the diff says how.
+        let mut rows = output_rows(name, report);
+        rows.retain(|_| diffs.len() > 1);
+        let mut out = rows_block(rows, width);
         for each in &diffs {
             let (file, diff) = each.split_once(":\n").unwrap_or((each, ""));
             // Which file a diff is of, when there are several.
@@ -111,8 +114,21 @@ pub(crate) fn body(name: &str, outcome: &Outcome, width: usize) -> Vec<Line<'sta
             vec![(printable(why), style::failed())]
         }
         // Each question with its answer, as the person reads them, where the tool said so.
+        // The person's own answers, whole: each wrapped under its question.
         Outcome::Done { shown, .. } if name == "ask" && !shown.is_empty() => {
-            rows(shown.lines()).collect()
+            let answers = rows(shown.lines())
+                .enumerate()
+                .flat_map(|(at, (text, look))| {
+                    let first = if at == 0 { "  └ " } else { "    " };
+                    let first = Line::from(Span::styled(first, style::dim()));
+                    wrap(
+                        &Line::from(Span::styled(text, look)),
+                        width,
+                        &first,
+                        &Line::from("    "),
+                    )
+                });
+            return answers.collect();
         }
         Outcome::Done { report, .. } => output_rows(name, report),
     };

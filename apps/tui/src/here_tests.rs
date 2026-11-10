@@ -3,7 +3,7 @@ use std::time::Instant;
 
 use protocol::Event;
 
-use super::shown;
+use super::{event, shown};
 use crate::app::App;
 use crate::mention::Files;
 use crate::test_support::{call, done, history, label, ran, result};
@@ -41,4 +41,16 @@ fn the_transcript_shows_a_finished_command_by_its_paths_in_the_project() {
     let shown = history(&mut app);
     assert!(shown.contains("cat stats.py"), "{shown}");
     assert!(!shown.contains("/work/stats"), "{shown}");
+}
+
+#[test]
+fn an_agents_step_reads_from_the_project_too() {
+    // A person saw `agent: Ran cd /whole/path/to/the/project && …` under the call running, cut
+    // before the command itself, while the same call read short in the agent's own view.
+    let root = Path::new("/work/app");
+    let step = Event::Step("scout: Ran cd /work/app && cat /work/app/src/lib.rs".into());
+    let Event::Step(line) = event(step, Some(root)) else {
+        panic!("a step stays a step");
+    };
+    assert_eq!(line, "scout: Ran cat src/lib.rs");
 }

@@ -1,8 +1,9 @@
 //! The terminal as the session draws it. Finished blocks are printed once, above a live area,
 //! and scroll up into the terminal's own scrollback, so scrolling, selecting and copying them is
 //! the terminal's and they survive the session. The live area (what runs now, the composer, a
-//! question) is the only part redrawn: each frame erases it, prints what finished since, and draws
-//! it again, inside one synchronized update so the terminal never shows the half-drawn state.
+//! question) is the only part redrawn: a frame with something finished erases it, prints that, and
+//! draws it again; any other writes only the rows that changed. Each is one synchronized update,
+//! so the terminal never shows the half-drawn state.
 //! Every row is at most the width, so the rows drawn are the rows counted.
 
 use std::fmt::Write as _;
@@ -23,6 +24,10 @@ pub(crate) struct Screen<W: Write> {
     /// trailing gap stays live.
     group: Option<String>,
     gap: bool,
+    /// The live rows as they were drawn last, and where the cursor was shown: a frame with as
+    /// many rows writes only those that differ.
+    drawn: Vec<String>,
+    shown: Option<Cursor>,
 }
 
 /// What finished since the last frame, to be printed once.
@@ -115,6 +120,8 @@ impl<W: Write> Screen<W> {
             cursor: 0,
             group: None,
             gap: false,
+            drawn: vec![],
+            shown: None,
         }
     }
 
@@ -155,39 +162,61 @@ impl<W: Write> Screen<W> {
             }
             split.extend(rows);
         }
-        let live = &split[..];
-        let mut out = String::from("\x1b[?2026h");
-        self.erase_into(&mut out);
-        for line in &history {
-            put(&mut out, line, self.colour);
-            out.push_str("\r\n");
-        }
         let room = height.saturating_sub(1).max(1);
-        let skipped = live.len().saturating_sub(room);
-        let live = &live[skipped..];
-        for (at, line) in live.iter().enumerate() {
-            if at > 0 {
+        let skipped = split.len().saturating_sub(room);
+        let rows: Vec<String> = (split[skipped..].iter())
+            .map(|line| {
+                let mut row = String::new();
+                put(&mut row, line, self.colour);
+                row
+            })
+            .collect();
+        let last = rows.len().saturating_sub(1);
+        let cursor = cursor
+            .filter(|c| c.row >= skipped && c.row - skipped <= last)
+            .map(|c| Cursor {
+                row: c.row - skipped,
+                column: c.column,
+            });
+        let mut out = String::from("\x1b[?2026h");
+        // The terminal's cursor is on live row `at`.
+        let mut at = self.cursor;
+        if history.is_empty() && !rows.is_empty() && rows.len() == self.drawn.len() {
+            if rows == self.drawn && cursor == self.shown {
+                return Ok(());
+            }
+            // Nothing to print above and as many rows as before: only those that changed.
+            for (row, text) in rows.iter().enumerate() {
+                if self.drawn[row] != *text {
+                    go(&mut out, at, row);
+                    let _ = write!(out, "\r\x1b[2K{text}");
+                    at = row;
+                }
+            }
+        } else {
+            self.erase_into(&mut out);
+            for line in &history {
+                put(&mut out, line, self.colour);
                 out.push_str("\r\n");
             }
-            put(&mut out, line, self.colour);
+            out.push_str(&rows.join("\r\n"));
+            at = last;
         }
-        let last = live.len().saturating_sub(1);
-        self.cursor = last;
-        match cursor.filter(|c| c.row >= skipped && c.row - skipped <= last) {
+        match cursor {
             Some(Cursor { row, column }) => {
-                let row = row - skipped;
-                if row < last {
-                    let _ = write!(out, "\x1b[{}A", last - row);
-                }
+                go(&mut out, at, row);
                 out.push('\r');
                 if column > 0 {
                     let _ = write!(out, "\x1b[{column}C");
                 }
                 out.push_str("\x1b[?25h");
-                self.cursor = row;
+                at = row;
             }
             None => out.push_str("\x1b[?25l"),
         }
+        self.cursor = at;
+        self.drawn = rows;
+        self.shown = cursor;
         out.push_str("\x1b[?2026l");
         self.out.write_all(out.as_bytes())?;
         self.out.flush()
@@ -230,6 +259,8 @@ impl<W: Write> Screen<W> {
         }
         self.group = None;
         self.gap = false;
+        self.drawn.clear();
+        self.shown = None;
         out.push_str("\x1b[?25h\x1b[?2026l");
         self.cursor = 0;
         self.out.write_all(out.as_bytes())?;
@@ -242,6 +273,8 @@ impl<W: Write> Screen<W> {
         self.cursor = 0;
         self.group = None;
         self.gap = false;
+        self.drawn.clear();
+        self.shown = None;
         self.out
             .write_all(b"\x1b[?2026h\x1b[H\x1b[2J\x1b[3J\x1b[?2026l")?;
         self.out.flush()
@@ -262,6 +295,15 @@ impl<W: Write> Screen<W> {
     #[cfg(test)]
     pub(crate) fn output_mut(&mut self) -> &mut W {
         &mut self.out
+    }
+}
+
+/// Moves the terminal's cursor from live row `from` to row `to`.
+fn go(out: &mut String, from: usize, to: usize) {
+    if to < from {
+        let _ = write!(out, "\x1b[{}A", from - to);
+    } else if to > from {
+        let _ = write!(out, "\x1b[{}B", to - from);
     }
 }
 

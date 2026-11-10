@@ -21,10 +21,28 @@ export type Card = { title: string; text: string; panel: Block[]; link?: { href:
 const shell = (text: string): Block => ({ lang: 'shell', text });
 const out = (text: string, tone: Tone = 'hi'): Block => ({ out: text, tone });
 
-/** The exit codes are exit.rs; the cost in the pipeline card is an illustration; the rules card
+/** The benchmark card is benchmark/HISTORY.md's runs of 2026-11-10 02:03 and 02:04; the exit codes
+ *  are exit.rs; the cost in the pipeline card is an illustration; the rules card
  *  uses llx's own wording of a refusal (packages/tools/src/lib.rs, apps/server/src/rules.rs), and
  *  the search card is a run of rg into llx decide on this repository. */
 export const CARDS: Card[] = [
+  {
+    title: 'Measured beside Claude Code',
+    text: 'The same task, model and key, started in the same minute, scored by tests written in advance. On the larger task llx finished in 60% of the time for a ninth of the cost; on the small one the two are even. One run of each, with every log in the repository.',
+    link: { href: `${GITHUB}/tree/main/benchmark`, label: 'The benchmark and every run' },
+    panel: [
+      out('Claude Haiku 5.5 · the same key, the same minute', 'dim'),
+      {
+        grid: [
+          [['dim', 'evalkit'], ['hi', 'llx'], ['ok', '238/238'], ['hi', '286 s'], ['dim', '14 turns'], ['hi', '$0.050']],
+          [['dim', '238 tests'], ['dim', 'Claude Code'], ['ok', '238/238'], ['dim', '478 s'], ['dim', '25 turns'], ['dim', '$0.46']],
+          [['dim', 'shopkit'], ['hi', 'llx'], ['ok', '69/69'], ['hi', '69 s'], ['dim', '5 turns'], ['hi', '$0.012']],
+          [['dim', '69 tests'], ['dim', 'Claude Code'], ['ok', '69/69'], ['dim', '67 s'], ['dim', '4 turns'], ['dim', '$0.011']],
+        ],
+        align: 'llrrrr',
+      },
+    ],
+  },
   {
     title: 'Ends every task with an exit code',
     text: 'A task ends when the model answers; with --schema, llx asks it once more for data matching your JSON Schema. The exit code says how it ended.',

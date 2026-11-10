@@ -57,9 +57,10 @@ const marked = new Marked({
 });
 
 /** Inline code breaks at its spaces, never after a flag's `--`: a short flag stays whole, and a
- *  longer one breaks only at an inner hyphen, so a table's column still fits a phone. */
+ *  longer one breaks only at an inner hyphen, so a table's column still fits a phone. A URL is
+ *  no flag: it may break where it must (prose.css), or it runs off a phone's screen. */
 function unbroken(word: string): string {
-  if (!word.includes('-')) return escapeHtml(word);
+  if (!word.includes('-') || word.includes('://')) return escapeHtml(word);
   const whole = word.length <= 16 ? word : (/^-*[^-]+/.exec(word)?.[0] ?? word);
   return `<span class="nobr">${escapeHtml(whole)}</span>${escapeHtml(word.slice(whole.length))}`;
 }

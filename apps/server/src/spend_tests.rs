@@ -116,3 +116,11 @@ fn a_count_just_short_of_a_million_reads_as_one_million() {
 fn a_session_that_spent_nothing_says_so() {
     assert_eq!(report(&session(vec![])), "s1\nNothing spent yet.\n");
 }
+
+#[test]
+fn a_cost_under_a_cent_keeps_the_digits_that_tell_it_from_nothing() {
+    // The bug: every request of a cheap session read `$0.000`.
+    let shown = report(&session(vec![model("", (8_000, 7_800), 0.0003, 100)]));
+    assert!(shown.contains("$0.0003"), "{shown}");
+    assert!(!shown.contains("$0.000 "), "{shown}");
+}

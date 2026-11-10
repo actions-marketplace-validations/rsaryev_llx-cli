@@ -94,6 +94,19 @@ impl Select {
             None => format!("{}. ", at + 1),
         };
         // The label padded only where something follows it: no row ends in spaces.
+        let rest = Line::from(" ".repeat(number.len() + 2));
+        // No column for the details: some row has no room for its own, so each goes under its
+        // label, and every row reads the same.
+        if columns.0 == 0 && !detail.is_empty() {
+            let label = Line::from(vec![
+                Span::styled(format!("{number}{check}"), label_style),
+                Span::styled(printable(&choice.label), label_style),
+            ]);
+            let mut rows = wrap(&label, width, &Line::from(mark), &rest);
+            let detail = Line::from(Span::styled(printable(detail), style::dim()));
+            rows.extend(wrap(&detail, width, &rest, &rest));
+            return rows;
+        }
         let follows = !detail.is_empty() || self.adjustments.is_some();
         let label = padded(&choice.label, if follows { columns.0 } else { 0 });
         let mut line = Line::from(vec![
@@ -101,9 +114,8 @@ impl Select {
             Span::styled(label, label_style),
         ]);
         if !detail.is_empty() {
-            let gap = if columns.0 > 0 { "  " } else { " " };
             line.spans.push(Span::styled(
-                format!("{gap}{}", padded(detail, columns.1)),
+                format!("  {}", padded(detail, columns.1)),
                 style::dim(),
             ));
         }
@@ -125,7 +137,6 @@ impl Select {
             row.spans.extend(line.spans);
             vec![row]
         } else {
-            let rest = Line::from(" ".repeat(number.len() + 2));
             wrap(&line, width, &first, &rest)
         }
     }
@@ -145,10 +156,13 @@ impl Select {
             false => text_width(&c.label),
         };
         let labels = widest(&described).unwrap_or(0).min(width / 3);
-        let Some(adjustments) = &self.adjustments else {
-            return (labels, 0);
-        };
         let details = widest(&|c| text_width(&c.detail)).unwrap_or(0);
+        let Some(adjustments) = &self.adjustments else {
+            let label = |c: &Choice| text_width(&c.label).max(labels);
+            let fits = |c: &Choice| c.detail.is_empty() || 8 + label(c) + details <= width;
+            let fit = rows.iter().all(|at| fits(&self.choices[*at]));
+            return (if fit { labels } else { 0 }, 0);
+        };
         let values = rows.iter().filter_map(|at| adjustments.get(*at));
         let value = values
             .filter_map(|a| a.values.get(a.at))

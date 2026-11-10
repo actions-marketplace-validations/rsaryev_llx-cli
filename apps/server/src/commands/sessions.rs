@@ -116,12 +116,13 @@ pub(crate) fn here(mut list: Vec<Session>, dir: &str) -> Vec<Session> {
 
 /// `dir` with the home directory written `~`, as a person recognizes it.
 pub(crate) fn home_relative(dir: &str) -> String {
-    let home = std::env::var_os("HOME");
-    let inside = home
-        .as_deref()
-        .map(Path::new)
-        .filter(|home| !home.as_os_str().is_empty())
-        .and_then(|home| Path::new(dir).strip_prefix(home).ok());
+    // The workspace is written as it really is, so a home reached through a link (macOS's
+    // `/tmp`, `/var`) is looked for as it really is too.
+    let home = std::env::var_os("HOME").filter(|home| !home.is_empty());
+    let home = home.as_deref().map(Path::new);
+    let real = home.and_then(|home| home.canonicalize().ok());
+    let inside = (home.into_iter().chain(real.as_deref()))
+        .find_map(|home| Path::new(dir).strip_prefix(home).ok());
     match inside {
         Some(rest) if rest.as_os_str().is_empty() => "~".into(),
         Some(rest) => Path::new("~").join(rest).display().to_string(),

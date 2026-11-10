@@ -434,3 +434,63 @@ fn a_new_width_prints_the_transcript_again_at_it() {
     app.input(Input::Resize(30, 24), now);
     assert!(!app.take_replay());
 }
+
+#[test]
+fn a_frame_rewrites_only_the_live_rows_that_changed() {
+    // The cost: every tick of the spinner erased and drew the whole live area again, a
+    // kilobyte twelve times a second.
+    let live = |spinner: &str| lines(&[spinner, "", "──────", "❯ fix the tests", "──────"]);
+    let cursor = Some(Cursor { row: 3, column: 15 });
+    let mut screen = Screen::new(Vec::new(), false);
+    let mut parser = terminal();
+    let draw = |screen: &mut Screen<Vec<u8>>, parser: &mut vt100::Parser, spinner: &str, cursor| {
+        screen.output_mut().clear();
+        (screen.frame(
+            History::default(),
+            &live(spinner),
+            cursor,
+            ROWS as usize,
+            COLUMNS as usize,
+        ))
+        .unwrap();
+        parser.process(screen.output());
+        String::from_utf8(screen.output().clone()).unwrap()
+    };
+    draw(&mut screen, &mut parser, "⠋ Working (1s)", cursor);
+    let second = draw(&mut screen, &mut parser, "⠙ Working (1s)", cursor);
+    assert!(second.contains("⠙ Working"), "{second:?}");
+    assert!(!second.contains("fix the tests"), "{second:?}");
+    assert!(!second.contains("──────"), "{second:?}");
+    assert_eq!(
+        draw(&mut screen, &mut parser, "⠙ Working (1s)", cursor),
+        "",
+        "nothing changed"
+    );
+    // The cursor alone moved: no row is written.
+    let moved = draw(
+        &mut screen,
+        &mut parser,
+        "⠙ Working (1s)",
+        Some(Cursor { row: 3, column: 2 }),
+    );
+    assert!(!moved.contains("Working") && !moved.is_empty(), "{moved:?}");
+    // A shorter row leaves nothing of the longer one behind it.
+    draw(&mut screen, &mut parser, "⠹ Done", None);
+    insta::assert_snapshot!(everything(&mut parser), @"
+    ⠹ Done
+
+    ──────
+    ❯ fix the tests
+    ──────
+    ");
+    assert!(parser.screen().hide_cursor());
+    let shown = draw(
+        &mut screen,
+        &mut parser,
+        "⠹ Done",
+        Some(Cursor { row: 3, column: 2 }),
+    );
+    assert!(!shown.is_empty());
+    assert_eq!(parser.screen().cursor_position(), (3, 2));
+    assert!(!parser.screen().hide_cursor());
+}

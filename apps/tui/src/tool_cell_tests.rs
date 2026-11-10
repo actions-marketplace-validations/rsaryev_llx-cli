@@ -322,3 +322,34 @@ fn control_characters_cannot_reach_the_terminal() {
     );
     assert!(!text.contains('\u{1b}'), "{text}");
 }
+
+#[test]
+fn a_patch_of_one_file_does_not_name_it_twice_above_its_diff() {
+    // The bug: `• Patched a.rs`, then `└ M a.rs`, then the diff.
+    let outcome = done_shown(
+        "Success. Updated the following files:\nM a.rs",
+        "Diff of a.rs:\n@@ -1,1 +1,1 @@\n-a\n+b",
+    );
+    let shown = shown(
+        "apply_patch",
+        said("Patching", "Patched", "a.rs"),
+        State::Done(&outcome),
+        60,
+    );
+    assert_eq!(shown.matches("a.rs").count(), 1, "{shown}");
+    assert!(shown.contains("- a") && shown.contains("+ b"), "{shown}");
+}
+
+#[test]
+fn a_long_answer_to_a_question_is_wrapped_not_cut() {
+    // The bug: the answer the person gave was cut at the row's end, `→ First seen in in…`.
+    let outcome = done_shown(
+        "The person answered:\n- tie: First seen in input",
+        "When two values tie, how should it decide? → First seen in input",
+    );
+    insta::assert_snapshot!(shown("ask", said("Asking", "Asked", "1 question"), State::Done(&outcome), 40), @"
+    • Asked 1 question
+      └ When two values tie, how should it
+        decide? → First seen in input
+    ");
+}

@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use protocol::{Event, Outcome};
 
 use super::*;
@@ -102,4 +104,14 @@ fn the_answer_at_a_terminal_comes_after_a_blank_row_as_the_model_wrote_it_drawn(
     // The tests' stdout is no terminal: no colour.
     let answer = Trace::new(false, 40).answer();
     assert_eq!(answer("All **good**."), "\nAll good.\n");
+}
+
+#[test]
+fn a_call_is_read_from_the_project_without_its_own_cd_there() {
+    // The bug: the session left out a call's `cd` into the project, the trace wrote it whole,
+    // rows of an absolute path before the command.
+    let events = call("cd /home/me/project && cat /home/me/project/src/a.rs");
+    let mut trace = Trace::new(false, 100).within(Path::new("/home/me/project"));
+    let drawn = drawn(&mut trace, &events);
+    assert!(drawn.starts_with("• Ran cat src/a.rs\n"), "{drawn}");
 }

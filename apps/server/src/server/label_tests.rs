@@ -47,6 +47,23 @@ fn agents_and_jobs_read_as_their_action() {
 }
 
 #[test]
+fn a_spawn_names_its_agent_and_only_the_start_of_a_long_task() {
+    // A person saw each spawn fill a dozen rows with the whole brief; the agent's own view has
+    // it in full, so the call's block says who was started and what for, in two rows at most.
+    let task = format!(
+        "Add mode() with a test.\n\n{}",
+        "Read the files first. ".repeat(40)
+    );
+    let shown = did(
+        "agents",
+        &json!({"action": "spawn", "name": "mode", "task": task}),
+    );
+    assert!(shown.starts_with("Spawned mode · Add mode() with a test. Read the files first."));
+    assert!(shown.ends_with('…'), "{shown}");
+    assert!(shown.chars().count() <= 190, "{}", shown.chars().count());
+}
+
+#[test]
 fn a_patch_reads_as_the_files_it_changes() {
     let patch = json!(
         "*** Begin Patch\n*** Update File: a.ts\n*** Move to: b.ts\n*** Add File: c/d.ts\n+x\n*** End Patch"

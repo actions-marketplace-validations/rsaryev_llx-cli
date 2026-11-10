@@ -74,6 +74,7 @@
   background: var(--card);
   color: var(--white);
   font-size: 0.84em;
+  overflow-wrap: break-word;
 }
 .prose a > code {
   text-decoration: inherit;

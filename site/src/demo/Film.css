@@ -1,7 +1,10 @@
 /* The recorded run in a real terminal, almost the page's black, edged by a hairline. Its palette
    is player.ts's THEME. */
+/* On a phone the smallest font still leaves the recording wider than the frame: it scrolls
+   sideways rather than losing its last columns. */
 .film {
   overflow: hidden;
+  overflow-x: auto;
   padding: 14px 16px;
   border: 1px solid var(--line);
   border-radius: 14px;

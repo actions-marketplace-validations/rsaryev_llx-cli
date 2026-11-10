@@ -81,3 +81,11 @@
   background: var(--card);
   color: var(--white);
 }
+
+/* A phone: the command whole beside its Copy at 390px, rather than its last word under the button. */
+@media (max-width: 26rem) {
+  .install code {
+    padding-inline: 0.8rem;
+    font-size: 0.7rem;
+  }
+}

@@ -266,3 +266,20 @@ fn the_default_mode_tells_the_model_where_its_commands_write_and_how_to_reach_fu
         "{text}"
     );
 }
+
+#[test]
+fn a_switch_and_the_list_tell_the_person_each_mode_in_one_short_line() {
+    // The bug: Shift+Tab printed the whole text the model is given, three rows of it for `plan`.
+    let modes = Modes::built_in();
+    assert_eq!(switched(&built("plan")), "Mode: plan. Read-only.\n");
+    assert_eq!(
+        switched(&built("bypass")),
+        "Mode: bypass. Everything runs without asking (-y).\n"
+    );
+    assert_eq!(
+        list(&built("plan"), modes.all()),
+        "  default     Works in the workspace without asking\n\
+         * plan        Read-only\n  \
+         bypass      Everything runs without asking (-y)\n"
+    );
+}
