@@ -31,12 +31,16 @@ export function Loop() {
   return (
     <section ref={root} className="loop wrap" aria-labelledby="loop-title">
       <h2 id="loop-title">One binary, the whole loop</h2>
+      <p className="loop-sub">
+        Measured first, then by where it runs: in CI and scripts, at your terminal, inside other agents.
+      </p>
       <div className="loop-stack">
         {CARDS.map((card, index) => (
           <article key={card.title} className="loop-card" style={{ '--n': index } as CSSProperties}>
             <div className="loop-text">
+              <p className="loop-tag">{card.tag}</p>
               <h3>{card.title}</h3>
-              <p>{card.text}</p>
+              <p>{prose(card.text)}</p>
               {card.link && (
                 <a className="loop-link" href={card.link.href}>
                   {card.link.label}
@@ -51,6 +55,11 @@ export function Loop() {
       </div>
     </section>
   );
+}
+
+/** A card's text, with what stands between backticks as code. */
+function prose(text: string): ReactNode[] {
+  return text.split('`').map((part, i) => (i % 2 ? <code key={i}>{part}</code> : part));
 }
 
 const tone = (name: string) => (name ? `t-${name}` : undefined);

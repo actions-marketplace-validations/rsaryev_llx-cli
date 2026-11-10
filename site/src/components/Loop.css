@@ -4,18 +4,26 @@
   padding-block: clamp(2rem, 4vw, 4rem) clamp(3rem, 6vw, 6rem);
 }
 .loop h2 {
-  margin: 0 0 clamp(2rem, 4vw, 3rem);
+  margin: 0;
   font: 700 var(--step-3) / 1.05 var(--display);
   letter-spacing: -0.04em;
   text-align: center;
+  text-wrap: balance;
+}
+.loop-sub {
+  max-width: 46em;
+  margin: 1rem auto clamp(2rem, 4vw, 3rem);
+  color: var(--soft);
+  font-size: var(--step-1);
+  line-height: 1.5;
+  text-align: center;
+  text-wrap: balance;
 }
 .loop-stack {
   display: grid;
   gap: clamp(1.5rem, 4vw, 3rem);
 }
 .loop-card {
-  position: sticky;
-  top: calc(5.5rem + var(--n) * 0.85rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 1.5rem;
@@ -26,8 +34,26 @@
   background: var(--card);
   box-shadow: 0 -24px 60px -30px rgb(0 0 0 / 0.9);
 }
+/* Who the card is for; the cards come grouped by it. */
+.loop-tag {
+  margin: 0 0 0.9rem;
+  color: var(--muted);
+  font: 500 0.75rem / 1 var(--mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.loop-text code {
+  padding: 0.1em 0.35em;
+  border: 1px solid var(--line-strong);
+  border-radius: 5px;
+  background: var(--raised);
+  color: var(--white);
+  font-size: 0.86em;
+  white-space: nowrap;
+}
 .loop-text h3 {
   margin: 0;
+  text-wrap: balance;
   font: 600 clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem) / 1.1 var(--display);
   letter-spacing: -0.035em;
 }
@@ -40,6 +66,7 @@
 .loop-link {
   display: inline-block;
   margin-top: 1.25rem;
+  transition: text-decoration-color 160ms ease;
   color: var(--white);
   font: 500 0.9375rem / 1.4 var(--text);
   text-decoration: underline;
@@ -59,6 +86,9 @@
   background: #090909;
   color: #e6e6e6;
   font: 400 clamp(0.72rem, 0.66rem + 0.22vw, 0.84rem) / 1.7 var(--mono);
+  font-variant-numeric: tabular-nums;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 .loop-row {
   display: block;
@@ -94,6 +124,14 @@
   .loop-card {
     grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: clamp(2rem, 4vw, 4rem);
+  }
+}
+/* The stack only where a whole card fits under the bar: stuck in a short or narrow window, a
+   card taller than what is left of it would never show its end. */
+@media (min-width: 60rem) and (min-height: 46rem) {
+  .loop-card {
+    position: sticky;
+    top: calc(4.5rem + var(--n) * 0.6rem);
   }
 }
 

@@ -1,0 +1,48 @@
+/* The page's end: centred, between the last card and the footer. */
+.closing {
+  display: grid;
+  justify-items: center;
+  padding-block: clamp(3rem, 8vw, 7rem) clamp(4rem, 9vw, 8rem);
+  text-align: center;
+}
+.closing h2 {
+  margin: 0;
+  font: 700 var(--step-3) / 1.05 var(--display);
+  letter-spacing: -0.04em;
+  text-wrap: balance;
+}
+.closing-sub {
+  max-width: 34em;
+  margin: 1rem 0 clamp(1.5rem, 3vw, 2.25rem);
+  color: var(--soft);
+  font-size: var(--step-1);
+  line-height: 1.5;
+  text-wrap: balance;
+}
+.closing-sub code {
+  color: var(--white);
+  font-size: 0.88em;
+}
+.closing-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  margin: 1.25rem 0 0;
+  color: var(--muted);
+  font: 500 0.9375rem / 1.4 var(--text);
+}
+.closing-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--white);
+  text-decoration: underline;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 4px;
+  transition: text-decoration-color 160ms ease;
+}
+.closing-links a:hover {
+  text-decoration-color: currentColor;
+}
