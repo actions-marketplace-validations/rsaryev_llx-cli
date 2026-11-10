@@ -29,3 +29,17 @@ A row per agent per run of `run.ts`, its medians over the runs: whether it solve
 | [2026-11-10 02:03](results/2026-11-10_0203-shopkit/summary.md) | shopkit | claude | 2.1.321 (Claude Code) | — | 1 | 1/1 | 69, 69 of 69 | 67.1 | 4 | 0.0110 | 43 | 15963 | 14.7 |
 | [2026-11-10 02:04](results/2026-11-10_0204-evalkit/summary.md) | evalkit | llx | f0b338c5 | off | 1 | 1/1 | 238, 238 of 238 | 285.8 | 14 | 0.0500 | 87 | 70262 | 11.9 |
 | [2026-11-10 02:04](results/2026-11-10_0204-evalkit/summary.md) | evalkit | claude | 2.1.321 (Claude Code) | — | 1 | 1/1 | 238, 238 of 238 | 477.6 | 25 | 0.4604 | 89 | 112299 | 11.9 |
+| [2026-11-10 02:36](results/2026-11-10_0236-shopkit/summary.md) | shopkit | base | llx 0.5.0 | off | 2 | 2/2 | 69, 69 of 69 | 55.65 | 5 | 0.0107 | 67 | 14239.5 | 10.4 |
+| [2026-11-10 02:36](results/2026-11-10_0236-shopkit/summary.md) | shopkit | patch | llx 0.5.0 | off | 2 | 2/2 | 69, 69 of 69 | 79.65 | 6 | 0.0160 | 74 | 22736 | 10.4 |
+| [2026-11-10 02:37](results/2026-11-10_0237-evalkit/summary.md) | evalkit | base | llx 0.5.0 | off | 2 | 2/2 | 238, 238 of 238 | 314.95 | 14.5 | 0.0822 | 87.5 | 77378.5 | 9.3 |
+| [2026-11-10 02:37](results/2026-11-10_0237-evalkit/summary.md) | evalkit | patch | llx 0.5.0 | off | 2 | 2/2 | 238, 238 of 238 | 545.95 | 17.5 | 0.2582 | 91 | 133182.5 | 9.3 |
+| [2026-11-10 02:52](results/2026-11-10_0252-shopkit/summary.md) | shopkit | base | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 56.4 | 6 | 0.0110 | 70 | 14490 | 3.2 |
+| [2026-11-10 02:52](results/2026-11-10_0252-shopkit/summary.md) | shopkit | fix | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 69.1 | 6 | 0.0127 | 69 | 16923 | 3.2 |
+| [2026-11-10 02:52](results/2026-11-10_0252-shopkit/summary.md) | shopkit | fixrule | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 66.5 | 4 | 0.0121 | 49 | 17035 | 3.2 |
+| [2026-11-10 02:53](results/2026-11-10_0253-evalkit/summary.md) | evalkit | base | llx 0.5.0 | off | 2 | 2/2 | 238, 238 of 238 | 399.9 | 13.5 | 0.1553 | 85.5 | 97626.5 | 5.9 |
+| [2026-11-10 02:53](results/2026-11-10_0253-evalkit/summary.md) | evalkit | fix | llx 0.5.0 | off | 2 | 2/2 | 238, 238 of 238 | 249.1 | 9.5 | 0.0425 | 80.5 | 61336 | 5.9 |
+| [2026-11-10 02:53](results/2026-11-10_0253-evalkit/summary.md) | evalkit | fixrule | llx 0.5.0 | off | 2 | 2/2 | 238, 238 of 238 | 397 | 14 | 0.1553 | 83 | 98014 | 5.9 |
+| [2026-11-10 03:08](results/2026-11-10_0308-shopkit/summary.md) | shopkit | base | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 62.4 | 4 | 0.0112 | 50 | 15654 | 6.1 |
+| [2026-11-10 03:08](results/2026-11-10_0308-shopkit/summary.md) | shopkit | new | llx 0.5.0 | off | 1 | 1/1 | 69, 69 of 69 | 67.3 | 6 | 0.0125 | 74 | 16475 | 6.1 |
+| [2026-11-10 03:09](results/2026-11-10_0309-evalkit/summary.md) | evalkit | base | llx 0.5.0 | off | 3 | 3/3 | 238, 238 of 238 | 477.9 | 19 | 0.1716 | 93 | 116139 | 3.7 |
+| [2026-11-10 03:09](results/2026-11-10_0309-evalkit/summary.md) | evalkit | new | llx 0.5.0 | off | 3 | 3/3 | 238, 238 of 238 | 268.8 | 13 | 0.0477 | 88 | 66748 | 3.7 |
