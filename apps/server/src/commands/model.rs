@@ -196,7 +196,10 @@ fn adopt(rig: &mut Rig, choice: Choice) -> Result<std::io::Result<PathBuf>, Stri
 /// [`adopt`], said in full.
 pub(super) fn adopted(rig: &mut Rig, choice: Choice) -> String {
     let saved = match adopt(rig, choice) {
-        Ok(Ok(path)) => format!("saved as the default in {}", path.display()),
+        Ok(Ok(path)) => {
+            let path = super::sessions::home_relative(&path.display().to_string());
+            format!("saved as the default in {path}")
+        }
         Ok(Err(error)) => format!("not saved: {error}"),
         Err(why) => return why,
     };

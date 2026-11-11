@@ -7,7 +7,7 @@
   --tk-str: #a5c791;
   --tk-num: #c3a6e0;
   --tk-var: #7fc3c8;
-  --tk-dim: #6b6b68;
+  --tk-dim: #7c7c78; /* 4.5:1 and more on the panels' black (WCAG AA) */
   --tk-ok: #8bd49c;
   --tk-bad: #ef7a6d;
 }

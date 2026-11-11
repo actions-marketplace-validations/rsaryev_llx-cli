@@ -11,19 +11,31 @@ pub(crate) fn event(mut event: Event, root: Option<&Path>) -> Event {
     if let Event::Call { label, .. } | Event::Result { label, .. } = &mut event {
         *label = shown(std::mem::take(label), root);
     }
+    // An agent's step is a line the server wrote, `name: Ran command`: the same paths.
+    if let (Event::Step(line), Some(root)) = (&mut event, known(root)) {
+        *line = CDS.iter().fold(relative(line, root), |line, cd| {
+            line.replacen(&format!(" {cd}"), " ", 1)
+        });
+    }
     event
 }
 
+/// A command's own `cd` into the project, once its path reads from the project.
+const CDS: [&str; 3] = ["cd . && ", "cd .; ", "cd . ; "];
+
+/// The project's directory as text, when there is one to read paths from.
+fn known(root: Option<&Path>) -> Option<&str> {
+    let root = root.and_then(Path::to_str).filter(|root| root.len() > 1)?;
+    Some(root.trim_end_matches('/'))
+}
+
 /// `label` as it reads at `root`.
-fn shown(mut label: Label, root: Option<&Path>) -> Label {
-    let Some(root) = root.and_then(Path::to_str).filter(|root| root.len() > 1) else {
+pub(crate) fn shown(mut label: Label, root: Option<&Path>) -> Label {
+    let Some(root) = known(root) else {
         return label;
     };
-    let subject = relative(&label.subject, root.trim_end_matches('/'));
-    label.subject = match ["cd . && ", "cd .; ", "cd . ; "]
-        .iter()
-        .find_map(|cd| subject.strip_prefix(cd))
-    {
+    let subject = relative(&label.subject, root);
+    label.subject = match CDS.iter().find_map(|cd| subject.strip_prefix(cd)) {
         Some(rest) => rest.to_string(),
         None => subject,
     };

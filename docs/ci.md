@@ -250,7 +250,7 @@ Rules come from the workflow and your settings, never from the repository: a pul
 
 ## Limits
 
-- Three limits, independent: `max-turns` (no limit by default), `timeout` (the action's default is 900 seconds; `llx exec`'s own is 1800, at most a day) and `budget` (dollars, none by default). The first one reached ends the task, and it exits 2: turns and the budget at the next model turn, the time limit at once (a command running then is killed). A command the agent runs has its own limit (120 seconds by default).
+- Three limits, independent: `max-turns` (no limit by default), `timeout` (the action's default is 900 seconds; `llx exec`'s own is 1800, at most a day) and `budget` (dollars, none by default). The first one reached ends the task, and it exits 2: turns and the budget at the next model turn, the time limit at once (a command running then is killed). A command the agent runs is waited for 120 seconds at most; one still running then goes on in the background as a job, at most 10 minutes in `exec`, and the task waits for it ([tools](tools.md#bash)).
 - Put `timeout-minutes` on the job as well: it is the runner's limit, whatever happens inside.
 - `budget` counts the cost the provider reports (OpenRouter does), else prices the turn's tokens from the model catalog (a ChatGPT sign-in's at its API price); a model the catalog has no price for counts nothing. The key's own limit at the provider is the cap that always holds.
 
@@ -311,7 +311,7 @@ Install llx and run `llx exec` yourself. On a runner that is a script step:
       </dev/null > review.json
 ```
 
-To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | LLX_VERSION=0.3.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
+To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh | LLX_VERSION=0.5.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
 
 Two details matter on a runner:
 

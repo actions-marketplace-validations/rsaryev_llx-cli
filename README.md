@@ -19,10 +19,12 @@
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-black" alt="macOS and Linux">
   <img src="https://img.shields.io/badge/binary-under%204%20MB-black" alt="One binary under 4 MB">
   <img src="https://img.shields.io/badge/Rust-black?logo=rust" alt="Written in Rust">
+  <img src="https://img.shields.io/badge/built%20and%20reviewed%20with-Claude%20Fable%205.2-black" alt="Built and reviewed with Claude Fable 5.2">
 </p>
 
 <p align="center">
   <a href="#try-it">Try it</a> ·
+  <a href="#measured-beside-claude-code">Measured</a> ·
   <a href="docs/usage.md">Documentation</a> ·
   <a href="#in-ci-and-scripts">In CI</a> ·
   <a href="https://llx.sh">llx.sh</a>
@@ -30,7 +32,7 @@
 
 <p align="center">
   <a href="https://llx.sh">
-    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh: in the default mode it fixes the failing median test in stats.py without a question (12 seconds, $0.0012 on GPT-6 Luna), then asks how a tie should be decided, each option's code beside it, and builds the choice; then, from the shell as CI calls it, llx exec --mode plan --schema reads the diff and answers with data" width="880">
+    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh, every step a real run on Claude Haiku 5.5: /model lists 338 models of four providers signed in and picks one; the failing median test in stats.py is fixed without a question (5 seconds, $0.0007); two agents work in parallel, one adding mode() with a test, one writing the README, and their work is checked; then, from the shell as CI calls it, llx decide answers a yes-or-no question about the diff in 410 ms, and llx exec --schema reads the diff and answers with data" width="880">
   </a>
 </p>
 
@@ -59,6 +61,19 @@ echo $?                                      # 0 done, 1 no data, 2 exhausted, 3
 jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 # {"status":"done","data":{"bump":"patch","ship":true}}
 ```
+
+## Measured beside Claude Code
+
+The same task, the same model, the same Anthropic key, started in the same minute; the tests that score a run were written before it. On the larger task llx finished in 60% of the time for a ninth of the cost; on the small one the two are even.
+
+| Task | Model | | Solved | Time | Turns | Cost |
+| --- | --- | --- | --- | --- | --- | --- |
+| evalkit, 238 tests | Haiku 5.5 | **llx** | 238 of 238 | **286 s** | 14 | **$0.050** |
+| | | Claude Code 2.1.321 | 238 of 238 | 478 s | 25 | $0.46 |
+| shopkit, 69 tests | Haiku 5.5 | **llx** | 69 of 69 | 69 s | 5 | $0.012 |
+| | | Claude Code 2.1.321 | 69 of 69 | 67 s | 4 | $0.011 |
+
+One run of each agent, on one machine: a measurement, not a law. Every run's log, the code it wrote and its test output are in [benchmark/](benchmark/README.md), and [the history](benchmark/HISTORY.md) has every run made, the slower ones too. `bun benchmark/run.ts` repeats it on your key.
 
 ## Install
 

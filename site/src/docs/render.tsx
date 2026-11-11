@@ -18,10 +18,10 @@ export const DOCS_ROUTES = [DOCS, ...PAGES.map((page) => page.route)];
 
 /** The landing's nav and footer around the docs: the menu (a phone) or the rail (wider), the
  *  page, and its sections on the right of a wide screen. No script draws any of it. */
-function Layout({ page }: { page?: DocPage | undefined }) {
+function Layout({ page, missing }: { page?: DocPage | undefined; missing?: true }) {
   return (
     <>
-      <Nav at="docs" />
+      <Nav at={missing ? 'elsewhere' : 'docs'} />
       <div className="docs wrap">
         <details className="docs-menu">
           <summary>
@@ -33,12 +33,37 @@ function Layout({ page }: { page?: DocPage | undefined }) {
         <aside className="docs-side">
           <Sidebar active={page?.slug} />
         </aside>
-        <main id="main" className="docs-main">{page ? <Article page={page} /> : <DocsIndex />}</main>
+        <main id="main" className="docs-main">
+          {missing ? <NotFound /> : page ? <Article page={page} /> : <DocsIndex />}
+        </main>
         {page && <Toc headings={page.headings} />}
       </div>
       <Footer />
     </>
   );
+}
+
+/** What any URL the site does not have shows (404.html, which Pages serves with a 404 status
+ *  instead of the landing with a 200): where to go instead, the docs' menu beside it. */
+function NotFound() {
+  return (
+    <div className="docs-index">
+      <header className="docs-head">
+        <p className="docs-label">404</p>
+        <h1>Page not found</h1>
+        <p className="docs-lede">
+          Nothing lives at this address. Go to the <a href="/">home page</a> or the <a href={DOCS}>docs</a>.
+        </p>
+      </header>
+    </div>
+  );
+}
+
+/** 404.html: the docs' template around NotFound, kept out of search results. */
+export function renderNotFound(template: string): string {
+  const meta = ['<title>Page not found · llx</title>', '<meta name="robots" content="noindex">'].join('\n  ');
+  const body = renderToStaticMarkup(<Layout missing />);
+  return template.replace(HEAD, () => meta).replace(BODY, () => body);
 }
 
 /** A docs route as a whole document: `template` (docs.html, as built or as written) with the

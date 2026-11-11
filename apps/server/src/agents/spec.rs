@@ -7,6 +7,8 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
+use crate::printable::{clipped, one_line};
+
 pub(super) const NAME: &str = "agents";
 /// How long `wait` waits by default, and at most.
 const WAIT_MS: u64 = 30_000;
@@ -187,12 +189,17 @@ pub(super) fn action(arguments: &Value) -> Result<Action, String> {
     }
 }
 
+/// How much of a spawn's task its block shows: about two rows of a terminal.
+const TASK_CHARS: usize = 160;
+
 /// What a call does, as its block's head says it while it runs and once it is done.
 pub(crate) fn describe(arguments: &Value) -> ((&'static str, &'static str), String) {
     let agent = |name: &str| format!("agent {}", tidy(name).unwrap_or_else(|| name.into()));
     match action(arguments) {
         Ok(Action::Spawn { task, name, .. }) => {
             let name = name.unwrap_or_else(|| "agent".into());
+            // The agent's own view has the brief whole; here, who was started and what for.
+            let task = clipped(&one_line(&task), TASK_CHARS);
             (("Spawning", "Spawned"), format!("{name} · {task}"))
         }
         Ok(Action::Send {

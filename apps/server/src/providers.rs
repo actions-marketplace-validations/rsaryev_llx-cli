@@ -283,7 +283,8 @@ fn key_from(names: &[String], vars: Vars, saved: Option<PathBuf>) -> Option<(Str
     set.or_else(|| {
         let path = saved?;
         let key = provider_kit::store::read(&path)?;
-        Some((key, format!("the key in {}", path.display())))
+        let path = crate::commands::sessions::home_relative(&path.display().to_string());
+        Some((key, format!("the key in {path}")))
     })
 }
 

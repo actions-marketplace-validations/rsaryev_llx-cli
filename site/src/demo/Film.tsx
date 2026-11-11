@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import '@xterm/xterm/css/xterm.css';
 import { type Chapter, parseCast } from './cast';
 import { Player, type Status, THEME } from './player';
 import './Film.css';
@@ -11,7 +10,8 @@ const PADDING = 32;
 /**
  * A real llx run, recorded with asciinema and played into a real terminal that takes no input:
  * it scrolls back, selects and copies like one. It starts when it comes into view; its chapters
- * jump to a command. xterm.js loads in the browser only.
+ * jump to a command. xterm.js and its styles load in the browser only, after the page: neither
+ * holds up its first paint.
  */
 export function Film({ src, label }: { src: string; label: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -24,7 +24,8 @@ export function Film({ src, label }: { src: string; label: string }) {
     let alive = true;
     let cleanup = () => {};
     const fonts = document.fonts.load('14px Mono').catch(() => []);
-    void Promise.all([import('@xterm/xterm'), fetch(src).then((r) => r.text()), fonts]).then(([{ Terminal }, text]) => {
+    const styles = import('@xterm/xterm/css/xterm.css');
+    void Promise.all([import('@xterm/xterm'), fetch(src).then((r) => r.text()), fonts, styles]).then(([{ Terminal }, text]) => {
       const node = host.current;
       if (!alive || !node) return;
       const cast = parseCast(text);

@@ -65,7 +65,7 @@ pub(crate) fn offer() -> protocol::Offer {
             .unwrap_or_else(|_| Modes::built_in())
             .all()
             .iter())
-        .map(|mode| (mode.name().to_string(), mode.hint().to_string()))
+        .map(|mode| (mode.name().to_string(), mode.brief().to_string()))
         .collect(),
     }
 }

@@ -1,0 +1,8 @@
+All four modules in `src/` are implemented, and `bun test` passes: 238 of 238 tests across the four files. I changed only `src/cron.ts`, `src/diff.ts`, `src/expr.ts` and `src/query.ts`. The tests, `package.json` and `tsconfig.json` are untouched, and I did not commit anything.
+
+- **`expr.ts`**: a lexer that tokenises the whole source first, so lexer errors win over parser errors. A recursive-descent parser follows the precedence table, with the `**` restriction on prefix operands. The evaluator handles three-valued logic, the builtins, and `round` using the exact decimal form of `String(x)` with ties to even.
+- **`query.ts`**: a SQL lexer and parser in the required clause order. Analysis checks names, qualifiers and the GROUP BY rules before any row is read. Execution then runs WHERE, grouping, HAVING, the select list, DISTINCT, ORDER BY, OFFSET and LIMIT, in that order.
+- **`diff.ts`**: a suffix dynamic programme gives a minimal edit script. A greedy walk from the start applies the D3 tie-break. Unified diff output and patch application follow D4 to D12.
+- **`cron.ts`**: field parsing with macros and names, Vixie day matching, and a `next` that searches day by day. A schedule with no match within one 400-year cycle throws `schedule never fires`.
+
+I fixed two bugs during the work: a double-counted exponent in `round`, and an incorrect `this`-free identifier in one branch. I also removed a leftover no-op in `applyPatch`. The tests were the only verification; I did not add extra checks beyond them. A small cleanup remains in `expr.ts`'s parser (some `var` hoisting and two unused `void` arguments). It is harmless and I left it as it is.

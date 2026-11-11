@@ -49,6 +49,17 @@ fn the_header_names_the_model_model_switched_to() {
 }
 
 #[test]
+fn a_model_switch_names_the_settings_file_from_the_home_directory() {
+    // The full path of a temporary home filled three rows of the screen; a person knows it as ~.
+    let model = Model::start(vec![]);
+    let mut term = Term::start(&model, &[]);
+    term.type_text("/model").press(key::ENTER);
+    term.wait_for("• Model", LONG);
+    term.press(key::DOWN).press(key::ENTER);
+    term.wait_for("saved as the default in ~/config/llx/settings.json", LONG);
+}
+
+#[test]
 fn slash_mode_offers_the_modes_the_server_says() {
     let model = Model::start(vec![]);
     let mut term = Term::start(&model, &[]);
@@ -78,6 +89,8 @@ fn a_command_given_as_the_first_message_is_carried_out_not_sent_to_the_model() {
     let term = Term::start(&model, &["/status"]);
     let screen = term.wait_for("workspace  ", LONG);
     assert!(screen.contains("session    "), "{screen}");
+    // The bug: the workspace and the key's file were written from the root, rows of them.
+    assert!(screen.contains("workspace  ~/"), "{screen}");
     assert!(model.requests().is_empty(), "{:?}", model.requests());
 }
 

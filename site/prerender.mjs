@@ -19,7 +19,25 @@ const page = `${dist}index.html`;
 const html = await readFile(page, 'utf8');
 const mount = '<div id="root"></div>';
 if (!html.includes(mount)) throw new Error(`${mount} is missing from dist/index.html`);
-await writeFile(page, html.replace(mount, `<div id="root">${ssr.render()}</div>`));
+// The landing's few kilobytes of style go into the page itself: one round trip less before its
+// first paint. The docs keep their stylesheets as files, cached from one page to the next.
+const sheet = /<link rel="stylesheet" crossorigin href="(\/assets\/[^"]+\.css)">/g;
+const styles = new Map();
+for (const [, href] of html.matchAll(sheet)) styles.set(href, await readFile(`${dist}${href.slice(1)}`, 'utf8'));
+if (styles.size === 0) throw new Error('dist/index.html links no stylesheet to inline');
+// The version the structured data names is the workspace's, so it never goes stale.
+const cargo = await readFile(`${repo}Cargo.toml`, 'utf8');
+const version = cargo.match(/^\[workspace\.package\][^[]*?^version = "([^"]+)"/ms)?.[1];
+if (!version) throw new Error('no [workspace.package] version in Cargo.toml');
+const named = /"softwareVersion": "[^"]*"/;
+if (!named.test(html)) throw new Error('index.html has no softwareVersion to set');
+const versioned = html.replace(named, `"softwareVersion": "${version}"`);
+await writeFile(
+  page,
+  versioned
+    .replace(sheet, (_, href) => `<style>${styles.get(href).trim()}</style>`)
+    .replace(mount, () => `<div id="root">${ssr.render()}</div>`),
+);
 
 const missing = [...ssr.REPO_FILES].filter((path) => !existsSync(repo + path));
 if (missing.length > 0) {
@@ -36,10 +54,26 @@ for (const image of ssr.IMAGES) {
   await cp(repo + image, dist + image);
 }
 await writeFile(`${dist}sitemap.xml`, ssr.sitemap());
+// Any URL the site does not have: Pages serves 404.html with a 404 status, where it would
+// otherwise answer every unknown path with the landing and a 200.
+await writeFile(`${dist}404.html`, ssr.renderNotFound(template));
 // The installer at llx.sh/install, as main has it: `curl -fsSL https://llx.sh/install | sh`. Its
 // type is text, so a browser shows the script instead of downloading it (Cloudflare's _headers).
 await cp(`${repo}scripts/install.sh`, `${dist}install`);
-await writeFile(`${dist}_headers`, '/install\n  Content-Type: text/plain; charset=utf-8\n');
+// The build's assets are named by their content's hash, so a browser keeps them for good; the
+// fonts and the favicon keep their names, so they are kept a week. Everything else Pages
+// revalidates on each visit, its default.
+const headers = [
+  '/install',
+  '  Content-Type: text/plain; charset=utf-8',
+  '/assets/*',
+  '  Cache-Control: public, max-age=31536000, immutable',
+  '/fonts/*',
+  '  Cache-Control: public, max-age=604800',
+  '/favicon.png',
+  '  Cache-Control: public, max-age=604800',
+];
+await writeFile(`${dist}_headers`, `${headers.join('\n')}\n`);
 await writeFile(`${dist}llms-full.txt`, ssr.llmsFull());
 const llms = await readFile(`${dist}llms.txt`, 'utf8');
 await writeFile(`${dist}llms.txt`, `${llms.trimEnd()}\n\n${ssr.llmsDocs()}`);

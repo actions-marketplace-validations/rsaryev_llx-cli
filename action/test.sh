@@ -258,8 +258,9 @@ cat >"$tmp/linux/getent" <<'GETENT'
 #!/usr/bin/env bash
 [ "$1 $2" = "group nogroup" ] && echo 'nogroup:x:65534:'
 GETENT
-# sudo as a runner's: it resets PATH and HOME and drops LD_* (as its env_delete does), unless
-# no_new_privs (STUB_DROPPED, set by setpriv) keeps it from becoming root.
+# sudo as a runner's: it resets the environment to its own, PATH, HOME and its SUDO_ variables, and
+# takes no -E, as sudo-rs (Ubuntu 26.04's sudo) ignores it; unless no_new_privs (STUB_DROPPED, set by
+# setpriv) keeps it from becoming root.
 cat >"$tmp/linux/sudo" <<'SUDO'
 #!/usr/bin/env bash
 echo "$*" >>"$STUB_DIR/sudo"
@@ -267,7 +268,7 @@ if [ -n "${STUB_DROPPED:-}" ] && [ -z "${STUB_SUDO_SURVIVES:-}" ]; then exit 1; 
 [ -z "${STUB_NO_SUDO:-}" ] || exit 1
 while [ $# -gt 0 ]; do case "$1" in -n | -E | --preserve-env) shift ;; --) shift; break ;; *) break ;; esac; done
 [ "$1" != true ] || exit 0
-exec env -u LD_LIBRARY_PATH PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root SUDO_UID=1001 SUDO_GID=118 SUDO_USER=runner SUDO_COMMAND=x "$@"
+exec env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin HOME=/root SUDO_UID=1001 SUDO_GID=118 SUDO_USER=runner SUDO_COMMAND=x "$@"
 SUDO
 cat >"$tmp/linux/setpriv" <<'SETPRIV'
 #!/usr/bin/env bash
@@ -280,7 +281,7 @@ chmod +x "$tmp/linux/"*
 linux=(PATH="$tmp/linux:$tmp/bin:$PATH" LLX_ACTION_SOCKET_DIRS="$tmp/sockets" INPUT_PRIVILEGES=)
 run_action "${linux[@]}" OPENROUTER_API_KEY="$key" LD_LIBRARY_PATH=/opt/py/lib HOME=/home/runner
 eq "drop: the run" "0 done" "$rc $(output status)"
-has "drop: sudo starts the lockdown, keeping the variables" "$(cat "$tmp/run/sudo")" "-n -E -- "
+has "drop: sudo starts the lockdown" "$(cat "$tmp/run/sudo")" "-n -- "
 has "drop: no groups, no new privileges, the runner's uid, nogroup" "$(tr '\n' ' ' <"$tmp/run/setpriv")" \
   "--reuid=1001 --regid=65534 --clear-groups --no-new-privs --inh-caps=-all --ambient-caps=-all --bounding-set=-all -- "
 has "drop: sudo is checked to be gone first" "$(cat "$tmp/run/sudo")" "-n true"

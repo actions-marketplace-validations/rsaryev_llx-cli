@@ -13,6 +13,6 @@ export function render(): string {
 
 /** The docs, for prerender.mjs (and the dev server): each page as HTML, the files written beside
  *  them, and what the build checks and copies from the repository. */
-export { DOCS_ROUTES, renderDocsPage } from './docs/render';
+export { DOCS_ROUTES, renderDocsPage, renderNotFound } from './docs/render';
 export { llmsDocs, llmsFull, sitemap } from './docs/files';
 export { IMAGES, REPO_FILES } from './docs/content';

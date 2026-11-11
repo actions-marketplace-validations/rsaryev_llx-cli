@@ -145,10 +145,11 @@ choose_privileges() {
   [ "$how" = keep ] || note "llx: sudo and the runner's groups dropped for llx and every command it runs."
 }
 
-# Root, started by sudo from exec: the step's variables sudo dropped or changed put back, sudo
-# checked to be gone under setpriv and no service socket left in reach, then llx in its place.
+# Root, started by sudo from exec with the run's directory: the step's variables sudo dropped or
+# changed put back, sudo checked to be gone under setpriv and no service socket left in reach, then
+# llx in its place. The directory comes as an argument: sudo-rs (Ubuntu 26.04's sudo) takes no -E.
 lockdown() {
-  local run=${LLX_RUN:?} uid=${SUDO_UID:-} group arg args=() var sock drop
+  local run=${1:?} uid=${SUDO_UID:-} group arg args=() var sock drop
   dir=$run
   if [ -f "$run/kept" ]; then
     while IFS= read -r -d '' var; do export "${var?}"; done <"$run/kept"
@@ -170,10 +171,10 @@ lockdown() {
   exec "${drop[@]}" "${args[@]}"
 }
 
-# The step's variables sudo would drop or change (its env_delete: LD_LIBRARY_PATH; PATH, HOME),
-# for the lockdown to put back: what sudo -E gives a command, compared with this shell's own.
+# The step's variables sudo drops or changes (it resets the environment: PATH, HOME, the key), for
+# the lockdown to put back: what sudo gives a command, compared with this shell's own.
 keep_lost() {
-  sudo -n -E -- env -0 2>/dev/null | perl -0 -e '
+  sudo -n -- env -0 2>/dev/null | perl -0 -e '
     my %after;
     while (my $kv = <STDIN>) { chomp $kv; my ($k, $v) = split /=/, $kv, 2; $after{$k} = $v }
     for my $k (sort keys %ENV) { print "$k=$ENV{$k}\0" unless exists $after{$k} && $after{$k} eq $ENV{$k} }'
@@ -306,7 +307,7 @@ start() {
   cd -- "$(cat "$run/cwd")" || exit 3
   if [ "$(cat "$run/privileges" 2>/dev/null)" = drop ]; then
     (umask 077 && keep_lost >"$run/kept")
-    exec sudo -n -E -- "$BASH" "${BASH_SOURCE[0]}" lockdown <"$run/prompt.txt" >"$run/events.jsonl"
+    exec sudo -n -- "$BASH" "${BASH_SOURCE[0]}" lockdown "$run" <"$run/prompt.txt" >"$run/events.jsonl"
   fi
   exec "${args[@]}" <"$run/prompt.txt" >"$run/events.jsonl"
 }
@@ -423,7 +424,7 @@ finish() {
 case "${1:-}" in
   prepare) prepare ;;
   exec) start ;;
-  lockdown) lockdown ;;
+  lockdown) lockdown "${2:-}" ;;
   finish) finish ;;
   *) die "run.sh prepare, . run.sh exec, or run.sh finish" ;;
 esac

@@ -191,3 +191,32 @@ fn an_empty_hunk_left_after_the_others_is_let_go() {
     // Two `@@` lines with nothing between: the empty one is let go too.
     assert!(parse(&patch("*** Update File: a\n@@\n@@\n-x\n+y\n")).is_ok());
 }
+
+#[test]
+fn a_patch_ended_after_each_file_is_read_as_one_patch() {
+    let whole = hunks("*** Update File: a.ts\n@@\n-old\n+new\n*** Add File: b.ts\n+line\n");
+    let ended = parse(
+        "*** Begin Patch\n*** Update File: a.ts\n@@\n-old\n+new\n*** End Patch\n\
+         *** Add File: b.ts\n+line\n*** End Patch",
+    );
+    assert_eq!(ended.as_ref(), Ok(&whole));
+    let begun = parse(
+        "*** Begin Patch\n*** Update File: a.ts\n@@\n-old\n+new\n*** End Patch\n\n\
+         *** Begin Patch\n*** Add File: b.ts\n+line\n*** End Patch",
+    );
+    assert_eq!(begun.as_ref(), Ok(&whole));
+}
+
+#[test]
+fn text_after_the_patchs_end_that_starts_no_file_is_refused_with_its_line() {
+    let error = parse(
+        "*** Begin Patch\n*** Add File: b.ts\n+line\n*** End Patch\nnow run the tests\n\
+         *** End Patch",
+    )
+    .unwrap_err();
+    assert_eq!(error, "invalid patch, line 5: text after '*** End Patch'");
+    let twice = parse(
+        "*** Begin Patch\n*** Add File: b.ts\n+line\n*** End Patch\n*** Begin Patch\n*** Begin Patch\n*** Add File: c.ts\n+x\n*** End Patch",
+    );
+    assert!(twice.unwrap_err().contains("line 6"), "one Begin at most");
+}

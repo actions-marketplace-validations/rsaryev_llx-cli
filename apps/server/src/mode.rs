@@ -63,6 +63,13 @@ impl Mode {
         &self.0.hint
     }
 
+    /// What the person is shown of it: the hint's first clause. The rest is said to the model.
+    pub(crate) fn brief(&self) -> &str {
+        let clause = self.hint().split(": ").next().unwrap_or_default();
+        let clause = clause.split(". ").next().unwrap_or_default();
+        clause.trim_end_matches('.')
+    }
+
     pub(crate) fn rules(&self) -> &Rules {
         &self.0.rules
     }
@@ -95,14 +102,14 @@ pub(crate) fn list(current: &Mode, modes: &[Mode]) -> String {
         } else {
             " "
         };
-        format!("{mark} {:<11} {}\n", mode.name(), mode.hint())
+        format!("{mark} {:<11} {}\n", mode.name(), mode.brief())
     };
     modes.iter().map(line).collect()
 }
 
 /// What the person is told when the mode changes.
 pub(crate) fn switched(mode: &Mode) -> String {
-    format!("Mode: {}. {}\n", mode.name(), mode.hint())
+    format!("Mode: {}. {}.\n", mode.name(), mode.brief())
 }
 
 /// Why an effect no rule allows is refused with no one to approve it.

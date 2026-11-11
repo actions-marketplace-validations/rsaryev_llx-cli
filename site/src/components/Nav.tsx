@@ -3,8 +3,8 @@ import { DOCS, GITHUB } from '../links';
 import './Nav.css';
 
 /** The bar over every page. On the landing the wordmark scrolls to the top; on a docs page it goes
- *  home, and Docs is marked as where the reader is. */
-export function Nav({ at = 'home' }: { at?: 'home' | 'docs' }) {
+ *  home, and Docs is marked as where the reader is; elsewhere (the 404 page) it goes home. */
+export function Nav({ at = 'home' }: { at?: 'home' | 'docs' | 'elsewhere' }) {
   return (
     <>
       <a className="skip" href="#main">

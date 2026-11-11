@@ -4,6 +4,8 @@
 //! is drawn once it is done, with the steps that came under it. The binary hands it to the
 //! server, which draws nothing itself (K2).
 
+use std::path::{Path, PathBuf};
+
 use protocol::Event;
 use ratatui::text::{Line, Span};
 
@@ -30,13 +32,26 @@ pub struct Trace {
     blocks: usize,
     /// The steps under the call running (what an agent it started does), drawn with it.
     steps: Vec<String>,
+    /// The project: a call is read from it, as the session reads one.
+    root: Option<PathBuf>,
 }
 
 impl Trace {
     /// For the process's stderr as it is now: its colour and its width.
     pub fn here() -> Self {
         let colour = style::colour_on(&std::io::stderr());
-        Self::new(colour, stderr_width().unwrap_or(WIDTH))
+        let trace = Self::new(colour, stderr_width().unwrap_or(WIDTH));
+        match std::env::current_dir() {
+            Ok(root) => trace.within(&root),
+            Err(_) => trace,
+        }
+    }
+
+    /// The trace of a run in the project `root`.
+    #[must_use]
+    pub(crate) fn within(mut self, root: &Path) -> Self {
+        self.root = Some(root.to_path_buf());
+        self
     }
 
     pub(crate) fn new(colour: bool, width: usize) -> Self {
@@ -45,6 +60,7 @@ impl Trace {
             width,
             blocks: 0,
             steps: vec![],
+            root: None,
         }
     }
 
@@ -69,7 +85,8 @@ impl Trace {
                 ..
             } => {
                 let done = State::Done(outcome);
-                let mut text = self.block(&tool_cell::head(name, label, &done, width));
+                let label = super::here::shown(label.clone(), self.root.as_deref());
+                let mut text = self.block(&tool_cell::head(name, &label, &done, width));
                 for step in std::mem::take(&mut self.steps) {
                     let step = wrap::cut(&format!("  · {step}"), width);
                     text +=

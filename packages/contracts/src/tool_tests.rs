@@ -46,3 +46,12 @@ fn a_call_is_readable_when_its_arguments_have_the_shape_the_input_takes() {
     assert!(Input::Text("start: /.+/".into()).accepts(&json!("text")));
     assert!(!Input::Text("start: /.+/".into()).accepts(&json!({"source": "x"})));
 }
+
+#[test]
+fn a_text_tools_text_is_taken_whatever_else_the_model_wrote_beside_it() {
+    let text = Input::Text("start: /.+/".into());
+    let beside = json!({"description": "Write the modules", "source": "return 1"});
+    assert_eq!(text.from_function(beside), json!("return 1"));
+    let not_text = json!({"description": "Write the modules", "source": 1});
+    assert_eq!(text.from_function(not_text.clone()), not_text);
+}

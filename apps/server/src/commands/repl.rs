@@ -123,7 +123,7 @@ pub(crate) fn status(rig: &Rig) -> String {
         "model      {} ({})\nworkspace  {}\nmode       {}\nsession    {} ({} tasks)\n",
         rig.choice.label(),
         login::signed(&rig.choice, rig.shared.workspace.env()),
-        rig.shared.workspace.root().display(),
+        super::sessions::home_relative(&rig.shared.workspace.root().display().to_string()),
         rig.mode.get().name(),
         rig.session.id,
         rig.session.turns.len(),

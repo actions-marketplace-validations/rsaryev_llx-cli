@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+## 0.5.1
+
+- **The GitHub Action drops privileges on Ubuntu 26.04**, today's `ubuntu-latest`. Its sudo is sudo-rs, which ignores `-E`: the lockdown lost the run's directory and every run with `privileges: drop` (the default on a hosted runner) ended not ready. The directory now goes to it as an argument, and the step's variables come back as they always did for those sudo resets.
+- **The session redraws only what changed.** A frame with nothing finished to print writes just the live rows that differ, and none when nothing does; before, every tick of the spinner erased and drew the whole live area again. The same session writes about a third of the bytes to the terminal.
+- **A mode switch says one short line**, `Mode: plan. Read-only.`; before, Shift+Tab printed the whole text the model is given, three rows for `plan`. `/mode` and the modes `/mode ` offers read the same way.
+- **A question's long descriptions go under their options**, every option alike; before, a row that did not fit was wrapped on its own and the descriptions started at a different column on each row. The answer given is shown whole under `Asked`, wrapped, no longer cut at the row's end.
+- **A patch of one file does not name it twice**: `Patched stats.py`, then the diff, without `M stats.py` between them.
+- **The `exec` trace reads a call from the project**, as the session does: a command's own `cd` into the project and the project's path in its arguments are left out; before, each call began with rows of an absolute path.
+- **A spawn's block says who was started and what for**, in two rows at most; before, it printed the whole brief, a dozen rows for each agent. The agent's own view has the brief in full.
+- **An agent's step under the call running reads from the project too**: no `cd` into the project, no absolute path; before, the row was cut before the command itself.
+- **A model switch names the settings file from `~`**, as `/status` does.
+- **`/status` writes the workspace and the key's file from `~`**, and **`/usage` shows a cost under a cent with four digits** (`$0.0003`, not `$0.000`).
+- **On Anthropic's API, a reply the output limit cut off no longer loses its last call.** A tool's input is now streamed as the model writes it (`eager_input_streaming`); before, the API held a long string back until it was whole, so a cut `apply_patch` arrived empty and the files it had written whole were never applied.
+- **Anthropic's models write up to 64,000 tokens a reply at every level** (or the model's own limit when smaller); before, 32,000 below `xhigh`, where a reply that thought long was cut before its first call and lost whole.
+- **`apply_patch` reads a patch ended after each file as one patch**: a `*** End Patch` between two files' sections, with or without a new `*** Begin Patch`, is a separator. Text after the end that starts no file is still refused, with its line.
+- **`apply_patch` takes its text whatever else the model wrote beside it** where it is offered as a function: a call with a `description` next to the patch was refused as "not JSON arguments", and the model wrote the patch again.
+- **A patch cut off while it rewrote a file keeps that file.** A `*** Delete File` followed by an `*** Add File` of the same path, the cut falling in the new text, deleted the file and wrote nothing; the pair is now left out together. A cut patch whose earlier files each ended with `*** End Patch` no longer applies the file the cut fell in.
+
 ## 0.5.0
 
 - **`LLX_RECORD=<dir>`** keeps each session's run whole as JSON lines: every call and its whole output as the model read it, before any elision, the model's words, each turn's usage, each elision and the answer, an agent's events named by it. Off by default; for reading a session again (what an elision took, what the agent read again after one).
