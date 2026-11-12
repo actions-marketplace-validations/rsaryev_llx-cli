@@ -5,9 +5,10 @@ services:
   runner:
     build: .
     image: llx-ci-runner
-    env_file: .env # ACCESS_TOKEN=..., mode 0600, never in git
+    # ACCESS_TOKEN=..., mode 0600, never in git; one file for every runner set on the machine.
+    env_file: /opt/localixai-runner/.env
     environment:
-      REPO: localixai/localix-cli
+      ORG: localixai
       RUNNER_NAME: llx-ci
       LABELS: self-hosted,linux,x64,llx
     volumes:
