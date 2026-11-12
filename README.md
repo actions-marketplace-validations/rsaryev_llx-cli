@@ -234,7 +234,7 @@ Ready-made GitHub workflows, each run for real:
 | [deps.yml](examples/github/deps.yml) | A dependency update read |
 | [jira.yml](examples/github/jira.yml) | A Jira work item made a draft pull request |
 
-And [breaking changes to an HTTP API](examples/breaking-changes/README.md), a script for any CI. How to install one: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
+And two folders of scripts for any CI: [breaking changes to an HTTP API](examples/breaking-changes/README.md), and [secrets kept out of an agent's context, a commit and a pull request](examples/secrets/README.md). How to install a workflow: [examples/](examples/README.md). The action, the two-job pattern, rules, keys, limits, security and GitLab: [docs/ci.md](docs/ci.md). Shell recipes with `gh` and `glab`: [docs/recipes.md](docs/recipes.md).
 
 ## In other agents
 
