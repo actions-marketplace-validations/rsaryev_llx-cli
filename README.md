@@ -84,9 +84,9 @@ jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 ## How it works
 
 ```mermaid
-flowchart LR
+flowchart TD
     task(["a task"]) --> model{{"the model"}}
-    model -- "calls" --> tools["bash · apply_patch<br/>ask · agents · jobs"]
+    model -- "calls" --> tools["its five tools"]
     tools -- "results" --> model
     model -- "a message and no call" --> answer(["the answer"])
 ```
