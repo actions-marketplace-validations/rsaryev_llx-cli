@@ -89,7 +89,6 @@ flowchart LR
     model -- "calls" --> tools["bash · apply_patch<br/>ask · agents · jobs"]
     tools -- "results" --> model
     model -- "a message and no call" --> answer(["the answer"])
-    answer -. "with --schema" .-> data(["data matching<br/>your JSON Schema"])
 ```
 
 The five tools are `bash`, `apply_patch`, `ask`, `agents` and `jobs` ([tools](docs/tools.md)). A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema.
@@ -189,13 +188,13 @@ In CI llx is the same agent as at your terminal, given one task. It works throug
 
 ```mermaid
 flowchart LR
-    subgraph one["job 1 · a read-only token"]
-        llx["llx exec<br/>reads, runs, answers"]
+    subgraph one["job 1 · read-only token"]
+        llx["llx exec"]
     end
-    subgraph two["job 2 · the write token"]
+    subgraph two["job 2 · write token"]
         post["your step posts it"]
     end
-    llx -- "JSON matching your schema" --> post
+    llx -- "the answer, as JSON" --> post
 ```
 
 ```yaml
