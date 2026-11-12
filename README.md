@@ -65,7 +65,7 @@ llx is a model in a loop over five tools, on any provider. One binary, three use
 
 ```bash
 curl -fsSL https://llx.sh/install | sh
-cd your-project && llx                       # a session: /login first, then a task
+cd your-project && llx    # a session: /login first, then a task
 ```
 
 And the same agent as a step of a script, answering with data:
@@ -73,7 +73,7 @@ And the same agent as a step of a script, answering with data:
 ```bash
 echo '{"type":"object","properties":{"bump":{"enum":["patch","minor","major"]},"ship":{"type":"boolean"}},"required":["bump","ship"]}' > ship.json
 git diff main... | llx exec --json --mode plan --schema @ship.json "Safe to ship? Which bump?" > events.jsonl
-echo $?                                      # 0 done, 1 no data, 2 exhausted, 3 error
+echo $?    # 0 done, 1 no data, 2 exhausted, 3 error
 jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 # {"status":"done","data":{"bump":"patch","ship":true}}
 ```
@@ -124,7 +124,7 @@ What finished goes into the terminal's own scrollback, so scrolling, selecting a
 | <kbd>Enter</kbd> | Sends. While a task works, what you type goes to it, read at its next step |
 | <kbd>Tab</kbd> | While a task works, keeps what you typed for after it |
 | <kbd>Shift</kbd>+<kbd>Tab</kbd> | Goes round the modes: `default` → `plan` → `bypass` → your own |
-| <kbd>Esc</kbd> · <kbd>Ctrl</kbd>+<kbd>C</kbd> | Step back out of the innermost thing open; <kbd>Ctrl</kbd>+<kbd>C</kbd> also stops work |
+| <kbd>Esc</kbd>,&nbsp;<kbd>Ctrl</kbd>+<kbd>C</kbd> | Step back out of the innermost thing open; <kbd>Ctrl</kbd>+<kbd>C</kbd> also stops work |
 | <kbd>/</kbd> | Lists the commands: `/login`, `/model`, `/mode`, `/new`, `/rewind`, `/diff`, `/copy`, `/usage` and more |
 | <kbd>@</kbd> | Lists the workspace's files to mention; a dragged file or picture is attached |
 | <kbd>←</kbd> | On an empty prompt, lists the sessions in this project: several can work at once |
@@ -137,10 +137,10 @@ The same task, the same model, the same Anthropic key, started in the same minut
 
 | Task | Model | Agent | Solved | Time | Turns | Cost |
 | :-- | :-- | :-- | --: | --: | --: | --: |
-| evalkit, 238 tests | Haiku 5.5 | **llx** | 238 of 238 | **286 s** | 14 | **$0.050** |
-| | | Claude Code 2.1.321 | 238 of 238 | 478 s | 25 | $0.46 |
-| shopkit, 69 tests | Haiku 5.5 | **llx** | 69 of 69 | 69 s | 5 | $0.012 |
-| | | Claude Code 2.1.321 | 69 of 69 | 67 s | 4 | $0.011 |
+| evalkit, 238&nbsp;tests | Haiku&nbsp;5.5 | **llx** | 238&nbsp;of&nbsp;238 | **286&nbsp;s** | 14 | **$0.050** |
+| | | Claude&nbsp;Code&nbsp;2.1.321 | 238&nbsp;of&nbsp;238 | 478&nbsp;s | 25 | $0.46 |
+| shopkit, 69&nbsp;tests | Haiku&nbsp;5.5 | **llx** | 69&nbsp;of&nbsp;69 | 69&nbsp;s | 5 | $0.012 |
+| | | Claude&nbsp;Code&nbsp;2.1.321 | 69&nbsp;of&nbsp;69 | 67&nbsp;s | 4 | $0.011 |
 
 > [!NOTE]
 > One run of each agent, on one machine: a measurement, not a law.
