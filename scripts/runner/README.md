@@ -38,7 +38,7 @@ runs.
 ## Registered in the organisation
 
 The runners register in the `localixai` organisation, not in one repository, and a job reaches a
-runner by its labels: `llx` here, `localix` for Localix Studio, `llx-desk` for Localix Terminal.
+runner by its labels: `llx` here, `localix` for Localix Studio, `llxterm` for Localix Terminal (its runners keep `llx-desk` too).
 Those sets live beside this one on the same machine (`/opt/localix-runner`, `/opt/llx-desk-runner`,
 each with its own image); they read the same token and mount this `entrypoint.sh` from
 `/opt/localixai-runner`. The organisation's runner group allows public repositories; a pull
