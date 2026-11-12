@@ -51,7 +51,7 @@ fn a_byte_is_found_wherever_it_is() {
 fn a_line_ends_at_its_line_feed_or_carriage_return_and_not_at_a_tab() {
     for len in 0..100 {
         for place in 0..len {
-            for ending in [b'\n', b'\r'] {
+            for ending in *b"\n\r" {
                 // Tabs, and bytes with their top bit set, stand around it: neither ends a line.
                 let mut text: Vec<u8> = (0..len)
                     .map(|at| [b'\t', b'a', 0xc3, 0x0e][at % 4])
@@ -73,7 +73,7 @@ fn an_address_runs_to_the_first_blank_or_angle() {
             .collect();
         assert_eq!(unbroken(&text, 0), len);
         for place in 0..len {
-            for stop in [b' ', b'\t', b'\n', b'\r', b'<'] {
+            for stop in *b" \t\n\r<" {
                 let mut text = text.clone();
                 text[place] = stop;
                 assert_eq!(unbroken(&text, 0), place, "{len} {place} {stop}");
