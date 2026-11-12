@@ -83,14 +83,6 @@ jq -c 'select(.type == "run.completed") | {status, data}' events.jsonl
 
 ## How it works
 
-```mermaid
-flowchart TD
-    task(["a task"]) --> model{{"the model"}}
-    model -- "calls" --> tools["its five tools"]
-    tools -- "results" --> model
-    model -- "a message and no call" --> answer(["the answer"])
-```
-
 The five tools are `bash`, `apply_patch`, `ask`, `agents` and `jobs` ([tools](docs/tools.md)). A task ends when the model replies with a message and no tool call: that message is the answer. With `--schema`, llx then asks the model once more for data matching your JSON Schema.
 
 - **Sandboxed by default.** llx works in your project without asking: commands run in the system's sandbox, which writes only inside the workspace (never its `.git`) and opens no network, and file changes there are made[^sandbox]. What must reach further is asked first, and refused where no one is there to ask.
@@ -185,17 +177,6 @@ Any other host that speaks OpenAI's chat completions, on your network or anywher
 ## In CI and scripts
 
 In CI llx is the same agent as at your terminal, given one task. It works through the plain filesystem and primitive commands: `bash` with `gh`, `git`, `jq` and your project's own tools. There is no MCP server, no GitHub tool and no built-in prompt. Your workflow owns the prompt and the posting, so the same task runs on GitHub, GitLab or any runner with a shell. The job that runs the model holds a read-only token, and a second job posts what it answered: the write token is never near the model.
-
-```mermaid
-flowchart LR
-    subgraph one["job 1 · read-only token"]
-        llx["llx exec"]
-    end
-    subgraph two["job 2 · write token"]
-        post["your step posts it"]
-    end
-    llx -- "the answer, as JSON" --> post
-```
 
 ```yaml
 # a step of a job, after actions/checkout
