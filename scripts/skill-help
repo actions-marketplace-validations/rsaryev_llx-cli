@@ -5,7 +5,7 @@
 # (apps/cli/tests/suite/repo/skill.rs) fails while the skill's copy differs.
 set -eu
 cd "$(dirname "$0")/.." || exit 1
-cargo build -q -p llx-cli
+cargo build -q -p localix-cli
 llx=target/debug/llx
 skill=skills/llx/SKILL.md
 marker='<!-- Written by scripts/skill-help from the help llx prints; a test checks it matches. -->'

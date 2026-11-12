@@ -108,12 +108,12 @@ jobs:
             # The archive, as a user unpacks it, runs in a plain distribution.
             unpacked="$RUNNER_TEMP/unpacked"
             mkdir "$unpacked"
-            tar -xzf "dist/llx-cli-${{ matrix.targets }}.tar.gz" -C "$unpacked" llx
+            tar -xzf "dist/localix-cli-${{ matrix.targets }}.tar.gz" -C "$unpacked" llx
             docker run --rm --network none -v "$unpacked:/unpacked:ro" ubuntu:22.04 /unpacked/llx --version
           fi
           if [ "$RUNNER_OS" = macOS ]; then
             # The universal download runs as it was packaged and holds both architectures.
-            tar -xzf dist/llx-cli-universal-apple-darwin.tar.gz -C "$RUNNER_TEMP" llx
+            tar -xzf dist/localix-cli-universal-apple-darwin.tar.gz -C "$RUNNER_TEMP" llx
             "$RUNNER_TEMP/llx" --version
             archs=$(lipo -archs "$RUNNER_TEMP/llx")
             case "$archs" in *x86_64*arm64* | *arm64*x86_64*) ;; *)
@@ -135,7 +135,7 @@ jobs:
     permissions:
       contents: write
       # A signed statement of which workflow and commit built each archive:
-      # `gh attestation verify llx-cli-<target>.tar.gz --repo rsaryev/llx-cli`.
+      # `gh attestation verify localix-cli-<target>.tar.gz --repo localixai/localix-cli`.
       id-token: write
       attestations: write
     steps:
@@ -151,17 +151,17 @@ jobs:
         shell: bash
         run: |
           mkdir dist
-          cp artifacts/dist-*/llx-cli-* dist/
+          cp artifacts/dist-*/localix-cli-* dist/
           cat artifacts/dist-*/SHA256SUMS | sort -k 2 > dist/SHA256SUMS
           (cd dist && sha256sum --check --strict SHA256SUMS)
-          test "$(wc -l < dist/SHA256SUMS)" -eq "$(find dist -name 'llx-cli-*' | wc -l)"
+          test "$(wc -l < dist/SHA256SUMS)" -eq "$(find dist -name 'localix-cli-*' | wc -l)"
           # The installers of this version, for `releases/download/vX.Y.Z/install.sh`.
           cp scripts/install.sh dist/
           ls -l dist
       - name: Attest where the archives were built
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/llx-cli-*
+          subject-path: dist/localix-cli-*
       - name: Release notes
         run: sh scripts/release-notes.sh "${{ needs.check.outputs.version }}" > notes.md
       - name: Create the release
@@ -217,7 +217,7 @@ jobs:
           TARGET: ${{ matrix.target }}
         run: |
           image="ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION-$ARCH"
-          tar -xzf "artifacts/llx-cli-$TARGET.tar.gz" -C scripts/image llx
+          tar -xzf "artifacts/localix-cli-$TARGET.tar.gz" -C scripts/image llx
           docker build --platform "linux/$ARCH" -t "$image" scripts/image
           docker run --rm --network none "$image" llx --version
           echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
@@ -245,7 +245,7 @@ jobs:
           docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
           docker buildx imagetools inspect "$image:$VERSION"
 
-  # `uses: rsaryev/llx-cli@v0` follows the releases: once the release exists, the major tag (v0 for
+  # `uses: localixai/localix-cli@v0` follows the releases: once the release exists, the major tag (v0 for
   # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving
   # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), so it releases
   # nothing again. The workflow's own token cannot point a tag at a commit whose .github/workflows

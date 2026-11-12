@@ -39,7 +39,7 @@ export const UNLISTED: Record<string, string> = {
 
 /** The index at /docs. */
 export const INDEX = {
-  title: 'llx docs',
+  title: 'Localix CLI docs',
   description:
     'How llx works at your terminal, in scripts and CI, and for other agents: the command line, the GitHub Action and its recipes, the five tools, the modes, how a task ends, and the exit codes and events a pipeline relies on.',
 };

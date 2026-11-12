@@ -2,8 +2,9 @@
 # A runner for one job: registered as ephemeral with a registration token the access token asks
 # for, then it takes one job and leaves; the service starts a fresh container for the next.
 set -euo pipefail
-: "${ACCESS_TOKEN:?a token that may register runners on REPO}" "${REPO:?owner/name}"
-api="https://api.github.com/repos/$REPO/actions/runners/registration-token"
+: "${ACCESS_TOKEN:?a token that may register runners in ORG}" "${ORG:?organisation}"
+# Registered in the organisation, not one repository: a job reaches it by its labels alone.
+api="https://api.github.com/orgs/$ORG/actions/runners/registration-token"
 token=$(curl -fsS -X POST -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Accept: application/vnd.github+json" "$api" | jq -r .token)
 # The job is this process's child: it must not inherit the access token. exec below replaces the
@@ -11,6 +12,6 @@ token=$(curl -fsS -X POST -H "Authorization: Bearer $ACCESS_TOKEN" \
 unset ACCESS_TOKEN
 cd ~/actions-runner
 ./config.sh --unattended --ephemeral --disableupdate --replace \
-  --url "https://github.com/$REPO" --token "$token" \
+  --url "https://github.com/$ORG" --token "$token" \
   --name "${RUNNER_NAME:-$(hostname)}" --labels "${LABELS:-self-hosted,linux,llx}"
 exec ./run.sh

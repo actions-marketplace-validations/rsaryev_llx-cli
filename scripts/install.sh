@@ -2,19 +2,19 @@
 # Installs the llx binary from a GitHub release:
 #
 #   curl -fsSL https://llx.sh/install | sh
-# (the same file as main has it: https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh)
+# (the same file as main has it: https://raw.githubusercontent.com/localixai/localix-cli/main/scripts/install.sh)
 #
 # Environment:
 #   LLX_VERSION      a release such as 0.2.0 (default: the latest)
 #   LLX_INSTALL_DIR  where the binary goes (default: $HOME/.local/bin)
 #
-# It downloads llx-cli-<target>.tar.gz and SHA256SUMS from the release, refuses an archive whose
+# It downloads localix-cli-<target>.tar.gz and SHA256SUMS from the release, refuses an archive whose
 # SHA-256 does not match, and replaces the binary in one rename, so a running llx is not torn.
 # Everything runs from `main` on the last line: a download cut short by the network defines
 # functions at most, and runs nothing.
 set -eu
 
-repo="rsaryev/llx-cli"
+repo="localixai/localix-cli"
 install_dir=${LLX_INSTALL_DIR:-$HOME/.local/bin}
 version=${LLX_VERSION:-}
 
@@ -80,7 +80,7 @@ sha256_of() {
 
 main() {
   target=$(detect_target)
-  archive="llx-cli-$target.tar.gz"
+  archive="localix-cli-$target.tar.gz"
   if [ -n "$version" ]; then
     base="https://github.com/$repo/releases/download/v${version#v}"
   else

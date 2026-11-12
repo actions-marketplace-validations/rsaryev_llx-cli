@@ -65,7 +65,7 @@ The simplest way is to tell your agent to use it: `Use llx decide to judge these
 [skills/llx](../skills/llx/SKILL.md) is a skill for any agent that takes them (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
 ```bash
-npx skills add rsaryev/llx-cli
+npx skills add localixai/localix-cli
 ```
 
 It describes llx and what each part is for, with examples an agent can run as they are: the coding agent, one task in a script or CI with a workflow for the GitHub Action, helpers on another model (several in parallel, resumed), `llx decide` and a search of the code made of it, the modes and the sandbox. It ends with `llx exec --help` and `llx decide --help` as the release prints them, so the agent has every option without running anything first; a test keeps that copy the binary's own.
@@ -75,10 +75,10 @@ It describes llx and what each part is for, with examples an agent can run as th
 The same skill, as a plugin:
 
 ```text
-/plugin install llx --marketplace rsaryev/llx-cli
+/plugin install llx --marketplace localixai/localix-cli
 ```
 
-On an older Claude Code: `/plugin marketplace add rsaryev/llx-cli`, then `/plugin install llx@llx`.
+On an older Claude Code: `/plugin marketplace add localixai/localix-cli`, then `/plugin install llx@llx`.
 
 In Claude Code, however the skill was installed: while it is active, its `allowed-tools` lets Claude run these commands without asking you: `llx --help`, `llx exec --help` and `llx doctor` as they are, and `llx decide` and `llx exec --mode plan` with any arguments after them. It grants nothing else and takes no tool away: every other command goes by your permission settings. As the skill grants these, Claude Code asks you once whether to use it; "don't ask again" keeps the answer (`Skill(llx:llx)` in your allow rules). Where no one is there to answer (`claude -p`, CI), add that rule yourself, in `permissions.allow` or with `--allowedTools 'Skill(llx:llx)'`: else the skill is refused, and with it every llx command it would have run.
 

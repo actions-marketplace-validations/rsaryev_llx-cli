@@ -7,7 +7,7 @@ Install it whichever way the machine already has.
 > ```
 > #### Docker
 > ```sh
-> docker run --rm -it ghcr.io/rsaryev/llx-cli
+> docker run --rm -it ghcr.io/localixai/localix-cli
 > ```
 > #### From source
 > Needs a stable Rust toolchain.

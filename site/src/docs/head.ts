@@ -18,14 +18,14 @@ export function head({ title, headline, description, route }: Meta): string {
     headline,
     description,
     url,
-    isPartOf: { '@type': 'WebSite', name: 'llx', url: `${SITE}/` },
+    isPartOf: { '@type': 'WebSite', name: 'Localix CLI', url: `${SITE}/` },
   };
   return [
     `<title>${t}</title>`,
     `<meta name="description" content="${d}">`,
     `<link rel="canonical" href="${url}">`,
     '<meta property="og:type" content="article">',
-    '<meta property="og:site_name" content="llx">',
+    '<meta property="og:site_name" content="Localix CLI">',
     '<meta property="og:locale" content="en_US">',
     `<meta property="og:url" content="${url}">`,
     `<meta property="og:title" content="${t}">`,

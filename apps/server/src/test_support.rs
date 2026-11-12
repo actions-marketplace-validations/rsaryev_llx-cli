@@ -44,7 +44,7 @@ impl Scratch {
     pub(crate) fn under(base: &Path) -> Self {
         static NEXT: AtomicUsize = AtomicUsize::new(0);
         let name = format!(
-            "llx-cli-{}-{}-{}",
+            "localix-cli-{}-{}-{}",
             std::process::id(),
             crate::clock::now(),
             NEXT.fetch_add(1, Ordering::Relaxed)

@@ -1,6 +1,6 @@
-# Runner N of rsaryev/llx-cli (README.md here): one job per fresh container, started again after it.
+# Runner N of localixai/localix-cli (README.md here): one job per fresh container, started again after it.
 [Unit]
-Description=rsaryev/llx-cli CI runner %i: one job per fresh container
+Description=localixai/localix-cli CI runner %i: one job per fresh container
 After=docker.service network-online.target
 Requires=docker.service
 ConditionPathExists=/opt/llx-ci-runner/.env

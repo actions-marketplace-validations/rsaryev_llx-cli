@@ -46,7 +46,7 @@ enum Wake {
 /// The requests as wakes, on a thread of its own until the interface's connection ends: the
 /// desk waits on one channel for them and for its lanes' ends, and never polls.
 fn forward(requests: Receiver<Request>, wake: &Sender<Wake>) {
-    let forwarder = std::thread::Builder::new().name("llx-desk-requests".into());
+    let forwarder = std::thread::Builder::new().name("llx-lane-requests".into());
     let told = wake.clone();
     let spawned = forwarder.spawn(move || {
         for request in requests {
