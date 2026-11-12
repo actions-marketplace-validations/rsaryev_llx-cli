@@ -5,7 +5,7 @@ fn punctuation_is_unicodes_p_and_s() {
     for ch in ['!', '~', '£', '€', '«', '—', '、', '😀', '→'] {
         assert!(is_punct(ch), "{ch}");
     }
-    for ch in ['a', '1', ' ', 'é', 'я', '日', '\u{301}', '\u{a0}'] {
+    for ch in ['a', '1', ' ', 'é', '\u{44f}', '日', '\u{301}', '\u{a0}'] {
         assert!(!is_punct(ch), "{ch:?}");
     }
 }
