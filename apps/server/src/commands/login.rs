@@ -12,6 +12,8 @@ use crate::providers::{Method, Provider};
 use crate::server::Ui;
 use protocol::Event;
 
+mod host;
+
 /// What the steps ask of the world beyond the terminal: where each provider's sign-in comes
 /// from, and signing in (what was saved, in words).
 pub(crate) struct World<'a> {
@@ -39,6 +41,7 @@ pub(crate) enum Ended {
 #[derive(Clone)]
 enum Step {
     Provider,
+    Host,
     Keep(Provider, String),
     Method(Provider),
     SignIn(Provider, Method),
@@ -102,10 +105,16 @@ fn advance(
 ) -> Result<Move, String> {
     Ok(match step {
         Step::Provider => match pick_provider(current, terminal, world, marks) {
-            Some(provider) => Move::Next(match (world.signed_in)(&provider) {
+            Some(Picked::Provider(provider)) => Move::Next(match (world.signed_in)(&provider) {
                 Some(from) => Step::Keep(provider, from),
                 None => after_keep(provider),
             }),
+            Some(Picked::Host) => Move::Next(Step::Host),
+            None => Move::Back,
+        },
+        // Added and answering: its models are next, as after a sign-in.
+        Step::Host => match host::add(terminal, world.say)? {
+            Some(provider) => Move::Signed(provider),
             None => Move::Back,
         },
         Step::Keep(provider, from) => {
@@ -154,7 +163,13 @@ fn advance(
         }
         Step::Model(provider) => {
             let title = format!("{} › Model", path(provider));
-            match pick_among(current, terminal, std::slice::from_ref(provider), &title) {
+            match pick_among(
+                current,
+                terminal,
+                std::slice::from_ref(provider),
+                None,
+                &title,
+            ) {
                 Some(choice) => Move::Chose(choice),
                 None => Move::Back,
             }
@@ -175,15 +190,21 @@ fn after_keep(provider: Provider) -> Step {
     }
 }
 
+/// What the first step came to: a provider, or the row that adds a host.
+enum Picked {
+    Provider(Provider),
+    Host,
+}
+
 /// The provider chosen; `None` when the person cancelled.
 fn pick_provider(
     current: &Choice,
     terminal: &mut dyn Terminal,
     world: &World,
     marks: &mut Marks,
-) -> Option<Provider> {
+) -> Option<Picked> {
     let mut offered = offered(Provider::all(), &current.provider, world.signed_in);
-    let items: Vec<Item> = offered
+    let mut items: Vec<Item> = offered
         .iter()
         .map(|provider| {
             let id = provider.id();
@@ -196,14 +217,18 @@ fn pick_provider(
             Item::new(label, detail, *provider == marks.provider)
         })
         .collect();
+    items.push(host::item());
     let at = terminal.pick("Login › Provider", &items)?;
+    if at == offered.len() {
+        return Some(Picked::Host);
+    }
     let provider = offered.swap_remove(at);
     if provider != marks.provider {
         marks.keep = 0;
         marks.method = 0;
     }
     marks.provider.clone_from(&provider);
-    Some(provider)
+    Some(Picked::Provider(provider))
 }
 
 /// Every provider of the catalog, in the order a person looks for one: the popular (in their

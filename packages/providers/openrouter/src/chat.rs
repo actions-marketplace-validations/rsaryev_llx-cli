@@ -31,7 +31,7 @@ impl Chat for ChatModel {
         let body = body(self.client.wire(), &selection, &request, self.switch);
         let (value, millis) = self
             .client
-            .post("/chat/completions", &body, request.deadline)
+            .asked("/chat/completions", body, request.deadline)
             .map_err(|error| match error {
                 ApiError::Invalid(message) => ChatError::Invalid(message),
                 other @ (ApiError::Auth(_) | ApiError::Http(..) | ApiError::Network(_)) => {
@@ -101,6 +101,8 @@ fn read(value: &Value, model: &str, millis: u64) -> Result<Completion, ChatError
         ));
     }
     let tokens = |pointer: &str| value.pointer(pointer).and_then(Value::as_u64).unwrap_or(0);
+    // The first place that says some: a host may say zero in one and the count in another.
+    let said = |places: &[&str]| (places.iter().map(|p| tokens(p)).find(|n| *n > 0)).unwrap_or(0);
     Ok(Completion {
         text,
         calls,
@@ -111,12 +113,8 @@ fn read(value: &Value, model: &str, millis: u64) -> Result<Completion, ChatError
             cost: cost(value),
             millis,
             input_tokens: tokens("/usage/prompt_tokens"),
-            // Where most hosts say it, else at the top of the usage (Together's).
-            cached_tokens: (value.pointer("/usage/prompt_tokens_details/cached_tokens"))
-                .or_else(|| value.pointer("/usage/cached_tokens"))
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            written_tokens: tokens("/usage/prompt_tokens_details/cache_write_tokens"),
+            cached_tokens: said(&CACHE_READ),
+            written_tokens: said(&CACHE_WRITTEN),
             output_tokens: tokens("/usage/completion_tokens"),
         },
         // `length`: the host's output limit stopped it, a call's arguments maybe midway.
@@ -143,6 +141,23 @@ fn cost(value: &Value) -> f64 {
     at("/usage/cost") + upstream
 }
 
+/// Where a host says what a request read from its prompt cache: where most do, at the top of the
+/// usage (Together's), as DeepSeek's own API does, as a relay passing on Anthropic's counts
+/// does, and in llama.cpp's own timings.
+const CACHE_READ: [&str; 5] = [
+    "/usage/prompt_tokens_details/cached_tokens",
+    "/usage/cached_tokens",
+    "/usage/prompt_cache_hit_tokens",
+    "/usage/cache_read_input_tokens",
+    "/timings/cache_n",
+];
+
+/// Where a host says what a request wrote to its prompt cache: OpenRouter's place, Anthropic's.
+const CACHE_WRITTEN: [&str; 2] = [
+    "/usage/prompt_tokens_details/cache_write_tokens",
+    "/usage/cache_creation_input_tokens",
+];
+
 /// The fields a host says its model's reasoning in, the first that holds some taken: a host may
 /// say it twice, in two of them.
 pub(crate) const THOUGHT: [&str; 3] = ["reasoning_content", "reasoning", "reasoning_text"];
@@ -166,32 +181,39 @@ fn body(host: Wire, selection: &Selection, request: &Request, switch: Switch) ->
     // OpenAI's reasoning models refuse `max_tokens`; every chat model of its takes this one.
     let cap = match host {
         Wire::OpenAi => "max_completion_tokens",
-        Wire::OpenRouter | Wire::Plain => "max_tokens",
+        Wire::OpenRouter | Wire::Plain | Wire::Local => "max_tokens",
     };
     let mut body = json!({"model": model, cap: limit});
     // Only a model that takes levels is sent one: another may refuse the field.
     let levels = !selection.model().efforts.is_empty();
-    if host == Wire::OpenRouter {
-        // Moved, not copied: `json!` of a value serializes a second tree of it.
-        body["messages"] = Value::Array(if selection.model().marks {
-            cached(messages)
-        } else {
-            messages
-        });
-        if levels {
-            body["reasoning"] = level::reasoning(selection.effort());
+    // A plain host serving such a model (a proxy, a router) takes the marks as OpenRouter does;
+    // one that refuses them is asked again without (`mend`).
+    let marked = matches!(host, Wire::OpenRouter | Wire::Plain) && selection.model().marks;
+    // Moved, not copied: `json!` of a value serializes a second tree of it.
+    body["messages"] = Value::Array(if marked { cached(messages) } else { messages });
+    match host {
+        Wire::OpenRouter => {
+            if levels {
+                body["reasoning"] = level::reasoning(selection.effort());
+            }
+            body["usage"] = json!({"include": true});
+            // One session a conversation: OpenRouter's logs show its requests together, and it
+            // routes them to the host that holds its cache.
+            body["session_id"] = json!(session(request.conversation));
         }
-        body["usage"] = json!({"include": true});
-        // One session a conversation: OpenRouter's logs show its requests together, and it
-        // routes them to the host that holds its cache.
-        body["session_id"] = json!(session(request.conversation));
-        // Streamed: a reply the output limit cuts off keeps what its last call wrote (B7).
+        Wire::OpenAi | Wire::Plain | Wire::Local => {
+            if levels {
+                level::switched(&mut body, switch, selection.effort());
+            }
+        }
+    }
+    // Streamed: a reply the output limit cuts off keeps what its last call wrote (B7). A local
+    // host says its usage only in a stream asked for it.
+    if matches!(host, Wire::OpenRouter | Wire::Local) {
         body["stream"] = json!(true);
-    } else {
-        body["messages"] = Value::Array(messages);
-        if levels {
-            level::switched(&mut body, switch, selection.effort());
-        }
+    }
+    if host == Wire::Local {
+        body["stream_options"] = json!({"include_usage": true});
     }
     // OpenAI routes by the key: one per conversation sends its requests to where its own start
     // is cached, instead of every session to one machine.

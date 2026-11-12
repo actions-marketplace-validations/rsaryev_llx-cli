@@ -1,5 +1,6 @@
 //! `/model` and the reasoning level: one list, each provider's models a group of their own (a
-//! tab in the interface), with Left/Right choosing the level inline. Shift+Up and Shift+Down
+//! tab in the interface; the servers on the person's machine that answer after the catalog's,
+//! the two then named `Cloud` and `Local`), with Left/Right choosing the level inline. Shift+Up and Shift+Down
 //! also step the level. A switch to another model starts at `auto` (before its own levels, when
 //! it has any), and only its own levels are offered. The choice is put in at once (the chat
 //! model, and its key's variables kept from commands) and saved as the default for later
@@ -22,25 +23,37 @@ fn pick_model(
     current: &Choice,
     terminal: &mut dyn Terminal,
     signed_in: &dyn Fn(&Provider) -> Option<String>,
+    local: &[Provider],
+    note: Option<&str>,
 ) -> Option<Choice> {
-    let providers: Vec<Provider> = Provider::all()
+    let mut providers: Vec<Provider> = Provider::all()
         .into_iter()
         .filter(|p| *p == current.provider || signed_in(p).is_some())
         .collect();
-    pick_among(current, terminal, &providers, "Model")
+    // The hosts the catalog does not know that answer, after its own.
+    let local = local.iter().filter(|p| !providers.contains(p)).cloned();
+    let local: Vec<Provider> = local.collect();
+    providers.extend(local);
+    pick_among(current, terminal, &providers, note, "Model")
 }
 
 /// A model of `providers` and its inline level under `title`; `None` when the person cancels.
+/// Providers of several kinds (the catalog's, the settings' hosts, the servers on this machine)
+/// are in sections, each named; `note` is said under `Local` when no such server answers.
 pub(super) fn pick_among(
     current: &Choice,
     terminal: &mut dyn Terminal,
     providers: &[Provider],
+    note: Option<&str>,
     title: &str,
 ) -> Option<Choice> {
     let mut offered: Vec<(Provider, ModelEntry)> = vec![];
     // Each provider's models together, under its name: the interface shows them as its tab.
     let mut groups: Vec<Group> = vec![];
-    for provider in providers {
+    let sections: Vec<&str> = providers.iter().map(Provider::section).collect();
+    let several = note.is_some() || sections.iter().any(|section| *section != sections[0]);
+    for (provider, section) in providers.iter().zip(&sections) {
+        let section = if several { section } else { "" };
         let mut models = provider.models();
         if *provider == current.provider && !models.iter().any(|m| m.id == current.model()) {
             models.insert(0, current.selection.model().clone());
@@ -49,8 +62,16 @@ pub(super) fn pick_among(
         groups.push(Group {
             name: provider.name(),
             rows,
+            section: section.into(),
         });
         offered.extend(models.into_iter().map(|model| (provider.clone(), model)));
+    }
+    if let Some(note) = note {
+        groups.push(Group {
+            name: note.into(),
+            rows: 0,
+            section: "Local".into(),
+        });
     }
     let now = |(provider, model): &(Provider, ModelEntry)| {
         *provider == current.provider && model.id == current.model()
@@ -123,7 +144,15 @@ pub(super) fn run_model(rig: &mut Rig, ui: &Ui) {
     let terminal = &mut ui.clone();
     // Signed in by the session's environment, as `adopt` reads it.
     let vars = rig.shared.workspace.env();
-    let picked = pick_model(&rig.choice, terminal, &|p| p.signed_in_by(vars));
+    let local = Provider::local(vars);
+    let note = Provider::none_local(vars, &local);
+    let picked = pick_model(
+        &rig.choice,
+        terminal,
+        &|p| p.signed_in_by(vars),
+        &local,
+        note,
+    );
     match picked {
         Some(choice) => rig.output.note(&adopted(rig, choice)),
         None => rig.output.note("Nothing changed.\n"),

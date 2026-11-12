@@ -26,7 +26,10 @@ contracts.workspace = true
 protocol.workspace = true
 queue.workspace = true
 schema.workspace = true
+# The forms an answer is drawn with, as the package that reads them tells a model.
+markdown.workspace = true
 anthropic.workspace = true
+local.workspace = true
 openai.workspace = true
 models.workspace = true
 openrouter.workspace = true

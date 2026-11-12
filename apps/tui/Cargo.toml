@@ -18,7 +18,7 @@ testing = ["dep:vt100"]
 [dependencies]
 protocol.workspace = true
 crossterm.workspace = true
-pulldown-cmark.workspace = true
+markdown.workspace = true
 ratatui.workspace = true
 unicode-width.workspace = true
 # The terminal's modes, signals and size: calls std has no wrapper for.

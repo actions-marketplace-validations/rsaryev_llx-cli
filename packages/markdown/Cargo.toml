@@ -1,0 +1,14 @@
+[package]
+name = "markdown"
+description = "Markdown as a language model writes it, read into a tree: CommonMark, GitHub's extensions and the forms of an agent's reply"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# No workspace package and no dependency at all: a primitive the interface draws from (rule L3).
+[dependencies]
+
+[lints]
+workspace = true

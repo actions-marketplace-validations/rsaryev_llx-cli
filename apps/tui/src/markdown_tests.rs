@@ -170,3 +170,263 @@ fn an_item_that_opens_with_code_keeps_its_marker() {
     2. two
     ");
 }
+
+#[test]
+fn a_callout_is_its_name_and_title_behind_a_bar() {
+    let text = "> [!WARNING] Downtime\n> The migration locks the table for a minute.\n\nAfter.";
+    insta::assert_snapshot!(shown(text, 30), @"
+    ▌ Warning · Downtime
+    ▌ The migration locks the
+    ▌ table for a minute.
+
+    After.
+    ");
+    let rows = render(text, 30);
+    assert_eq!(rows[0].spans[0].style, style::waiting());
+}
+
+#[test]
+fn steps_are_numbered_down_a_rail() {
+    let text = "> [!STEPS] Recovery\n1. **Rest**\n   Sleep eight hours, no screens.\n2. **Walk**\n\n   ```sh\n   walk --minutes 30\n   ```\n3. **Done**\n\nAfter.";
+    insta::assert_snapshot!(shown(text, 30), @"
+    Recovery
+    1 Rest
+    │ Sleep eight hours, no
+    │ screens.
+    │
+    2 Walk
+    │
+    │ walk --minutes 30
+    │
+    3 Done
+
+    After.
+    ");
+}
+
+#[test]
+fn tabs_are_drawn_one_under_another_each_under_its_label() {
+    let text = "> [!TABS] Install\n#### npm\n```sh\nnpm install llx\n```\n#### bun\nRun `bun add llx`.\n\n## Next\n";
+    insta::assert_snapshot!(shown(text, 30), @"
+    Install
+    ─ npm ───────────────────────
+    npm install llx
+
+    ─ bun ───────────────────────
+    Run bun add llx.
+
+    Next
+    ");
+}
+
+#[test]
+fn figures_share_a_row_while_they_fit() {
+    let text = "> [!STATS]\n- **3x** faster\n- **700** allocations\n";
+    insta::assert_snapshot!(shown(text, 40), @"3x faster · 700 allocations");
+    insta::assert_snapshot!(shown(text, 20), @"
+    - 3x faster
+    - 700 allocations
+    ");
+    // Sentences where figures were asked for: each still starts at its marker.
+    let text = "> [!STATS]\n- **Python: 10 s.** Every value becomes an object.\n- **Rust: 2 s.**\n";
+    insta::assert_snapshot!(shown(text, 30), @"
+    - Python: 10 s. Every value
+      becomes an object.
+    - Rust: 2 s.
+    ");
+}
+
+#[test]
+fn the_case_for_and_against_details_and_sources() {
+    let text = "> [!PROS]\n- small\n- fast\n\n> [!CONS] Against\n- new\n\n> [!DETAILS] How it was measured\n> The median of nine rounds.\n\n> [!SOURCES]\n- [The spec](https://spec.commonmark.org)\n- [GFM](https://github.github.com/gfm)\n";
+    insta::assert_snapshot!(shown(text, 44), @"
+    + small
+    + fast
+
+    Against
+    - new
+
+    ▾ How it was measured
+      The median of nine rounds.
+
+    [1] The spec (https://spec.commonmark.org)
+    [2] GFM (https://github.github.com/gfm)
+    ");
+    let rows = render(text, 44);
+    assert_eq!(rows[0].spans[0].style, style::done());
+}
+
+#[test]
+fn a_task_list_an_image_and_a_loose_list() {
+    let text = "- [x] done\n- [ ] todo\n\n![a chart](https://a.b/c.png)\n\n1. one\n\n2. two\n";
+    insta::assert_snapshot!(shown(text, 40), @"
+    [x] done
+    [ ] todo
+
+    a chart (https://a.b/c.png)
+
+    1. one
+
+    2. two
+    ");
+}
+
+#[test]
+fn a_task_hangs_under_its_text_and_a_numbered_one_keeps_its_number() {
+    let text =
+        "- [ ] check who wrote the commits on the branch\n- [x] back it up\n\n1. [ ] first\n";
+    insta::assert_snapshot!(shown(text, 28), @"
+    [ ] check who wrote the
+        commits on the branch
+    [x] back it up
+
+    1. [ ] first
+    ");
+    let rows = render(text, 28);
+    assert_eq!(rows[2].spans[0].style, style::done());
+}
+
+#[test]
+fn code_keeps_its_tabs_as_columns() {
+    let text =
+        "```go\nfunc main() {\n\tif ok {\n\t\treturn\n\t}\n}\n```\n\n```\na\tb\nabcd\te\n```";
+    insta::assert_snapshot!(shown(text, 40), @"
+    func main() {
+        if ok {
+            return
+        }
+    }
+
+    a   b
+    abcd    e
+    ");
+}
+
+#[test]
+fn a_word_and_what_runs_into_it_go_to_the_next_row_together() {
+    let text = "Use the flag `--force-with-lease`: it refuses.";
+    insta::assert_snapshot!(shown(text, 31), @"
+    Use the flag
+    --force-with-lease: it refuses.
+    ");
+    // What no row holds whole is still broken where it must be.
+    insta::assert_snapshot!(shown("`--force-with-lease`**:**", 10), @"
+    --force-wi
+    th-lease:
+    ");
+}
+
+#[test]
+fn a_table_of_long_text_rules_its_rows_apart() {
+    let text = "| Name | What it does |\n|---|---|\n| merge | joins two histories with a commit of its own |\n| rebase | rewrites commits onto another base |\n";
+    insta::assert_snapshot!(shown(text, 36), @"
+    │ Name   │ What it does            │
+    ├────────┼─────────────────────────┤
+    │ merge  │ joins two histories     │
+    │        │ with a commit of its    │
+    │        │ own                     │
+    ├────────┼─────────────────────────┤
+    │ rebase │ rewrites commits onto   │
+    │        │ another base            │
+    ");
+    // Short cells that wrap once read well as they are: rules would only make the table taller.
+    let short = "| | ripgrep | grep |\n|---|---|---|\n| Recursive by default | Yes | No |\n| Respects .gitignore | Yes | No |\n| Parallel | Yes | No |\n";
+    insta::assert_snapshot!(shown(short, 34), @"
+    │               │ ripgrep │ grep │
+    ├───────────────┼─────────┼──────┤
+    │ Recursive by  │ Yes     │ No   │
+    │ default       │         │      │
+    │ Respects      │ Yes     │ No   │
+    │ .gitignore    │         │      │
+    │ Parallel      │ Yes     │ No   │
+    ");
+    // Rows of one line each need no rule between them.
+    insta::assert_snapshot!(shown(text, 80), @"
+    │ Name   │ What it does                                 │
+    ├────────┼──────────────────────────────────────────────┤
+    │ merge  │ joins two histories with a commit of its own │
+    │ rebase │ rewrites commits onto another base           │
+    ");
+}
+
+#[test]
+fn a_table_gives_its_columns_room_by_what_they_hold() {
+    let text = "| Risk | What happens |\n|---|---|\n| A migration that cannot be undone | The old version breaks on the column that is gone while both still run, and rolling the code back does not bring it back. |\n";
+    insta::assert_snapshot!(shown(text, 50), @"
+    │ Risk           │ What happens                  │
+    ├────────────────┼───────────────────────────────┤
+    │ A migration    │ The old version breaks on the │
+    │ that cannot be │ column that is gone while     │
+    │ undone         │ both still run, and rolling   │
+    │                │ the code back does not bring  │
+    │                │ it back.                      │
+    ");
+    // A word no column's share holds is broken, and the table still fits.
+    let text = "| a | b |\n|---|---|\n| https://example.com/a/very/long/address/that/goes/on | one two three four five six seven |\n";
+    assert!(render(text, 30).iter().all(|row| line_width(row) <= 30));
+}
+
+#[test]
+fn a_code_span_is_not_broken_where_a_row_holds_it() {
+    let text = "The line was `ordered[mid - 1] + ordered[mid] / 2`, which halves one value.";
+    let screen = shown(text, 40);
+    insta::assert_snapshot!(screen, @"
+    The line was
+    ordered[mid - 1] + ordered[mid] / 2,
+    which halves one value.
+    ");
+    // The spaces are spaces: a command copied from the screen is the one written.
+    assert!(!screen.contains('\u{a0}'), "{screen:?}");
+    // One no row holds is broken at its spaces, as words are.
+    insta::assert_snapshot!(shown("Run `python3 -B -m unittest -v test_stats` now.", 20), @"
+    Run python3 -B -m
+    unittest -v
+    test_stats now.
+    ");
+}
+
+#[test]
+fn the_space_after_a_link_is_not_underlined() {
+    let rows = render("See [the spec](https://spec.example/) for it.", 60);
+    let spans = &rows[0].spans;
+    let at = spans
+        .iter()
+        .position(|span| span.content == "spec")
+        .expect("the link's last word");
+    assert!(spans[at].style.add_modifier.contains(Modifier::UNDERLINED));
+    // The space is the address's, which is not the link's text.
+    assert_eq!(spans[at + 1].content, " ");
+    assert!(
+        !spans[at + 1]
+            .style
+            .add_modifier
+            .contains(Modifier::UNDERLINED),
+        "{spans:?}"
+    );
+    // Between the link's own words it is underlined with them.
+    assert!(
+        spans[at - 1]
+            .style
+            .add_modifier
+            .contains(Modifier::UNDERLINED)
+    );
+}
+
+#[test]
+fn code_is_drawn_with_the_spaces_it_was_written_with_wherever_it_stands() {
+    let text = "# Run `a b` now\n\nSee `a b`.\n\n- item `a b`\n\n> quote `a b`\n\n\
+| `a b` | two `c d` |\n|---|---|\n| `e f` | `g h` |\n\n\
+> [!NOTE] Title `a b`\n> Body `a b`.\n\n\
+> [!STEPS] Do `a b`\n> 1. **Step `a b`**\n>    Text `a b`.\n\n\
+> [!TABS] Pick `a b`\n> #### Tab `a b`\n> Text `a b`.\n\n\
+> [!STATS]\n> - **1** `a b`\n\n\
+> [!PROS] For `a b`\n> - `a b`\n\n\
+> [!DETAILS] More `a b`\n> Text `a b`.\n\n\
+> [!SOURCES]\n> - [`a b`](https://x.example/)\n\n\
+[`a b`](https://x.example/) ![`a b`](x.png)\n";
+    for width in [8, 20, 80] {
+        let screen = shown(text, width);
+        assert!(!screen.contains('\u{a0}'), "at {width}: {screen:?}");
+    }
+    assert_eq!(shown(text, 80).matches("a b").count(), 21);
+}

@@ -83,7 +83,7 @@ pub type Shed = dyn Fn(&mut Value) -> bool + Send + Sync;
 impl Frame {
     /// `estimate` tokens, estimated, in real tokens, as far as the ratio tells.
     fn real(&self, estimate: u64) -> u64 {
-        whole(estimate as f64 * self.ratio)
+        held(estimate as f64 * self.ratio)
     }
 
     /// The conversation's size in real tokens.
@@ -281,6 +281,12 @@ fn large(arguments: &Value) -> bool {
         || arguments.as_str().is_some_and(worth),
         |map| map.values().any(|v| v.as_str().is_some_and(worth)),
     )
+}
+
+/// A size held to a limit, in whole tokens: rounded up, so that part of a token counts as one
+/// and what is compared with the limit is never smaller than what is sent.
+pub(crate) fn held(tokens: f64) -> u64 {
+    whole(tokens.ceil())
 }
 
 /// An estimate in whole tokens.

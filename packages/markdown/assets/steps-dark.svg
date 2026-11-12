@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 418" width="580" height="418" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+<rect x="0.5" y="0.5" width="579" height="417" rx="10" fill="#0d1117" stroke="#30363d"/>
+<text x="20.0" y="35.0" fill="#e6edf3" xml:space="preserve" textLength="379.3" lengthAdjust="spacingAndGlyphs">The release is three commands, in this order.</text>
+<text x="20.0" y="77.0" fill="#e6edf3" xml:space="preserve" textLength="109.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Cut a release</text>
+<text x="20.0" y="98.0" fill="#3fb950" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs" font-weight="700">1 </text>
+<text x="36.9" y="98.0" fill="#e6edf3" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs" font-weight="700">Run the checks</text>
+<text x="20.0" y="119.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">│ </text>
+<text x="36.9" y="119.0" fill="#e6edf3" xml:space="preserve" textLength="286.6" lengthAdjust="spacingAndGlyphs">Everything CI runs, in CI's order.</text>
+<text x="20.0" y="140.0" fill="#7d8590" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="161.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">│ </text>
+<text x="36.9" y="161.0" fill="#39c5cf" xml:space="preserve" textLength="160.2" lengthAdjust="spacingAndGlyphs">scripts/check --all</text>
+<text x="20.0" y="182.0" fill="#7d8590" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="203.0" fill="#3fb950" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs" font-weight="700">2 </text>
+<text x="36.9" y="203.0" fill="#e6edf3" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Tag it</text>
+<text x="20.0" y="224.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">│ </text>
+<text x="36.9" y="224.0" fill="#e6edf3" xml:space="preserve" textLength="455.2" lengthAdjust="spacingAndGlyphs">The tag names the version; the workflow does the rest.</text>
+<text x="20.0" y="245.0" fill="#7d8590" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="266.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">│ </text>
+<text x="36.9" y="266.0" fill="#39c5cf" xml:space="preserve" textLength="278.2" lengthAdjust="spacingAndGlyphs">git tag v0.6.0 &amp;&amp; git push --tags</text>
+<text x="20.0" y="287.0" fill="#7d8590" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="308.0" fill="#3fb950" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs" font-weight="700">3 </text>
+<text x="36.9" y="308.0" fill="#e6edf3" xml:space="preserve" textLength="193.9" lengthAdjust="spacingAndGlyphs" font-weight="700">Watch the archives land</text>
+<text x="20.0" y="329.0" fill="#e6edf3" xml:space="preserve" textLength="278.2" lengthAdjust="spacingAndGlyphs">  macOS and Linux, each with its </text>
+<text x="298.2" y="329.0" fill="#39c5cf" xml:space="preserve" textLength="84.3" lengthAdjust="spacingAndGlyphs">SHA256SUMS</text>
+<text x="382.5" y="329.0" fill="#e6edf3" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">.</text>
+<text x="20.0" y="371.0" fill="#d29922" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">▌ </text>
+<text x="36.9" y="371.0" fill="#d29922" xml:space="preserve" textLength="59.0" lengthAdjust="spacingAndGlyphs" font-weight="700">Warning</text>
+<text x="95.9" y="371.0" fill="#7d8590" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs"> · </text>
+<text x="121.2" y="371.0" fill="#e6edf3" xml:space="preserve" textLength="109.6" lengthAdjust="spacingAndGlyphs" font-weight="700">The size gate</text>
+<text x="20.0" y="392.0" fill="#d29922" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">▌ </text>
+<text x="36.9" y="392.0" fill="#e6edf3" xml:space="preserve" textLength="328.8" lengthAdjust="spacingAndGlyphs">A binary above 5 MiB fails the release.</text>
+</svg>

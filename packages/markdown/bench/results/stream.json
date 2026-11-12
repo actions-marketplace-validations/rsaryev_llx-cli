@@ -1,0 +1,18 @@
+[
+  {"text": "reply, 2 KB", "bytes": 2326, "reads": 73, "parser": "markdown", "ns": 252917, "slowest": 7125},
+  {"text": "reply, 2 KB", "bytes": 2326, "reads": 73, "parser": "pulldown-cmark", "ns": 347584, "slowest": 10250},
+  {"text": "reply, 2 KB", "bytes": 2326, "reads": 73, "parser": "pulldown-cmark, kept", "ns": 376042, "slowest": 8167},
+  {"text": "reply, 2 KB", "bytes": 2326, "reads": 73, "parser": "comrak", "ns": 1280583, "slowest": 34833},
+  {"text": "reply, 8 KB", "bytes": 8263, "reads": 259, "parser": "markdown", "ns": 1735208, "slowest": 13917},
+  {"text": "reply, 8 KB", "bytes": 8263, "reads": 259, "parser": "pulldown-cmark", "ns": 2389791, "slowest": 19834},
+  {"text": "reply, 8 KB", "bytes": 8263, "reads": 259, "parser": "pulldown-cmark, kept", "ns": 2721000, "slowest": 22833},
+  {"text": "reply, 8 KB", "bytes": 8263, "reads": 259, "parser": "comrak", "ns": 9966209, "slowest": 83875},
+  {"text": "reply, 32 KB", "bytes": 34792, "reads": 1088, "parser": "markdown", "ns": 31013250, "slowest": 67291},
+  {"text": "reply, 32 KB", "bytes": 34792, "reads": 1088, "parser": "pulldown-cmark", "ns": 48694375, "slowest": 95667},
+  {"text": "reply, 32 KB", "bytes": 34792, "reads": 1088, "parser": "pulldown-cmark, kept", "ns": 54515625, "slowest": 109625},
+  {"text": "reply, 32 KB", "bytes": 34792, "reads": 1088, "parser": "comrak", "ns": 204244084, "slowest": 441792},
+  {"text": "reply, 128 KB", "bytes": 131126, "reads": 4098, "parser": "markdown", "ns": 469376958, "slowest": 346208},
+  {"text": "reply, 128 KB", "bytes": 131126, "reads": 4098, "parser": "pulldown-cmark", "ns": 764628125, "slowest": 524541},
+  {"text": "reply, 128 KB", "bytes": 131126, "reads": 4098, "parser": "pulldown-cmark, kept", "ns": 840508541, "slowest": 512000},
+  {"text": "reply, 128 KB", "bytes": 131126, "reads": 4098, "parser": "comrak", "ns": 3205393750, "slowest": 2249958}
+]

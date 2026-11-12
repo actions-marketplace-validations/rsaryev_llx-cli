@@ -1,0 +1,17 @@
+[package]
+name = "local"
+description = "The hosts the catalog does not know: the model servers on the person's own machine (Ollama, LM Studio, llama.cpp's) and any host of chat completions the settings name, each asked for the models it runs"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+# The catalog's types and the provider kit only (rule L3); HTTP is the kit's (A7).
+[dependencies]
+contracts.workspace = true
+provider-kit.workspace = true
+serde_json.workspace = true
+
+[lints]
+workspace = true

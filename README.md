@@ -32,7 +32,7 @@
 
 <p align="center">
   <a href="https://llx.sh">
-    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh, every step a real run on Claude Haiku 5.5: /model lists 338 models of four providers signed in and picks one; the failing median test in stats.py is fixed without a question (5 seconds, $0.0007); two agents work in parallel, one adding mode() with a test, one writing the README, and their work is checked; then, from the shell as CI calls it, llx decide answers a yes-or-no question about the diff in 410 ms, and llx exec --schema reads the diff and answers with data" width="880">
+    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh, every step a real run on Claude Haiku 5.5: /model lists 366 models of six providers signed in and picks one; the failing median test in stats.py is fixed without a question (7 seconds, $0.0011); two questions are answered as the terminal draws them, one with numbered steps and a tab for each of pip, uv and Poetry, one with a table; two agents work in parallel, one adding mode() with tests, one writing the README, and their work is checked; then, from the shell as CI calls it, llx decide answers a yes-or-no question about the diff in 482 ms, and llx exec --schema reads the diff and answers with data" width="880">
   </a>
 </p>
 
@@ -90,6 +90,8 @@ curl -fsSL https://llx.sh/install | LLX_VERSION=0.3.0 sh
 Or take the same archive with [mise](https://mise.jdx.dev) (`mise use -g github:rsaryev/llx-cli`) or [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (`cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli`), or build it with Rust 1.89 or later: `cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`. In a CI job that runs in an image, `ghcr.io/rsaryev/llx-cli:<version>` has llx with `git`, `jq` and `curl`.
 
 Then run `llx` in a project and type `/login`: a ChatGPT sign-in in the browser, an OpenRouter key, or a key for any other provider of the catalog. A provider's key in its variable (`OPENROUTER_API_KEY`) works too, and is what CI uses. `llx doctor` checks the sign-ins, the models and the shell.
+
+A model on your own machine needs no sign-in: llx finds Ollama, LM Studio and llama.cpp's `llama-server` where each listens, and `/model` lists the models they run under `Local:` (`llx exec --provider ollama -m qwen3:8b …` in a script). Any other host that speaks OpenAI's chat completions, on your network or anywhere, goes in `~/.config/llx/settings.json` and is listed under `Hosts:`: `{"hosts": [{"name": "work", "url": "https://llm.example/v1", "key": "…"}]}` (`"local"` instead of `"hosts"` for another server on your machine). `/login` adds one without the file: its last row, `Another host`, asks the address, a name and the key (Enter alone for none), checks that the host answers, saves it (under `local` for an address on this machine, else `hosts`) and goes on to its models.
 
 ## In CI and scripts
 

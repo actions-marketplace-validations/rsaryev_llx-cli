@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 645" width="880" height="645" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<rect x="0.5" y="0.5" width="879" height="644" rx="12" fill="#0d1117" stroke="#30363d"/>
+<text x="28.0" y="44.0" fill="#e6edf3" font-size="17" font-weight="700">Reading speed</text>
+<text x="28.0" y="62.0" fill="#9198a1" font-size="12">the time to read one text whole, and one reply as it streams · shorter is better</text>
+<rect x="28" y="72.0" width="824" height="1" fill="#30363d"/>
+<text x="28.0" y="104.0" fill="#e6edf3" font-size="14" font-weight="600">Short answer</text>
+<text x="28.0" y="121.0" fill="#9198a1" font-size="11.5">2.0 KB, read once</text>
+<text x="130.0" y="147.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="138.0" y="136.0" width="14.4" height="14" rx="3" fill="#a594f9"/>
+<text x="159.4" y="147.5" fill="#a594f9" font-size="12" font-weight="600">2.26 µs</text>
+<text x="130.0" y="169.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="138.0" y="158.0" width="20.5" height="14" rx="3" fill="#3d444d"/>
+<text x="165.5" y="169.5" fill="#e6edf3" font-size="12">3.21 µs</text>
+<text x="130.0" y="191.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="138.0" y="180.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="225.7" y="191.5" fill="#e6edf3" font-size="12">13 µs</text>
+<text x="302.7" y="104.0" fill="#e6edf3" font-size="14" font-weight="600">Answer with forms</text>
+<text x="302.7" y="121.0" fill="#9198a1" font-size="11.5">8.5 KB, read once</text>
+<text x="404.7" y="147.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="412.7" y="136.0" width="13.7" height="14" rx="3" fill="#a594f9"/>
+<text x="433.4" y="147.5" fill="#a594f9" font-size="12" font-weight="600">17 µs</text>
+<text x="404.7" y="169.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="412.7" y="158.0" width="21.1" height="14" rx="3" fill="#3d444d"/>
+<text x="440.8" y="169.5" fill="#e6edf3" font-size="12">27 µs</text>
+<text x="404.7" y="191.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="412.7" y="180.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="500.3" y="191.5" fill="#e6edf3" font-size="12">102 µs</text>
+<text x="577.3" y="104.0" fill="#e6edf3" font-size="14" font-weight="600">Long report</text>
+<text x="577.3" y="121.0" fill="#9198a1" font-size="11.5">64 KB, read once</text>
+<text x="679.3" y="147.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="687.3" y="136.0" width="11.8" height="14" rx="3" fill="#a594f9"/>
+<text x="706.2" y="147.5" fill="#a594f9" font-size="12" font-weight="600">122 µs</text>
+<text x="679.3" y="169.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="687.3" y="158.0" width="18.8" height="14" rx="3" fill="#3d444d"/>
+<text x="713.1" y="169.5" fill="#e6edf3" font-size="12">193 µs</text>
+<text x="679.3" y="191.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="687.3" y="180.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="775.0" y="191.5" fill="#e6edf3" font-size="12">828 µs</text>
+<text x="28.0" y="242.0" fill="#e6edf3" font-size="14" font-weight="600">CommonMark specification</text>
+<text x="28.0" y="259.0" fill="#9198a1" font-size="11.5">200 KB, read once</text>
+<text x="130.0" y="285.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="138.0" y="274.0" width="10.1" height="14" rx="3" fill="#a594f9"/>
+<text x="155.1" y="285.5" fill="#a594f9" font-size="12" font-weight="600">214 µs</text>
+<text x="130.0" y="307.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="138.0" y="296.0" width="14.9" height="14" rx="3" fill="#3d444d"/>
+<text x="159.9" y="307.5" fill="#e6edf3" font-size="12">314 µs</text>
+<text x="130.0" y="329.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="138.0" y="318.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="225.7" y="329.5" fill="#e6edf3" font-size="12">1.71 ms</text>
+<text x="302.7" y="242.0" fill="#e6edf3" font-size="14" font-weight="600">A reply as it streams</text>
+<text x="302.7" y="259.0" fill="#9198a1" font-size="11.5">8.1 KB, read again 259 times</text>
+<text x="404.7" y="285.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="412.7" y="274.0" width="14.0" height="14" rx="3" fill="#a594f9"/>
+<text x="433.7" y="285.5" fill="#a594f9" font-size="12" font-weight="600">1.74 ms</text>
+<text x="404.7" y="307.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="412.7" y="296.0" width="19.3" height="14" rx="3" fill="#3d444d"/>
+<text x="439.0" y="307.5" fill="#e6edf3" font-size="12">2.39 ms</text>
+<text x="404.7" y="329.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="412.7" y="318.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="500.3" y="329.5" fill="#e6edf3" font-size="12">9.97 ms</text>
+<text x="577.3" y="242.0" fill="#e6edf3" font-size="14" font-weight="600">A long reply as it streams</text>
+<text x="577.3" y="259.0" fill="#9198a1" font-size="11.5">128 KB, read again 4,098 times</text>
+<text x="679.3" y="285.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="687.3" y="274.0" width="11.8" height="14" rx="3" fill="#a594f9"/>
+<text x="706.1" y="285.5" fill="#a594f9" font-size="12" font-weight="600">469 ms</text>
+<text x="679.3" y="307.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="687.3" y="296.0" width="19.2" height="14" rx="3" fill="#3d444d"/>
+<text x="713.6" y="307.5" fill="#e6edf3" font-size="12">765 ms</text>
+<text x="679.3" y="329.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="687.3" y="318.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="775.0" y="329.5" fill="#e6edf3" font-size="12">3.21 s</text>
+<text x="28.0" y="382.0" fill="#e6edf3" font-size="17" font-weight="700">Weight</text>
+<text x="28.0" y="400.0" fill="#9198a1" font-size="12">what a project takes on · smaller is better</text>
+<rect x="28" y="410.0" width="824" height="1" fill="#30363d"/>
+<text x="28.0" y="442.0" fill="#e6edf3" font-size="14" font-weight="600">Allocations</text>
+<text x="28.0" y="459.0" fill="#9198a1" font-size="11.5">one read of the long report</text>
+<text x="130.0" y="485.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="138.0" y="474.0" width="3.0" height="14" rx="3" fill="#a594f9"/>
+<text x="148.0" y="485.5" fill="#a594f9" font-size="12" font-weight="600">18</text>
+<text x="130.0" y="507.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="138.0" y="496.0" width="3.0" height="14" rx="3" fill="#3d444d"/>
+<text x="148.0" y="507.5" fill="#e6edf3" font-size="12">31</text>
+<text x="130.0" y="529.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="138.0" y="518.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="225.7" y="529.5" fill="#e6edf3" font-size="12">16,793</text>
+<text x="302.7" y="442.0" fill="#e6edf3" font-size="14" font-weight="600">Memory asked for</text>
+<text x="302.7" y="459.0" fill="#9198a1" font-size="11.5">one read of the long report</text>
+<text x="404.7" y="485.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="412.7" y="474.0" width="6.2" height="14" rx="3" fill="#a594f9"/>
+<text x="425.9" y="485.5" fill="#a594f9" font-size="12" font-weight="600">382 KB</text>
+<text x="404.7" y="507.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="412.7" y="496.0" width="7.0" height="14" rx="3" fill="#3d444d"/>
+<text x="426.7" y="507.5" fill="#e6edf3" font-size="12">429 KB</text>
+<text x="404.7" y="529.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="412.7" y="518.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="500.3" y="529.5" fill="#e6edf3" font-size="12">4.8 MB</text>
+<text x="577.3" y="442.0" fill="#e6edf3" font-size="14" font-weight="600">Crates it brings</text>
+<text x="577.3" y="459.0" fill="#9198a1" font-size="11.5">into a build, itself among them</text>
+<text x="679.3" y="485.5" fill="#a594f9" font-size="12" text-anchor="end" font-weight="600">markdown</text>
+<rect x="687.3" y="474.0" width="8.1" height="14" rx="3" fill="#a594f9"/>
+<text x="702.4" y="485.5" fill="#a594f9" font-size="12" font-weight="600">1</text>
+<text x="679.3" y="507.5" fill="#e6edf3" font-size="12" text-anchor="end">pulldown-cmark</text>
+<rect x="687.3" y="496.0" width="32.3" height="14" rx="3" fill="#3d444d"/>
+<text x="726.6" y="507.5" fill="#e6edf3" font-size="12">4</text>
+<text x="679.3" y="529.5" fill="#e6edf3" font-size="12" text-anchor="end">comrak</text>
+<rect x="687.3" y="518.0" width="80.7" height="14" rx="3" fill="#3d444d"/>
+<text x="775.0" y="529.5" fill="#e6edf3" font-size="12">10</text>
+<rect x="28" y="558.0" width="824" height="1" fill="#30363d"/>
+<text x="28.0" y="578.0" fill="#9198a1" font-size="11.5">Each panel has its own scale; the number beside a bar is the measurement. Every figure comes from a binary in bench/.</text>
+<text x="28.0" y="595.0" fill="#9198a1" font-size="11.5">pulldown-cmark gives events and builds no tree: its events are dropped as they come, the least it can be asked for.</text>
+<text x="28.0" y="612.0" fill="#9198a1" font-size="11.5">Every parser built for speed (opt-level 3, fat LTO); the median of 51 rounds. Apple M5, Darwin 25.6.0, rustc 1.96.1 (31fca3adb 2026-06-26).</text>
+</svg>

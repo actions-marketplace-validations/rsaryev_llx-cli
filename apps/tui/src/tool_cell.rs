@@ -76,12 +76,18 @@ pub(crate) fn head(name: &str, label: &Label, state: &State, width: usize) -> Ve
         Span::raw(" "),
         Span::raw(printable(&label.subject)),
     ]);
-    wrap(
+    // Wrapped as under `  ↳ `, the bullet a call takes when it joins the one before it
+    // (`Screen::grouped`): two columns wider, it must not push the row past the screen.
+    let mut rows = wrap(
         &head,
         width,
-        &Line::from(Span::styled("• ", bullet)),
+        &Line::from(Span::styled("    ", bullet)),
         &Line::from(Span::styled("  │ ", style::dim())),
-    )
+    );
+    if let Some(first) = rows.first_mut().and_then(|row| row.spans.first_mut()) {
+        first.content = "• ".into();
+    }
+    rows
 }
 
 /// What a finished call printed or why it failed, under its head.

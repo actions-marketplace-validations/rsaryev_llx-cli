@@ -1,6 +1,7 @@
 //! What the agent knows of where it runs before its first call: the working directory, the
-//! system, the runtimes its shell has, the date, the mode it works in, and the instructions it
-//! follows (see [`crate::instructions`]); for a resumed session, what it did before. It is the
+//! system, the runtimes its shell has, the date, the mode it works in, the forms its answer is
+//! drawn with where an interface draws it, and the instructions it follows (see
+//! [`crate::instructions`]); for a resumed session, what it did before. It is the
 //! same for every task and session in a workspace on a day, so the prompt cache keeps it: nothing
 //! in it changes by the minute.
 
@@ -30,11 +31,30 @@ pub(crate) struct Environment<'a> {
     pub now: u64,
     /// The runtimes the session's shell has ([`runtimes`]).
     pub runtimes: &'a [&'a str],
+    /// How the answer reaches the person.
+    pub answer: Answer,
 }
 
-/// The whole context: the environment and the project's instructions.
+/// How an answer reaches the person.
+#[derive(Clone, Copy)]
+pub(crate) enum Answer {
+    /// Drawn by the interface, which reads it with the `markdown` package: the model is told
+    /// the forms that package reads, in the package's own words.
+    Drawn,
+    /// As the model wrote it: a pipe, a file, `--json`, data.
+    Plain,
+}
+
+/// The whole context: the environment, the answer's forms and the project's instructions.
 pub(crate) fn gather(environment: &Environment) -> String {
     let mut parts = vec![describe(environment)];
+    match environment.answer {
+        Answer::Drawn => parts.push(format!(
+            "<answer_format>\n{}\n</answer_format>",
+            markdown::prompt()
+        )),
+        Answer::Plain => {}
+    }
     let instructions = instructions(environment.root);
     if !instructions.is_empty() {
         parts.push(instructions);

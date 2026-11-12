@@ -18,9 +18,18 @@ impl Provider {
     /// [`Provider::chat`], its key read in `vars`.
     pub(crate) fn chat_in(&self, selection: &Selection, vars: Vars) -> Option<Box<dyn Chat>> {
         let inner = self.unpriced(selection, vars)?;
+        // A host anywhere that stands for no provider is priced by the model's own entry,
+        // wherever the catalog has it; a server on this machine costs nothing.
+        let host = self.host(vars);
+        let stood_for = host.as_ref().and_then(super::hosts::stands_for);
+        let prices = match (stood_for, host.map(|host| host.kind)) {
+            (Some(provider), _) => Prices::Of(provider.0),
+            (None, Some(local::Kind::Any)) => Prices::Anywhere,
+            (None, Some(local::Kind::Local) | None) => Prices::Of(self.0.clone()),
+        };
         Some(Box::new(Priced {
             inner,
-            provider: self.0.clone(),
+            prices,
             model: selection.model().id.clone(),
         }))
     }
@@ -43,7 +52,26 @@ impl Provider {
             let model = openai::responses::ChatModel::new(APP, tokens, selection, texts);
             return Some(Box::new(model));
         }
+        if let Some(host) = self.host(vars) {
+            use openrouter::client::OpenRouter;
+            if let Some(provider) = super::hosts::stands_for(&host) {
+                return provider.keyed(host.key, selection, vars);
+            }
+            return Some(Box::new(openrouter::chat::ChatModel {
+                client: match host.kind {
+                    local::Kind::Local => OpenRouter::local(&host.base, host.key, APP, &host.name),
+                    local::Kind::Any => OpenRouter::at(&host.base, host.key, APP, &host.name),
+                },
+                selection,
+                switch: openrouter::level::Switch::Named,
+            }));
+        }
         let (key, _) = self.key_in(vars)?;
+        self.keyed(key, selection, vars)
+    }
+
+    /// The chat model for `selection` called with `key`, over the API that serves it best.
+    fn keyed(&self, key: String, selection: Selection, vars: Vars) -> Option<Box<dyn Chat>> {
         if let Some(base) = self.responses_address(&selection.model().id) {
             let texts = self.texts(&selection.model().id);
             let model = openai::responses::ChatModel::with_key(APP, key, &base, selection, texts);
@@ -131,16 +159,30 @@ impl Provider {
 /// amount: a ChatGPT plan's requests as their API-equivalent value.
 pub(super) struct Priced {
     pub(super) inner: Box<dyn Chat>,
-    pub(super) provider: String,
+    pub(super) prices: Prices,
     pub(super) model: String,
+}
+
+/// Where the catalog has the prices of a model whose host bills none.
+pub(super) enum Prices {
+    /// Under this provider.
+    Of(String),
+    /// Under whichever provider has the model a host the catalog does not know names: its
+    /// vendor's price, which the host's own may differ from.
+    Anywhere,
 }
 
 impl Chat for Priced {
     fn complete(&self, request: Request) -> Result<Completion, ChatError> {
         let mut completion = self.inner.complete(request)?;
         let usage = &mut completion.usage;
+        let catalog = catalog();
+        let priced = match &self.prices {
+            Prices::Of(provider) => catalog.model(provider, &self.model),
+            Prices::Anywhere => catalog.anywhere(&self.model),
+        };
         if usage.cost == 0.0
-            && let Some(model) = catalog().model(&self.provider, &self.model)
+            && let Some(model) = priced
         {
             let (input, cached, written, output) = (
                 usage.input_tokens,

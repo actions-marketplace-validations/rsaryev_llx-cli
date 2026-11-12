@@ -10,7 +10,30 @@ fn environment(root: &Path) -> Environment<'_> {
         mode: "default: the person approves each command",
         now: 1_792_627_200,
         runtimes: &[],
+        answer: Answer::Plain,
     }
+}
+
+#[test]
+fn an_answer_the_interface_draws_is_told_the_forms_it_draws_and_a_plain_one_is_not() {
+    let scratch = Scratch::new();
+    let drawn = gather(&Environment {
+        answer: Answer::Drawn,
+        ..environment(scratch.path())
+    });
+    let (place, forms, instructions) = (
+        drawn.find("</environment>").unwrap(),
+        drawn.find("<answer_format>\n# Answer format\n").unwrap(),
+        drawn.find("No project instructions").unwrap(),
+    );
+    // Before the instructions: the person's own say how they want an answer, and come last.
+    assert!(place < forms && forms < instructions, "{drawn}");
+    assert!(drawn.contains("> [!STEPS]") && drawn.contains("\n</answer_format>\n\n"));
+    let plain = gather(&environment(scratch.path()));
+    assert!(
+        !plain.contains("answer_format") && !plain.contains("[!"),
+        "{plain}"
+    );
 }
 
 #[test]

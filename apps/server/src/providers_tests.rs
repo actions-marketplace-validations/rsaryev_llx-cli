@@ -2,7 +2,7 @@ use contracts::catalog::Selection;
 use contracts::chat::{Chat, ChatError, Completion, Request, TaskId};
 use models::MESSAGES;
 
-use super::chat::Priced;
+use super::chat::{Priced, Prices};
 use super::*;
 
 #[test]
@@ -40,7 +40,7 @@ impl Chat for Unbilled {
 fn a_request_with_no_billed_amount_is_priced_from_the_catalog() {
     let priced = Priced {
         inner: Box::new(Unbilled),
-        provider: "openai".into(),
+        prices: Prices::Of("openai".into()),
         model: "gpt-6-luna".into(),
     };
     let request = Request {

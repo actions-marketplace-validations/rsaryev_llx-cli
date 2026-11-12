@@ -113,9 +113,9 @@ fn l2_the_agent_knows_only_the_contracts() {
 
 /// What the model providers share: plumbing with no port, which knows no workspace package.
 const KIT: &str = "provider-kit";
-/// Primitives the app composes (the lanes' queue, `--schema`'s check): no port, no workspace
-/// package.
-const PRIMITIVES: [&str; 2] = ["queue", "schema"];
+/// Primitives an app composes (the lanes' queue, `--schema`'s check, the Markdown a model
+/// writes read into a tree): no port, no workspace package.
+const PRIMITIVES: [&str; 3] = ["markdown", "queue", "schema"];
 
 #[test]
 fn l3_tools_providers_and_stores_know_only_the_contracts() {
@@ -191,13 +191,14 @@ const BEYOND_THE_INTERFACE: &[&str] = &[
 const INTERFACES: [&str; 1] = ["tui"];
 
 /// L7, on the manifest: each interface depends, among the workspace's crates, on the protocol
-/// alone, in every section (its tests' too).
+/// and on the parser of what it draws (`markdown`, a primitive that knows no workspace crate),
+/// in every section (its tests' too).
 #[test]
 fn l7_the_interface_depends_only_on_the_protocol() {
     let packages = packages();
     for interface in INTERFACES {
         let uses = &packages[&("apps".into(), interface.into())];
-        assert_eq!(uses, &[WIRE], "{interface} depends on {uses:?}");
+        assert_eq!(uses, &[WIRE, "markdown"], "{interface} depends on {uses:?}");
     }
 }
 

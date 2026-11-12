@@ -494,3 +494,28 @@ fn a_frame_rewrites_only_the_live_rows_that_changed() {
     assert_eq!(parser.screen().cursor_position(), (3, 2));
     assert!(!parser.screen().hide_cursor());
 }
+
+#[test]
+fn a_call_that_joins_a_chain_keeps_its_first_row_inside_the_screen() {
+    use crate::app::App;
+    use crate::test_support::{Term, done, ran, result};
+    use protocol::Event;
+
+    let now = std::time::Instant::now();
+    let mut app = App::new(40, 24, vec![]);
+    let mut term = Term::new(&app);
+    app.event(Event::TaskStarted("check".into()), now);
+    // The second head fills a row to the last column under a bullet: under `↳`, two columns
+    // further in, it must give its last word to the next row, not to the screen's wrap.
+    for command in ["one", "aaaa bbbb cccc dddd eeee ffff gggg hhh zz"] {
+        let printed = done("Exit code: 0\nWall time: 0.0 seconds\nOutput:\nok");
+        app.event(result(command, "bash", &ran(command), printed), now);
+        term.draw(&mut app, now);
+    }
+    app.event(Event::Answer("Done.".into()), now);
+    let shown = term.draw(&mut app, now);
+    assert!(
+        shown.contains("  ↳ Ran aaaa bbbb cccc dddd eeee ffff\n  │ gggg hhh zz\n"),
+        "{shown}"
+    );
+}

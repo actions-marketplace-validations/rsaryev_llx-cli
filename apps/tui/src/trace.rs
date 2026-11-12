@@ -5,6 +5,8 @@
 //! server, which draws nothing itself (K2).
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use protocol::Event;
 use ratatui::text::{Line, Span};
@@ -28,8 +30,9 @@ fn stderr_width() -> Option<usize> {
 pub struct Trace {
     colour: bool,
     width: usize,
-    /// How many blocks it drew.
-    blocks: usize,
+    /// How many blocks it drew, the answer on stdout among them: what comes after one is a blank
+    /// row from it.
+    blocks: Arc<AtomicUsize>,
     /// The steps under the call running (what an agent it started does), drawn with it.
     steps: Vec<String>,
     /// The project: a call is read from it, as the session reads one.
@@ -58,7 +61,7 @@ impl Trace {
         Self {
             colour,
             width,
-            blocks: 0,
+            blocks: Arc::new(AtomicUsize::new(0)),
             steps: vec![],
             root: None,
         }
@@ -140,7 +143,9 @@ impl Trace {
     /// drawn, at the trace's width and in the colour stdout takes when it is said.
     pub fn answer(&self) -> impl Fn(&str) -> String + Send + Sync + 'static {
         let width = self.width;
+        let blocks = Arc::clone(&self.blocks);
         move |text| {
+            blocks.fetch_add(1, Ordering::Relaxed);
             let colour = style::colour_on(&std::io::stdout());
             format!("\n{}", style::rows(&cells::agent(text, width), colour))
         }
@@ -148,8 +153,8 @@ impl Trace {
 
     /// `lines` after a blank row when blocks came before.
     fn block(&mut self, lines: &[Line]) -> String {
-        self.blocks += 1;
-        let gap = if self.blocks > 1 { "\n" } else { "" };
+        let before = self.blocks.fetch_add(1, Ordering::Relaxed);
+        let gap = if before > 0 { "\n" } else { "" };
         gap.to_string() + &style::rows(lines, self.colour)
     }
 }

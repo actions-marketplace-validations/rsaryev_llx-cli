@@ -14,8 +14,10 @@ use models::{CHAT_COMPLETIONS, Catalog, RESPONSES};
 
 use crate::compose::APP;
 
+mod adding;
 mod chat;
 mod deciding;
+mod hosts;
 mod kept;
 mod login;
 
@@ -106,10 +108,12 @@ impl Provider {
         models::POPULAR.iter().position(|id| *id == self.0)
     }
 
-    /// The provider `id` names, when the catalog lists it (and no other is looked at).
+    /// The provider `id` names, when the catalog lists it (and no other is looked at), else
+    /// a host on the person's machine of that id, running or not.
     pub(crate) fn named(id: &str) -> Option<Self> {
         let id = id.trim().to_ascii_lowercase();
-        catalog().callable(&id).then_some(Self(id))
+        let known = catalog().callable(&id) || hosts::hosts(None).iter().any(|h| h.id == id);
+        known.then_some(Self(id))
     }
 
     pub(crate) fn id(&self) -> &str {
@@ -118,9 +122,10 @@ impl Provider {
 
     /// What the person reads.
     pub(crate) fn name(&self) -> String {
-        catalog()
-            .provider(&self.0)
-            .map_or_else(|| self.0.clone(), |p| p.name().to_string())
+        if let Some(provider) = catalog().provider(&self.0) {
+            return provider.name().to_string();
+        }
+        self.host(None).map_or_else(|| self.0.clone(), |h| h.name)
     }
 
     /// How it is signed in to, where that is not just a key: said where the provider is picked.
@@ -138,8 +143,12 @@ impl Provider {
 
     /// The models it is called with: OpenAI's over the Responses API (the ChatGPT backend with a
     /// sign-in, the API with a key), any other provider's over chat completions.
+    /// A host on the person's machine: those it says it runs, none when it does not answer.
     pub(crate) fn models(&self) -> Vec<ModelEntry> {
-        catalog().served(&self.0, self.protocol())
+        match self.host(None) {
+            Some(host) => hosts::running(&host).unwrap_or_default(),
+            None => catalog().served(&self.0, self.protocol()),
+        }
     }
 
     fn protocol(&self) -> &'static str {
@@ -151,6 +160,9 @@ impl Provider {
 
     /// The entry for model `id`; one the catalog does not know is offered no level.
     pub(crate) fn entry(&self, id: &str) -> ModelEntry {
+        if let Some(host) = self.host(None) {
+            return hosts::entry(&host, id);
+        }
         catalog().entry(&self.0, id).unwrap_or_else(|| ModelEntry {
             id: id.to_string(),
             name: id.to_string(),
@@ -170,7 +182,8 @@ impl Provider {
         if let Some(id) = stated.filter(|id| catalog().serves(&self.0, id, protocol)) {
             return id.to_string();
         }
-        let models = catalog().served(&self.0, protocol);
+        // A host on the person's machine: the first model it runs.
+        let models = self.models();
         models.first().map_or_else(String::new, |m| m.id.clone())
     }
 
@@ -186,6 +199,10 @@ impl Provider {
         {
             return Some(format!("ChatGPT account {}", tokens.account));
         }
+        // A host on the person's machine is signed in to when it answers.
+        if let Some(host) = self.host(vars) {
+            return hosts::running(&host).map(|_| format!("its server at {}", host.base));
+        }
         self.key_in(vars).map(|(_, from)| from)
     }
 
@@ -198,6 +215,13 @@ impl Provider {
     /// What a run that is not signed in says: a session's /login, or the variable its key is
     /// read from.
     pub(crate) fn how_to_sign_in(&self) -> String {
+        if let Some(host) = self.host(None) {
+            let mend = match host.kind {
+                local::Kind::Local => "start it",
+                local::Kind::Any => "check its address and key in settings.json",
+            };
+            return format!("{} does not answer at {}: {mend}", host.name, host.base);
+        }
         sign_in_words(&self.name(), self.variables().first().map(String::as_str))
     }
 

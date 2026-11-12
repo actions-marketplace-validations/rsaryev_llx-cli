@@ -21,7 +21,7 @@ use crate::choice;
 use crate::cli::RunOptions;
 use crate::commands::sessions;
 use crate::compose::{Seat, Setup, Shared, compose, lane};
-use crate::context::{self, Environment};
+use crate::context::{self, Answer, Environment};
 use crate::desk;
 use crate::error::Failure;
 use crate::gate::Tty;
@@ -137,11 +137,15 @@ pub(crate) fn run(
     let mode = modes.choose(options.mode.as_deref(), options.yes)?;
     let (terminal, asks) = (Tty::available(), kind == Kind::Session);
     let path = std::env::var_os("PATH").unwrap_or_default();
+    // An interface draws a session's answers, and one task's on a terminal's stdout.
+    let drawn = kind == Kind::Session
+        || (std::io::stdout().is_terminal() && !options.json && options.schema.is_none());
     let environment = Environment {
         root: workspace.root(),
         mode: &mode::describe(&mode, terminal, asks),
         now: crate::clock::now(),
         runtimes: &context::runtimes(&path),
+        answer: if drawn { Answer::Drawn } else { Answer::Plain },
     };
     let fresh = context::gather(&environment);
     let context = match &resumed {

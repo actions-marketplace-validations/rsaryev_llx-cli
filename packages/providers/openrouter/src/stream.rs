@@ -39,6 +39,8 @@ struct Whole {
     calls: Vec<Call>,
     finish: Option<Value>,
     usage: Option<Value>,
+    /// llama.cpp's own count of the reply: what of the prompt it took from its cache.
+    timings: Option<Value>,
 }
 
 /// One call as its deltas built it, at its index.
@@ -69,6 +71,9 @@ impl Whole {
         }
         if let Some(usage) = event.get("usage").filter(|usage| usage.is_object()) {
             self.usage = Some(usage.clone());
+        }
+        if let Some(timings) = event.get("timings").filter(|timings| timings.is_object()) {
+            self.timings = Some(timings.clone());
         }
         let Some(choice) = event.pointer("/choices/0") else {
             return;
@@ -184,6 +189,7 @@ impl Whole {
             ("model", self.model),
             ("provider", self.provider),
             ("usage", self.usage),
+            ("timings", self.timings),
         ] {
             if let Some(value) = value {
                 whole[field] = value;

@@ -68,6 +68,23 @@ impl Home {
         command
     }
 
+    /// The settings name `model` as a server on this machine, called `box`.
+    pub(crate) fn with_local(&self, model: &Model) {
+        self.with_settings(&serde_json::json!({"local": [{"name": "box", "url": model.base}]}));
+    }
+
+    /// The settings name `model` as a host anywhere, called `box`, with a key.
+    pub(crate) fn with_host(&self, model: &Model) {
+        let host = serde_json::json!({"name": "box", "url": model.base, "key": "sk-box"});
+        self.with_settings(&serde_json::json!({"hosts": [host]}));
+    }
+
+    pub(crate) fn with_settings(&self, settings: &Value) {
+        let config = self.0.join("config/llx");
+        std::fs::create_dir_all(&config).unwrap();
+        std::fs::write(config.join("settings.json"), settings.to_string()).unwrap();
+    }
+
     /// `llx args…` thinking with `model`, `stdin` piped in, run to its end as CI runs it: in
     /// this home, with no terminal at all (a session of its own, so not even `/dev/tty` is there
     /// to ask on).
@@ -216,6 +233,7 @@ pub(crate) fn isolate(command: &mut Command, home: &Path) {
         .env("XDG_CONFIG_HOME", home.join("config"))
         .env("LLX_SESSIONS", home.join("sessions"))
         .env("LLX_MODELS_REFRESH", "0")
+        .env("LLX_LOCAL", "0")
         .env("OPENROUTER_BASE_URL", "http://127.0.0.1:1");
 }
 

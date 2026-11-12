@@ -30,7 +30,7 @@ use contracts::tool::{Image, Tool, ToolSpec};
 use serde_json::Value;
 
 use crate::conversation::Conversation;
-use crate::history::{self, Strategy, whole};
+use crate::history::{self, Strategy, held};
 use crate::observer::Observer;
 use crate::schema;
 
@@ -185,7 +185,7 @@ impl Agent<'_> {
             let limits = self
                 .strategy
                 .limits(self.window)
-                .less(whole(fixed as f64 * ratio));
+                .less(held(fixed as f64 * ratio));
             let report = self.strategy.prepare(&mut run.conversation, limits, ratio);
             if !report.is_empty() {
                 self.observer.fitted(&report);

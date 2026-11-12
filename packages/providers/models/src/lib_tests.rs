@@ -74,6 +74,39 @@ const DOC: &str = r#"{
 }"#;
 
 #[test]
+fn a_provider_is_found_by_the_address_of_its_api() {
+    let catalog = Catalog::parse(DOC).unwrap();
+    // By its host alone: the path a person typed, a slash at the end, the case do not matter.
+    assert_eq!(catalog.at("https://api.acme.dev/v1/"), Some("acme"));
+    assert_eq!(catalog.at("https://API.acme.dev"), Some("acme"));
+    assert_eq!(catalog.at("https://api.openai.com/v1"), Some("openai"));
+    assert_eq!(catalog.at("https://acme.dev/v1"), None, "another host");
+    assert_eq!(catalog.at("http://127.0.0.1:8080/v1"), None);
+    assert_eq!(catalog.at("not an address"), None);
+}
+
+#[test]
+fn a_model_another_host_serves_is_known_by_its_id() {
+    let catalog = Catalog::parse(DOC).unwrap();
+    // As a router names it, vendor first, or bare: the same model, under the id the host uses.
+    let routed = catalog.known("acme/new").unwrap();
+    assert_eq!(
+        (routed.id.as_str(), routed.context, routed.output),
+        ("acme/new", 180_000, 64_000)
+    );
+    assert_eq!(routed.efforts, [Low, Medium, High]);
+    let bare = catalog.known("new").unwrap();
+    assert_eq!((bare.id.as_str(), bare.context), ("new", 180_000));
+    // Another vendor's model of the same name is not this one.
+    assert_eq!(catalog.known("other/new"), None);
+    assert_eq!(catalog.known("gemma-4-12b"), None);
+    assert_eq!(catalog.known("mute"), None, "not a model llx can use");
+    // The model itself, for its prices, is found the same way.
+    assert_eq!(catalog.anywhere("acme/new"), catalog.model("acme", "new"));
+    assert!(catalog.anywhere("acme/new").is_some() && catalog.anywhere("other/new").is_none());
+}
+
+#[test]
 fn providers_llx_can_call_are_listed_the_popular_first() {
     let catalog = Catalog::parse(DOC).unwrap();
     assert_eq!(

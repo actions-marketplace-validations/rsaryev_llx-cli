@@ -28,6 +28,7 @@ fn models(marked: usize) -> App {
     let group = |name: &str, rows| Group {
         name: name.into(),
         rows,
+        section: String::new(),
     };
     let asked = Asked::ChooseAdjustable {
         title: "Model".into(),
@@ -145,6 +146,7 @@ fn one_providers_list_is_named_by_its_tab_with_nothing_to_switch() {
         groups: vec![Group {
             name: "OpenAI".into(),
             rows: 1,
+            section: String::new(),
         }],
     };
     let mut app = App::new(80, 40, vec![]);
@@ -165,6 +167,7 @@ fn a_number_picks_only_a_row_of_the_tab_shown() {
     let group = |name: &str, rows| Group {
         name: name.into(),
         rows,
+        section: String::new(),
     };
     let asked = Asked::ChooseAdjustable {
         title: "Model".into(),
@@ -182,4 +185,85 @@ fn a_number_picks_only_a_row_of_the_tab_shown() {
     assert_eq!(picked(&mut app), [], "row 1 is OpenAI's, out of sight");
     press(&mut app, &[KeyCode::Char('4')]);
     assert_eq!(picked(&mut app), [(1, Reply::Adjusted(Some((3, 0))))]);
+}
+
+/// `/model` with servers on the person's machine: each section on a line of its own, named,
+/// and Tab goes round the tabs of both.
+#[test]
+fn groups_in_sections_are_listed_a_section_a_line_and_tab_goes_through_both() {
+    let rows: Vec<(String, String)> = ["GPT-6 Luna", "Claude Opus", "gemma3:12b", "gemma-4-12b"]
+        .iter()
+        .map(|name| (name.to_string(), String::new()))
+        .collect();
+    let group = |section: &str, name: &str| Group {
+        name: name.into(),
+        rows: 1,
+        section: section.into(),
+    };
+    let asked = Asked::ChooseAdjustable {
+        title: "Model".into(),
+        adjustments: vec![Adjustment::default(); rows.len()],
+        options: rows,
+        marked: Some(1),
+        groups: vec![
+            group("Cloud", "OpenAI"),
+            group("Cloud", "Anthropic"),
+            group("Local", "Ollama"),
+            group("Local", "llama.cpp"),
+        ],
+    };
+    let mut app = App::new(80, 40, vec![]);
+    app.asked(1, "", asked, Instant::now());
+    let shown = screen(&mut app);
+    assert!(
+        shown.contains("Cloud: OpenAI 1 · [Anthropic 1]\n"),
+        "{shown}"
+    );
+    assert!(shown.contains("Local: Ollama 1 · llama.cpp 1\n"), "{shown}");
+    press(&mut app, &[KeyCode::Tab]);
+    let shown = screen(&mut app);
+    assert!(shown.contains("Local: [Ollama 1] · llama.cpp 1"), "{shown}");
+    assert!(shown.contains("gemma3:12b"), "{shown}");
+    assert!(!shown.contains("Claude Opus"), "{shown}");
+}
+
+/// A section with nothing in it says so on its line, and is no tab.
+#[test]
+fn a_group_with_no_rows_is_its_sections_note() {
+    let asked = Asked::ChooseAdjustable {
+        title: "Model".into(),
+        adjustments: vec![Adjustment::default(); 2],
+        options: vec![
+            ("GPT-6 Luna".into(), String::new()),
+            ("Claude Opus".into(), String::new()),
+        ],
+        marked: Some(0),
+        groups: vec![
+            Group {
+                name: "OpenAI".into(),
+                rows: 2,
+                section: "Cloud".into(),
+            },
+            Group {
+                name: "none running (Ollama, LM Studio, llama-server)".into(),
+                rows: 0,
+                section: "Local".into(),
+            },
+        ],
+    };
+    let mut app = App::new(80, 40, vec![]);
+    app.asked(1, "", asked, Instant::now());
+    let shown = screen(&mut app);
+    assert!(shown.contains("Cloud: [OpenAI 2]\n"), "{shown}");
+    assert!(
+        shown.contains("Local: none running (Ollama, LM Studio, llama-server)\n"),
+        "{shown}"
+    );
+    // Tab has nowhere to go: both rows stay listed.
+    press(&mut app, &[KeyCode::Tab]);
+    let shown = screen(&mut app);
+    assert!(
+        shown.contains("GPT-6 Luna") && shown.contains("Claude Opus"),
+        "{shown}"
+    );
 }

@@ -5,6 +5,16 @@
 //! ```text
 //!   OpenAI 36 · [OpenRouter 288] · Anthropic 15
 //! ```
+//!
+//! Groups in sections are listed a section a line, each named:
+//!
+//! ```text
+//!   Cloud: OpenAI 36 · [OpenRouter 288]
+//!   Local: Ollama 3 · llama.cpp 1
+//! ```
+//!
+//! A group with no rows is no tab: it is what its section says of itself
+//! (`Local: none running`).
 
 use std::ops::Range;
 
@@ -16,12 +26,16 @@ use crate::wrap::wrap;
 
 pub(super) struct Tabs {
     names: Vec<String>,
+    /// What each tab is one of; empty for none.
+    sections: Vec<String>,
     /// Each tab's rows, as positions in the whole list.
     bounds: Vec<Range<usize>>,
     /// The tab shown.
     at: usize,
     /// Each tab's marker when it was left.
     marks: Vec<Option<usize>>,
+    /// A section with no rows, and what is said of it.
+    notes: Vec<(String, String)>,
 }
 
 impl Tabs {
@@ -29,14 +43,17 @@ impl Tabs {
     /// rows. One group is a tab too: it names whose the rows are. Rows past the groups are the
     /// last one's.
     pub(super) fn new(groups: &[protocol::Group], rows: usize, marked: usize) -> Option<Self> {
-        let mut names = vec![];
+        let (mut names, mut sections, mut notes) = (vec![], vec![], vec![]);
         let mut bounds: Vec<Range<usize>> = vec![];
         let mut start = 0;
         for group in groups {
             let end = (start + group.rows).min(rows);
             if end > start {
                 names.push(group.name.clone());
+                sections.push(group.section.clone());
                 bounds.push(start..end);
+            } else if !group.section.is_empty() {
+                notes.push((group.section.clone(), group.name.clone()));
             }
             start = end;
         }
@@ -44,6 +61,8 @@ impl Tabs {
         let mut tabs = Self {
             marks: vec![None; names.len()],
             names,
+            sections,
+            notes,
             bounds,
             at: 0,
         };
@@ -83,10 +102,22 @@ impl Tabs {
 
     /// Each tab named with how many of `listed` are its rows, the one shown in brackets.
     pub(super) fn render(&self, listed: &[usize], width: usize) -> Vec<Line<'static>> {
+        let indent = Line::from("  ");
+        let mut lines = vec![];
         let mut line = Line::default();
         for (at, (name, rows)) in self.names.iter().zip(&self.bounds).enumerate() {
-            if at > 0 {
+            let section = &self.sections[at];
+            if at > 0 && *section == self.sections[at - 1] {
                 line.spans.push(Span::styled(" · ", style::dim()));
+            } else {
+                // A new section starts a line of its own, named.
+                if at > 0 {
+                    lines.extend(wrap(&std::mem::take(&mut line), width, &indent, &indent));
+                }
+                if !section.is_empty() {
+                    let section = format!("{}: ", printable(section));
+                    line.spans.push(Span::styled(section, style::dim()));
+                }
             }
             let count = listed.iter().filter(|row| rows.contains(row)).count();
             let name = printable(name);
@@ -95,8 +126,13 @@ impl Tabs {
                 false => Span::styled(format!("{name} {count}"), style::dim()),
             });
         }
-        let indent = Line::from("  ");
-        wrap(&line, width, &indent, &indent)
+        lines.extend(wrap(&line, width, &indent, &indent));
+        for (section, note) in &self.notes {
+            let note = format!("{}: {}", printable(section), printable(note));
+            let note = Line::from(Span::styled(note, style::dim()));
+            lines.extend(wrap(&note, width, &indent, &indent));
+        }
+        lines
     }
 }
 
