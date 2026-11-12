@@ -79,7 +79,7 @@ install_llx() {
   esac
   bin=${RUNNER_TEMP:-${TMPDIR:-/tmp}}/llx-bin/$version
   archive=localix-cli-$target.tar.gz
-  base=https://github.com/rsaryev/localix-cli/releases/download/v$version
+  base=https://github.com/localixai/localix-cli/releases/download/v$version
   if [ ! -x "$bin/llx" ]; then
     sums=$(mktemp -d)
     curl --proto '=https' --tlsv1.2 -fsSL --retry 3 -o "$sums/$archive" "$base/$archive" || die "could not download $base/$archive"

@@ -10,7 +10,7 @@
 
 ## Install
 
-- `curl -fsSL https://llx.sh/install | sh` (macOS, Linux x86_64 and arm64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/rsaryev/localix-cli localix-cli`.
+- `curl -fsSL https://llx.sh/install | sh` (macOS, Linux x86_64 and arm64, checked against `SHA256SUMS`; into `~/.local/bin`, or `LLX_INSTALL_DIR`). Or build it: `cargo install --locked --git https://github.com/localixai/localix-cli localix-cli`.
 - Sign in with `/login` in a session (`llx`), or set the provider's key (for example `OPENROUTER_API_KEY`).
 
 ## Use
@@ -26,7 +26,7 @@
 
 ## In CI
 
-- `uses: rsaryev/localix-cli@v0` is a GitHub Action: it installs llx, runs `llx exec` once, and returns the answer, the exit code and the cost.
+- `uses: localixai/localix-cli@v0` is a GitHub Action: it installs llx, runs `llx exec` once, and returns the answer, the exit code and the cost.
 - The agent works through the shell (`gh`, `git`, `jq` and the project's own tools): no MCP server, no GitHub tool, no built-in prompt. The workflow owns the prompt and the posting.
 - The job that runs the model holds a read-only token; a second job, with write access and no model key, posts what it answered.
 - Guide: https://llx.sh/docs/ci. Recipes: https://llx.sh/docs/recipes. Ready-made workflows: https://llx.sh/docs/examples.
@@ -34,10 +34,10 @@
 ## From another agent
 
 - `llx exec` hands a task to a helper on any provider and model; `llx decide` answers a quick choice about stdin.
-- A skill for any agent that takes skills: `npx skills add rsaryev/localix-cli` (in Claude Code also a plugin: `/plugin install llx --marketplace rsaryev/localix-cli`). It points the agent at each command's `--help`.
+- A skill for any agent that takes skills: `npx skills add localixai/localix-cli` (in Claude Code also a plugin: `/plugin install llx --marketplace localixai/localix-cli`). It points the agent at each command's `--help`.
 - Guide: https://llx.sh/docs/agents.
 
 ## Links
 
 - Docs: https://llx.sh/docs (each page is listed below; all of them in one file: https://llx.sh/llms-full.txt)
-- Source: https://github.com/rsaryev/localix-cli
+- Source: https://github.com/localixai/localix-cli

@@ -135,7 +135,7 @@ jobs:
     permissions:
       contents: write
       # A signed statement of which workflow and commit built each archive:
-      # `gh attestation verify localix-cli-<target>.tar.gz --repo rsaryev/localix-cli`.
+      # `gh attestation verify localix-cli-<target>.tar.gz --repo localixai/localix-cli`.
       id-token: write
       attestations: write
     steps:
@@ -245,7 +245,7 @@ jobs:
           docker buildx imagetools create "${tags[@]}" "$image:$VERSION-amd64" "$image:$VERSION-arm64"
           docker buildx imagetools inspect "$image:$VERSION"
 
-  # `uses: rsaryev/localix-cli@v0` follows the releases: once the release exists, the major tag (v0 for
+  # `uses: localixai/localix-cli@v0` follows the releases: once the release exists, the major tag (v0 for
   # 0.x.y, v1 for 1.x.y) moves to the released commit. A prerelease leaves it where it is. Moving
   # a tag pushes nothing the `v*.*.*` trigger above matches (`v0` has no dots), so it releases
   # nothing again. The workflow's own token cannot point a tag at a commit whose .github/workflows

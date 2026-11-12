@@ -165,7 +165,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0, persist-credentials: false }
-      - uses: rsaryev/localix-cli@v0
+      - uses: localixai/localix-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

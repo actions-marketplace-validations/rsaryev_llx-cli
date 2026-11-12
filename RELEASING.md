@@ -41,16 +41,16 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
    `ubuntu:22.04` container with no network, and on macOS the universal archive must unpack, run
    and hold both architectures.
 4. **publish**: joins every platform's `SHA256SUMS`, checks them against the archives, attests
-   where each archive was built (`gh attestation verify localix-cli-<target>.tar.gz --repo rsaryev/localix-cli`),
+   where each archive was built (`gh attestation verify localix-cli-<target>.tar.gz --repo localixai/localix-cli`),
    and runs `gh release create vX.Y.Z` with the archives, `SHA256SUMS` and `install.sh`, and the
    CHANGELOG section as the notes.
 5. **image-arch** and **image**: on each architecture's runner, the image of
    `scripts/image/Dockerfile` with the release's Linux archive, run with `--version` and pushed as
-   `ghcr.io/rsaryev/localix-cli:X.Y.Z-amd64` and `-arm64`; then both joined under `X.Y.Z` (and `latest`,
+   `ghcr.io/localixai/localix-cli:X.Y.Z-amd64` and `-arm64`; then both joined under `X.Y.Z` (and `latest`,
    but for a prerelease). The package is public, as the repository is (an anonymous `docker pull`
    works).
 6. **major**, for a version without a suffix: the major tag (`v0` for `0.x.y`) moves to the
-   released commit, so `uses: rsaryev/localix-cli@v0` follows the releases. It starts no workflow. The
+   released commit, so `uses: localixai/localix-cli@v0` follows the releases. It starts no workflow. The
    workflow's token cannot move it onto a commit whose `.github/workflows` differ from `main`'s
    (when `main` gained a workflow change after the tag); the job then fails with the two `git`
    commands that move it by hand.
@@ -58,8 +58,8 @@ A version with a suffix (`v1.0.0-rc.1`) is published as a prerelease, which `ins
 `scripts/install.sh` reads `releases/latest` (or `LLX_VERSION`) and verifies the archive against
 `SHA256SUMS`, so a release is installable as soon as it is published.
 `llx.sh/install` is the same script (the site copies it at each deploy, `site/prerender.mjs`).
-`mise use -g github:rsaryev/localix-cli` picks the archive for the machine by its name, and
-`cargo binstall --git https://github.com/rsaryev/localix-cli localix-cli` takes it by
+`mise use -g github:localixai/localix-cli` picks the archive for the machine by its name, and
+`cargo binstall --git https://github.com/localixai/localix-cli localix-cli` takes it by
 `[package.metadata.binstall]` in `apps/cli/Cargo.toml`: keep the archives' names
 `localix-cli-<target>.tar.gz`, with `llx` at their top, or both break. After a release that changes the
 archives, their targets or the image, try each once (`mise`, `cargo binstall`, the image) on a
@@ -73,7 +73,7 @@ integration and Code review (the first time, GitHub asks the publisher to accept
 Marketplace's agreement and to have two-factor authentication). `action.yml`'s `description`
 stays under 125 characters, the Marketplace's limit, and its `name` unique there: `llx agent`, as
 a GitHub user is named `llx` (the listing is `github.com/marketplace/actions/llx-agent`; workflows
-still say `uses: rsaryev/localix-cli@v0`).
+still say `uses: localixai/localix-cli@v0`).
 
 ## Locally
 

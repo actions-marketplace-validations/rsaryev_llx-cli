@@ -118,7 +118,7 @@ forms nest (a tab may hold steps):
 > ```
 > #### Docker
 > ```sh
-> docker run --rm -it ghcr.io/rsaryev/localix-cli
+> docker run --rm -it ghcr.io/localixai/localix-cli
 > ```
 ````
 

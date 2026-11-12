@@ -24,7 +24,7 @@ That is why it is flexible and why it is safer:
 
 ## The GitHub Action
 
-`rsaryev/localix-cli` is a GitHub Action. It installs llx, runs one task, and hands back the answer, the exit code and the spend. A pull request gate in one step:
+`localixai/localix-cli` is a GitHub Action. It installs llx, runs one task, and hands back the answer, the exit code and the spend. A pull request gate in one step:
 
 ```yaml
 name: llx
@@ -43,7 +43,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: rsaryev/localix-cli@v0
+      - uses: localixai/localix-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -135,7 +135,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: rsaryev/localix-cli@v0
+      - uses: localixai/localix-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -298,7 +298,7 @@ It prints the option it picked alone (`--json`: with each option's probability, 
 Install llx and run `llx exec` yourself. On a runner that is a script step:
 
 ```yaml
-- run: curl -fsSL https://raw.githubusercontent.com/rsaryev/localix-cli/main/scripts/install.sh | sh
+- run: curl -fsSL https://raw.githubusercontent.com/localixai/localix-cli/main/scripts/install.sh | sh
 - run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 - name: Review
   env:
@@ -311,7 +311,7 @@ Install llx and run `llx exec` yourself. On a runner that is a script step:
       </dev/null > review.json
 ```
 
-To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/rsaryev/localix-cli/main/scripts/install.sh | LLX_VERSION=0.5.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
+To pin a release, set `LLX_VERSION` for `sh`: `curl -fsSL https://raw.githubusercontent.com/localixai/localix-cli/main/scripts/install.sh | LLX_VERSION=0.5.0 sh`. The action also runs llx with `--timeout` (900 seconds by default) and `LLX_MODELS_REFRESH=0`, which turns off the background fetch of a newer model catalog; add them as you need.
 
 Two details matter on a runner:
 
@@ -332,7 +332,7 @@ Two details matter on a runner:
 
 ## GitLab
 
-The same two jobs. The release's image, `ghcr.io/rsaryev/localix-cli:<version>` (Linux x86_64 and arm64), has llx with `git`, `jq` and `curl`: `image: ghcr.io/rsaryev/localix-cli:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
+The same two jobs. The release's image, `ghcr.io/localixai/localix-cli:<version>` (Linux x86_64 and arm64), has llx with `git`, `jq` and `curl`: `image: ghcr.io/localixai/localix-cli:<version>` takes the place of the `apt-get` and the installer below. The first reads the checkout and holds no write token; the second posts with a project access token (`api` scope, in a masked variable). A job's token (`CI_JOB_TOKEN`) cannot write notes.
 
 ```yaml
 stages: [think, post]
@@ -349,7 +349,7 @@ llx-review:
     LLX_MODEL: anthropic/claude-haiku-5.5
   before_script:
     - apt-get update -qq && apt-get install -y -qq curl ca-certificates git jq
-    - curl -fsSL https://raw.githubusercontent.com/rsaryev/localix-cli/main/scripts/install.sh | sh
+    - curl -fsSL https://raw.githubusercontent.com/localixai/localix-cli/main/scripts/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
   script:
     - |

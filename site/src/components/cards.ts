@@ -66,7 +66,7 @@ export const CARDS: Card[] = [
   {
     tag: 'In CI and scripts',
     title: 'A step your pipeline can branch on',
-    text: '`llx exec` runs one task and prints JSON events; the last one holds the status, your data and the cost. On GitHub, `uses: rsaryev/localix-cli@v0` runs the same step and returns the answer, the status and the spend.',
+    text: '`llx exec` runs one task and prints JSON events; the last one holds the status, your data and the cost. On GitHub, `uses: localixai/localix-cli@v0` runs the same step and returns the answer, the status and the spend.',
     link: { href: EXAMPLES_DOCS, label: 'Ready-made workflows' },
     panel: [
       shell(
@@ -209,7 +209,7 @@ export const CARDS: Card[] = [
     text: 'One skill teaches Claude Code, Codex, Cursor and other agents what llx does and when it pays, with examples to run as they are and each command\'s help as the installed llx prints it. They hand reading to a helper and ask `llx decide` rather than read every file themselves.',
     link: { href: `${GITHUB}/tree/main/skills/llx`, label: 'The skill' },
     panel: [
-      shell('$ npx skills add rsaryev/localix-cli'),
+      shell('$ npx skills add localixai/localix-cli'),
       shell('$ llx decide "Bug report or feature request?" \\\n    --choices bug,feature issues/*'),
       {
         grid: [

@@ -165,7 +165,7 @@ jobs:
             echo "args=--image $(IFS=,; echo "${pictures[*]}")" >> "$GITHUB_OUTPUT"
           fi
       - id: llx
-        uses: rsaryev/localix-cli@v0
+        uses: localixai/localix-cli@v0
         continue-on-error: true # an answer that says why it could not be done is still posted
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

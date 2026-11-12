@@ -9,7 +9,7 @@
 <text x="20.0" y="161.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
 <text x="36.9" y="161.0" fill="#e6edf3" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Docker</text>
 <text x="87.4" y="161.0" fill="#7d8590" xml:space="preserve" textLength="269.8" lengthAdjust="spacingAndGlyphs"> ───────────────────────────────</text>
-<text x="20.0" y="182.0" fill="#39c5cf" xml:space="preserve" textLength="362.5" lengthAdjust="spacingAndGlyphs">docker run --rm -it ghcr.io/rsaryev/localix-cli</text>
+<text x="20.0" y="182.0" fill="#39c5cf" xml:space="preserve" textLength="362.5" lengthAdjust="spacingAndGlyphs">docker run --rm -it ghcr.io/localixai/localix-cli</text>
 <text x="20.0" y="224.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
 <text x="36.9" y="224.0" fill="#e6edf3" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs" font-weight="700">From source</text>
 <text x="129.6" y="224.0" fill="#7d8590" xml:space="preserve" textLength="227.6" lengthAdjust="spacingAndGlyphs"> ──────────────────────────</text>
