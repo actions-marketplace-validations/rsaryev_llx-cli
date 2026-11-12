@@ -13,6 +13,7 @@
 
 - [x] CommonMark's 652 examples
 - [x] GitHub's extensions
+- [x] footnotes and formulas
 - [ ] definition lists
 
 > [!PROS] For
@@ -20,7 +21,7 @@
 > - forms a reply is made of
 
 > [!CONS] Against
-> - no footnotes, no math
+> - no definition lists
 
 > [!DETAILS] How it was measured
 > The median of 51 rounds, the parsers a round each in turn.

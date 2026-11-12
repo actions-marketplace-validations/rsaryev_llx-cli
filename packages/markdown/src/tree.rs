@@ -119,6 +119,17 @@ pub enum Kind {
     Details,
     /// The pages a reply draws on: its one child is their list.
     Sources,
+    /// A formula in a line, `$x$` or `$$x$$`: `text` is its LaTeX.
+    Math,
+    /// A formula of its own, in a `$$` or a `math` fence: `text` is its LaTeX.
+    MathBlock,
+    /// A reference to a footnote: `start` is its number.
+    FootnoteRef,
+    /// The document's last block, where any footnote is referred to: its children are
+    /// `Footnote`s, in the order they are first referred to.
+    Footnotes,
+    /// A footnote: `start` is its number, its children the blocks of its definition.
+    Footnote,
 }
 
 impl Kind {

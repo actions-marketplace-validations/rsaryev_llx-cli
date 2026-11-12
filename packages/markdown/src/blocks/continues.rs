@@ -61,6 +61,7 @@ impl Blocks<'_> {
                     Go::On
                 }
             }
+            Data::Note => self.note_continues(),
             Data::None | Data::List { .. } => Go::Off,
         }
     }

@@ -34,14 +34,21 @@ impl<'d> Node<'d> {
         self.raw().kind
     }
 
-    /// The node's own text: a text's, a code's, a block of HTML's. Empty for the rest.
+    /// The node's own text: a text's, a code's, a block of HTML's, a formula's LaTeX. Empty for
+    /// the rest.
     #[must_use]
     #[inline]
     pub fn text(self) -> &'d str {
         let raw = self.raw();
         let own = matches!(
             raw.kind,
-            Kind::Text | Kind::Code | Kind::CodeBlock | Kind::Html | Kind::HtmlBlock
+            Kind::Text
+                | Kind::Code
+                | Kind::CodeBlock
+                | Kind::Html
+                | Kind::HtmlBlock
+                | Kind::Math
+                | Kind::MathBlock
         );
         if own { self.doc.text(raw.span) } else { "" }
     }
@@ -83,7 +90,7 @@ impl<'d> Node<'d> {
         }
     }
 
-    /// An ordered list's first number.
+    /// An ordered list's first number; a footnote's, and a reference's to it.
     #[must_use]
     pub fn start(self) -> u32 {
         self.raw().num

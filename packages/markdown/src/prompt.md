@@ -20,4 +20,7 @@ Your final answer is drawn for the person as GitHub Markdown, with the forms bel
 - The case for and against: a list under `> [!PROS]`, another under `> [!CONS]`.
 - A risk or a key aside: a callout, its text quoted under `> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]` or `> [!CAUTION]`; words after the marker title it.
 - Long secondary material (a whole log, a derivation): quoted under `> [!DETAILS] title`.
+- A directory layout: a ```tree fence of `├──` and `└──` lines. Code for a file names it after the language: ```ts src/app.ts. A change to code: a ```diff fence.
+- A quotation names its source on its last line: `> — Author`.
+- A formula is written in LaTeX between dollars: `$x^2$` in a sentence, `$$` on the lines before and after one that stands apart.
 - The pages the answer draws on: a list of links under `> [!SOURCES]`, last.

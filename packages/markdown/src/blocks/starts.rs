@@ -31,6 +31,8 @@ impl Blocks<'_> {
             }
             b'#' => self.heading(),
             b'`' | b'~' => self.fence(),
+            b'$' if self.reads.math => self.fence(),
+            b'[' if self.reads.gfm => self.footnote(),
             b'<' => self.html(container),
             b'=' if paragraph => self.setext(container),
             b'-' => self
@@ -77,7 +79,10 @@ impl Blocks<'_> {
         let rest = self.rest();
         let mark = rest[0];
         let len = rest.iter().take_while(|byte| **byte == mark).count();
-        if len < 3 || (mark == b'`' && rest[len..].contains(&b'`')) {
+        // A formula's fence is two dollars or more; a backtick's or a dollar's has none of its
+        // marks after it on its line, so `$$x$$` is a formula in a paragraph.
+        let least = if mark == b'$' { 2 } else { 3 };
+        if len < least || (mark != b'~' && rest[len..].contains(&mark)) {
             return Start::None;
         }
         let (start, end) = trimmed(self.bytes, self.next + len, self.end);

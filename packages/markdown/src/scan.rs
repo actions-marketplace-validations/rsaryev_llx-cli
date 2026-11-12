@@ -184,34 +184,43 @@ pub(crate) fn unbroken(text: &[u8], from: usize) -> usize {
     first(text, from, marks, |byte| is_blank(byte) || byte == b'<').unwrap_or(text.len())
 }
 
+/// What the inline pass reads beyond CommonMark, so the bytes it stops at.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Marks {
+    CommonMark,
+    /// GitHub's extensions: a strikethrough's `~`, and a `:` and a `w` that may start a bare
+    /// address.
+    Github,
+    /// GitHub's extensions and a formula's `$`.
+    Math,
+}
+
 /// The bytes the inline pass stops at: those that can mean something there.
-const fn stops(gfm: bool) -> [bool; 256] {
+const fn stops(marks: &[u8]) -> [bool; 256] {
     let mut table = [false; 256];
-    let marks = b"\n\\`*_[]!<&";
     let mut at = 0;
     while at < marks.len() {
         table[marks[at] as usize] = true;
         at += 1;
     }
-    if gfm {
-        table[b'~' as usize] = true;
-        table[b':' as usize] = true;
-        table[b'w' as usize] = true;
-    }
     table
 }
 
-const PLAIN: [bool; 256] = stops(false);
-const GITHUB: [bool; 256] = stops(true);
+const PLAIN: [bool; 256] = stops(b"\n\\`*_[]!<&");
+const GITHUB: [bool; 256] = stops(b"\n\\`*_[]!<&~:w");
+const MATH: [bool; 256] = stops(b"\n\\`*_[]!<&~:w$");
 
 /// How many bytes are looked at one by one before a run of plain text is taken to be long: where
 /// the text is full of marks the next one is this near.
 const NEAR: usize = 8;
 
-/// Where the inline pass stops next, from `from` on: at a byte that can mean something. With
-/// `gfm` at what may start a bare address too, a `:` and a `w`.
-pub(crate) fn stop(text: &[u8], from: usize, gfm: bool) -> Option<usize> {
-    let table = if gfm { &GITHUB } else { &PLAIN };
+/// Where the inline pass stops next, from `from` on: at a byte that can mean something.
+pub(crate) fn stop(text: &[u8], from: usize, marks: Marks) -> Option<usize> {
+    let (table, gfm) = match marks {
+        Marks::CommonMark => (&PLAIN, false),
+        Marks::Github => (&GITHUB, true),
+        Marks::Math => (&MATH, true),
+    };
     let rest = text.get(from..)?;
     let stops = |byte: &u8| table[usize::from(*byte)];
     let (near, far) = rest.split_at(rest.len().min(NEAR));
@@ -219,12 +228,13 @@ pub(crate) fn stop(text: &[u8], from: usize, gfm: bool) -> Option<usize> {
         return Some(from + at);
     }
     // A long run of plain text: sixteen bytes compared with every stop at once, with no branch
-    // among them, which the compiler turns into a few comparisons of the whole sixteen.
+    // among them, which the compiler turns into a few comparisons of the whole sixteen. A `$`
+    // is taken for one with the `&` it differs from by a bit, at no cost, whatever is read.
     let may = |byte: u8| {
         let plain = (byte < 0x0e)
             | (byte.wrapping_sub(0x5b) < 6)
             | (byte == b'!')
-            | (byte == b'&')
+            | ((byte | 0x02) == b'&')
             | (byte == b'*')
             | (byte == b'<');
         plain | (gfm & ((byte == b':') | (byte == b'w') | (byte == b'~')))

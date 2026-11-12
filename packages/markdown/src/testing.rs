@@ -214,6 +214,31 @@ fn render(node: Node<'_>, tight: bool, out: &mut String) {
         }
         Kind::Link | Kind::Image => link(node, out),
         Kind::Html => out.push_str(node.text()),
+        Kind::Math => {
+            out.push_str("<span class=\"math\">");
+            escape(node.text(), out);
+            out.push_str("</span>");
+        }
+        Kind::MathBlock => {
+            cr(out);
+            out.push_str("<div class=\"math\">");
+            escape(node.text(), out);
+            out.push_str("</div>\n");
+        }
+        Kind::FootnoteRef => write!(out, "<sup>{}</sup>", node.start()).unwrap(),
+        Kind::Footnotes => {
+            cr(out);
+            out.push_str("<section class=\"footnotes\">\n<ol>\n");
+            children(node, false, out);
+            out.push_str("</ol>\n</section>\n");
+        }
+        Kind::Footnote => {
+            cr(out);
+            writeln!(out, "<li value=\"{}\">", node.start()).unwrap();
+            children(node, false, out);
+            cr(out);
+            out.push_str("</li>\n");
+        }
         _ => block(node, &format!("form kind=\"{:?}\"", node.kind()), out),
     }
 }
@@ -245,6 +270,10 @@ fn outline_of(node: Node<'_>, out: &mut String) {
         Kind::Emphasis => "i".to_owned(),
         Kind::SoftBreak => "br".to_owned(),
         Kind::Callout(kind) => format!("{kind:?}").to_lowercase(),
+        Kind::Math => return write!(out, "math{:?}", node.text()).unwrap(),
+        Kind::MathBlock => return write!(out, "mathblock{:?}", node.text()).unwrap(),
+        Kind::FootnoteRef => return write!(out, "ref[{}]", node.start()).unwrap(),
+        Kind::Footnote => format!("note[{}]", node.start()),
         other => format!("{other:?}").to_lowercase(),
     };
     out.push_str(&name);

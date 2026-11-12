@@ -27,6 +27,13 @@ const PIECES: &[&str] = &[
     "``",
     "```",
     "~~~",
+    "$",
+    "$$",
+    "$x$",
+    "$5",
+    "[^1]",
+    "[^1]: ",
+    "```math",
     "[",
     "]",
     "![",
@@ -167,6 +174,12 @@ fn deep_and_long_runs_are_read_in_time() {
         "<!--".repeat(20_000),
         "http://a.b/".repeat(10_000),
         "a ".repeat(20_000) + "\n" + &"[a]: b\n".repeat(5_000),
+        "$a ".repeat(30_000),
+        "$$a".repeat(30_000),
+        "$$\n".repeat(20_000),
+        "[^a]".repeat(20_000) + "\n\n" + &"[^a]: [^b]\n".repeat(5_000),
+        "[^".repeat(50_000) + "\n\n[^1]: a",
+        "[^1]: ".repeat(20_000),
     ];
     let started = std::time::Instant::now();
     for case in &cases {

@@ -25,7 +25,7 @@ export function Hero() {
         </p>
       </div>
       <figure className="hero-demo">
-        <Film src="/demo-llx.cast" label="An llx session on Claude Haiku 5.5: /model lists the models of every provider signed in and picks one; the agent fixes a failing test in its sandbox; two questions are answered with steps, tabs and a table drawn in the terminal; two agents work in parallel and their work is checked; then, from the shell, llx decide answers a question about the diff in under a second and llx exec checks the change as CI would, answering with data" />
+        <Film src="/demo-llx.cast" label="An llx session on Claude Haiku 5.5: /model lists the models of every provider signed in and picks one; the agent fixes a failing test in its sandbox; two questions are answered with steps, tabs, a table and a formula drawn in the terminal; two agents work in parallel and their work is checked; then, from the shell, llx decide answers a question about the diff in under a second and llx exec checks the change as CI would, answering with data" />
       </figure>
     </section>
   );

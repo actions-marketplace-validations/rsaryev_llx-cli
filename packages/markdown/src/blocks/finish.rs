@@ -19,6 +19,8 @@ impl Blocks<'_> {
             }
         } else if matches!(data, Data::Indented) {
             self.trim_code(node);
+        } else if let Data::Fence { mark, .. } = data {
+            self.formula(node, mark);
         } else if let Kind::List { ordered, .. } = kind {
             let tight = self.tight(node);
             self.doc.raw_mut(node).kind = Kind::List { ordered, tight };
@@ -59,6 +61,25 @@ impl Blocks<'_> {
                 None => return true,
             }
         }
+    }
+
+    /// A fence of dollars, or one whose language is `math`, is a formula where formulas are read:
+    /// its text the LaTeX, with no line ending after it.
+    fn formula(&mut self, node: u32, mark: u8) {
+        if !self.reads.math {
+            return;
+        }
+        let raw = self.doc.raw(node);
+        let (span, extra) = (raw.span, raw.extra);
+        let math =
+            mark == b'$' || self.doc.text(extra).split_ascii_whitespace().next() == Some("math");
+        if !math {
+            return;
+        }
+        let end = span.end - u32::from(self.doc.text(span).ends_with('\n'));
+        let raw = self.doc.raw_mut(node);
+        raw.kind = Kind::MathBlock;
+        raw.span.end = end;
     }
 
     /// An indented code block ends at its last line that is not blank.

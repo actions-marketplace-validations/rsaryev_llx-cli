@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 670" width="580" height="670" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+<rect x="0.5" y="0.5" width="579" height="669" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20.0" y="35.0" fill="#1f2328" xml:space="preserve" textLength="185.5" lengthAdjust="spacingAndGlyphs" font-weight="700">Where the parser lives</text>
+<text x="20.0" y="77.0" fill="#1f2328" xml:space="preserve" textLength="151.7" lengthAdjust="spacingAndGlyphs" font-weight="700">packages/markdown/</text>
+<text x="20.0" y="98.0" fill="#8c959f" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs">├─ </text>
+<text x="45.3" y="98.0" fill="#1f2328" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-weight="700">src/</text>
+<text x="20.0" y="119.0" fill="#8c959f" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">│  ├─ </text>
+<text x="70.6" y="119.0" fill="#1f2328" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs">blocks.rs  </text>
+<text x="163.3" y="119.0" fill="#8c959f" xml:space="preserve" textLength="236.0" lengthAdjust="spacingAndGlyphs">the first pass, line by line</text>
+<text x="20.0" y="140.0" fill="#8c959f" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">│  ├─ </text>
+<text x="70.6" y="140.0" fill="#1f2328" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs">inline.rs  </text>
+<text x="163.3" y="140.0" fill="#8c959f" xml:space="preserve" textLength="252.9" lengthAdjust="spacingAndGlyphs">the second, a paragraph's text</text>
+<text x="20.0" y="161.0" fill="#8c959f" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">│  └─ </text>
+<text x="70.6" y="161.0" fill="#1f2328" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs">forms.rs   </text>
+<text x="163.3" y="161.0" fill="#8c959f" xml:space="preserve" textLength="126.4" lengthAdjust="spacingAndGlyphs">a reply's forms</text>
+<text x="20.0" y="182.0" fill="#8c959f" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs">└─ </text>
+<text x="45.3" y="182.0" fill="#1f2328" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs">README.md     </text>
+<text x="163.3" y="182.0" fill="#8c959f" xml:space="preserve" textLength="219.2" lengthAdjust="spacingAndGlyphs">what it reads and how fast</text>
+<text x="20.0" y="224.0" fill="#1f2328" xml:space="preserve" textLength="101.2" lengthAdjust="spacingAndGlyphs" font-weight="700" font-style="italic">What changed</text>
+<text x="20.0" y="266.0" fill="#8c959f" xml:space="preserve" textLength="84.3" lengthAdjust="spacingAndGlyphs">src/lib.rs</text>
+<text x="20.0" y="287.0" fill="#1b7c83" xml:space="preserve" textLength="354.1" lengthAdjust="spacingAndGlyphs">pub fn parse(text: &amp;str) -&gt; Document&lt;'_&gt; {</text>
+<text x="20.0" y="308.0" fill="#1b7c83" xml:space="preserve" textLength="286.6" lengthAdjust="spacingAndGlyphs">    parse_as(text, Dialect::Reply)</text>
+<text x="20.0" y="329.0" fill="#1b7c83" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">}</text>
+<text x="20.0" y="371.0" fill="#8c959f" xml:space="preserve" textLength="143.3" lengthAdjust="spacingAndGlyphs">@@ -12,3 +12,3 @@</text>
+<text x="20.0" y="392.0" fill="#cf222e" xml:space="preserve" textLength="303.5" lengthAdjust="spacingAndGlyphs">-    parse_as(text, Dialect::Github)</text>
+<text x="20.0" y="413.0" fill="#1a7f37" xml:space="preserve" textLength="295.1" lengthAdjust="spacingAndGlyphs">+    parse_as(text, Dialect::Reply)</text>
+<text x="20.0" y="434.0" fill="#1b7c83" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs"> }</text>
+<text x="20.0" y="476.0" fill="#1f2328" xml:space="preserve" textLength="177.0" lengthAdjust="spacingAndGlyphs">Reading a text costs </text>
+<text x="197.0" y="476.0" fill="#1f2328" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-style="italic">O(n)</text>
+<text x="230.8" y="476.0" fill="#1f2328" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs"> in its length</text>
+<text x="348.8" y="476.0" fill="#8c959f" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs">[1]</text>
+<text x="374.1" y="476.0" fill="#1f2328" xml:space="preserve" textLength="109.6" lengthAdjust="spacingAndGlyphs">. A reply of </text>
+<text x="483.6" y="476.0" fill="#1f2328" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs" font-style="italic">k</text>
+<text x="492.1" y="476.0" fill="#1f2328" xml:space="preserve" textLength="59.0" lengthAdjust="spacingAndGlyphs"> pieces</text>
+<text x="20.0" y="497.0" fill="#1f2328" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs">of </text>
+<text x="45.3" y="497.0" fill="#1f2328" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs" font-style="italic">c</text>
+<text x="53.7" y="497.0" fill="#1f2328" xml:space="preserve" textLength="345.6" lengthAdjust="spacingAndGlyphs"> bytes, read again as each arrives, costs</text>
+<text x="36.9" y="539.0" fill="#1f2328" xml:space="preserve" textLength="227.6" lengthAdjust="spacingAndGlyphs" font-style="italic">c + 2c + … + kc = ck(k+1)/2</text>
+<text x="20.0" y="581.0" fill="#8c959f" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">│ </text>
+<text x="36.9" y="581.0" fill="#1f2328" xml:space="preserve" textLength="252.9" lengthAdjust="spacingAndGlyphs">Simple is better than complex.</text>
+<text x="20.0" y="602.0" fill="#8c959f" xml:space="preserve" textLength="134.9" lengthAdjust="spacingAndGlyphs">│ — Tim Peters, </text>
+<text x="154.9" y="602.0" fill="#8c959f" xml:space="preserve" textLength="143.3" lengthAdjust="spacingAndGlyphs" font-style="italic">The Zen of Python</text>
+<text x="20.0" y="644.0" fill="#8c959f" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs">[1] </text>
+<text x="53.7" y="644.0" fill="#1f2328" xml:space="preserve" textLength="143.3" lengthAdjust="spacingAndGlyphs">The times are in </text>
+<text x="197.0" y="644.0" fill="#1b7c83" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs">bench/results/</text>
+<text x="315.1" y="644.0" fill="#1f2328" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">.</text>
+</svg>

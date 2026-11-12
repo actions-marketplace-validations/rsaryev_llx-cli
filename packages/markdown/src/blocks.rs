@@ -7,11 +7,14 @@
 mod continues;
 mod cursor;
 mod finish;
+mod footnote;
 mod html;
 mod list;
 mod starts;
 pub(crate) mod table;
 
+use crate::inline::Reads;
+use crate::notes::Notes;
 use crate::refs::Refs;
 use crate::scan::{line_end, line_end_and};
 use crate::tree::{BLOCK, Document, Kind, NONE, Span, at, pos};
@@ -36,6 +39,8 @@ enum Data {
         indent: u32,
     },
     Indented,
+    /// A footnote's definition.
+    Note,
     /// Which of the seven kinds of HTML block it is.
     Html(u8),
 }
@@ -73,7 +78,8 @@ pub(crate) struct Blocks<'a> {
     /// Beside `doc.nodes`, a block each.
     info: Vec<Info>,
     refs: Refs,
-    gfm: bool,
+    reads: Reads,
+    notes: Notes,
     tip: u32,
     old_tip: u32,
     last_matched: u32,
@@ -92,14 +98,15 @@ pub(crate) struct Blocks<'a> {
 }
 
 /// The blocks of `src`, their inlines unread, and the definitions its links may name.
-pub(crate) fn read(src: &str, gfm: bool) -> (Document<'_>, Refs) {
+pub(crate) fn read(src: &str, reads: Reads) -> (Document<'_>, Refs, Notes) {
     let mut blocks = Blocks {
         src,
         bytes: src.as_bytes(),
         doc: Document::new(src),
         info: Vec::with_capacity(src.len() / BLOCK + 8),
         refs: Refs::default(),
-        gfm,
+        reads,
+        notes: Notes::default(),
         tip: 0,
         old_tip: 0,
         last_matched: 0,
@@ -122,7 +129,7 @@ pub(crate) fn read(src: &str, gfm: bool) -> (Document<'_>, Refs) {
         data: Data::None,
     });
     blocks.lines();
-    (blocks.doc, blocks.refs)
+    (blocks.doc, blocks.refs, blocks.notes)
 }
 
 impl Blocks<'_> {
@@ -264,8 +271,10 @@ impl Blocks<'_> {
     fn add(&mut self, kind: Kind) -> u32 {
         loop {
             let tip = self.kind(self.tip);
-            let holds = matches!(tip, Kind::Document | Kind::Quote | Kind::Item(_))
-                || (matches!(tip, Kind::List { .. }) && matches!(kind, Kind::Item(_)));
+            let holds = matches!(
+                tip,
+                Kind::Document | Kind::Quote | Kind::Item(_) | Kind::Footnote
+            ) || (matches!(tip, Kind::List { .. }) && matches!(kind, Kind::Item(_)));
             if holds {
                 break;
             }

@@ -12,6 +12,7 @@ mod forms;
 mod inline;
 mod link;
 mod node;
+mod notes;
 mod prompt;
 mod refs;
 mod scan;
@@ -27,9 +28,9 @@ pub use tree::{Align, Callout, Document, Kind, Task};
 pub enum Dialect {
     /// The CommonMark specification, and nothing else.
     CommonMark,
-    /// With GitHub's tables, strikethrough, task lists and bare links.
+    /// With GitHub's tables, strikethrough, task lists, bare links and footnotes.
     Github,
-    /// With the forms of an agent's reply too: callouts, steps, tabs.
+    /// With the forms of an agent's reply too: callouts, steps, tabs, formulas.
     Reply,
 }
 
@@ -53,9 +54,10 @@ pub fn parse_as(text: &str, dialect: Dialect) -> Document<'_> {
     let reads = inline::Reads {
         gfm: dialect != Dialect::CommonMark,
         forms: dialect == Dialect::Reply,
+        math: dialect == Dialect::Reply,
     };
-    let (mut doc, refs) = blocks::read(text, reads.gfm);
-    inline::read(&mut doc, text, &refs, reads);
+    let (mut doc, refs, notes) = blocks::read(text, reads);
+    inline::read(&mut doc, text, &refs, notes, reads);
     doc
 }
 

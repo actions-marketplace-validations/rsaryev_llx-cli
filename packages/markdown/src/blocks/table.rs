@@ -44,7 +44,7 @@ impl Blocks<'_> {
     /// A delimiter row under a paragraph's last line, with as many cells as that line, makes the
     /// line a table's header.
     pub(super) fn table(&mut self, container: u32) -> Start {
-        if !self.gfm || !matches!(self.kind(container), Kind::Paragraph) {
+        if !self.reads.gfm || !matches!(self.kind(container), Kind::Paragraph) {
             return Start::None;
         }
         let rest = self.rest();

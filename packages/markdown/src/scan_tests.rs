@@ -85,25 +85,31 @@ fn an_address_runs_to_the_first_blank_or_angle() {
 #[test]
 fn the_inline_pass_stops_at_what_can_mean_something() {
     // Every stop, at every place of a text of every length, among bytes that are none: letters,
-    // a `^` (which the look at sixteen bytes takes for one) and bytes with their top bit set.
-    let marks: [&[u8]; 13] = [
-        b"\n", b"\\", b"`", b"*", b"_", b"[", b"]", b"![", b"<", b"&", b"~", b"://", b"ww",
+    // a `^` (which the look at sixteen bytes takes for one), bytes with their top bit set, and a
+    // `$` where formulas are not read.
+    let marks: [&[u8]; 14] = [
+        b"\n", b"\\", b"`", b"*", b"_", b"[", b"]", b"![", b"<", b"&", b"~", b"://", b"ww", b"$",
     ];
-    for gfm in [false, true] {
+    for (reads, count) in [
+        (Marks::CommonMark, 10),
+        (Marks::Github, 13),
+        (Marks::Math, 14),
+    ] {
+        let dollar = if count == 14 { b'a' } else { b'$' };
         for len in 0..80 {
             let plain: Vec<u8> = (0..len)
-                .map(|at| [b'a', b'^', 0xd0, b';', b' '][at % 5])
+                .map(|at| [b'a', b'^', 0xd0, b';', b' ', dollar][at % 6])
                 .collect();
-            assert_eq!(stop(&plain, 0, gfm), None, "{len}");
+            assert_eq!(stop(&plain, 0, reads), None, "{len}");
             for place in 0..len {
-                for mark in &marks[..if gfm { 13 } else { 10 }] {
+                for mark in &marks[..count] {
                     if place + mark.len() > len {
                         continue;
                     }
                     let mut text = plain.clone();
                     text[place..place + mark.len()].copy_from_slice(mark);
-                    assert_eq!(stop(&text, 0, gfm), Some(place), "{len} {place} {mark:?}");
-                    assert_eq!(stop(&text, place, gfm), Some(place));
+                    assert_eq!(stop(&text, 0, reads), Some(place), "{len} {place} {mark:?}");
+                    assert_eq!(stop(&text, place, reads), Some(place));
                 }
             }
         }

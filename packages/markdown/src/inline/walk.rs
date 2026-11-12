@@ -1,11 +1,13 @@
 //! Every block read into its inlines, in the order the blocks were read: a paragraph's and a
-//! heading's text, a table row's cells.
+//! heading's text, a table row's cells. A footnote's are read once the rest are, in the order the
+//! footnotes are first referred to, so a reference inside one is numbered after the text's own.
 
 use super::{Inline, Pace, SLACK, Stacks};
 use crate::blocks::table::cells;
 use crate::forms;
+use crate::notes::Notes;
 use crate::refs::Refs;
-use crate::scan::{is_blank, trimmed};
+use crate::scan::{Marks, is_blank, trimmed};
 use crate::tree::{Document, INLINE, Kind, NONE, Raw, SHORT, Span, Task, at, pos};
 
 /// Of a text not short, this part is given room first: an eighth.
@@ -16,11 +18,13 @@ const PART: usize = 8;
 pub(crate) struct Reads {
     pub(crate) gfm: bool,
     pub(crate) forms: bool,
+    pub(crate) math: bool,
 }
 
 struct Walk<'s, 'd, 'a> {
     doc: &'d mut Document<'a>,
     refs: &'d Refs,
+    notes: Notes,
     stacks: Stacks,
     src: &'s str,
     /// What the block pass wrote, read here while this pass writes its own after it.
@@ -32,12 +36,13 @@ struct Walk<'s, 'd, 'a> {
     pace: Pace,
 }
 
-pub(crate) fn read(doc: &mut Document<'_>, src: &str, refs: &Refs, reads: Reads) {
+pub(crate) fn read(doc: &mut Document<'_>, src: &str, refs: &Refs, notes: Notes, reads: Reads) {
     let old = std::mem::take(&mut doc.own);
     let blocks = doc.nodes.len();
     let mut walk = Walk {
         doc,
         refs,
+        notes,
         stacks: Stacks::new(),
         src,
         old: &old,
@@ -51,35 +56,21 @@ pub(crate) fn read(doc: &mut Document<'_>, src: &str, refs: &Refs, reads: Reads)
     };
     // Room for the inlines: a short text's at once, a long one's for its first part; then each
     // time little is left, for the rest by how many the text read so far took (`Inline::fit`).
-    let inline = |raw: &Raw| {
-        raw.parent != NONE
-            && matches!(
-                raw.kind,
-                Kind::Paragraph | Kind::Heading(_) | Kind::Row { .. }
-            )
-    };
-    let length = |raw: &Raw| at(raw.span.end.saturating_sub(raw.span.start));
-    let texts = walk.doc.nodes.iter().filter(|raw| inline(raw));
+    let texts = walk.doc.nodes.iter().filter(|raw| has_inlines(raw));
     walk.pace.total = texts.map(length).sum();
     let total = walk.pace.total;
     let first = if total < SHORT { total } else { total / PART };
     walk.doc.nodes.reserve(first / INLINE + SLACK);
     let mut tabs = Vec::new();
-    for id in 0..blocks {
-        let node = pos(id);
-        let raw = walk.doc.nodes[id];
-        if !inline(&raw) {
-            continue;
-        }
-        if matches!(raw.kind, Kind::Paragraph) {
-            walk.paragraph(node, raw.span, &mut tabs);
-        } else if matches!(raw.kind, Kind::Heading(_)) {
-            walk.inlines(node, raw.span);
-        } else {
-            walk.row(node, raw.span);
-        }
-        walk.pace.read += length(&raw);
+    walk.blocks(0, blocks, &mut tabs);
+    // A footnote read may refer to more: the list is walked as it grows.
+    let mut told = 0;
+    while let Some(note) = walk.notes.told(told) {
+        let end = walk.end_of(note);
+        walk.blocks(at(note) + 1, end, &mut tabs);
+        told += 1;
     }
+    let notes = walk.notes;
     let written = std::mem::replace(&mut doc.own, old);
     if doc.own.is_empty() {
         doc.own = written;
@@ -90,9 +81,59 @@ pub(crate) fn read(doc: &mut Document<'_>, src: &str, refs: &Refs, reads: Reads)
     for node in tabs {
         forms::tabs(doc, node, &mut sections, &mut label);
     }
+    notes.gather(doc);
+}
+
+/// Whether a block's text is read into inlines.
+fn has_inlines(raw: &Raw) -> bool {
+    raw.parent != NONE
+        && matches!(
+            raw.kind,
+            Kind::Paragraph | Kind::Heading(_) | Kind::Row { .. }
+        )
+}
+
+fn length(raw: &Raw) -> usize {
+    at(raw.span.end.saturating_sub(raw.span.start))
 }
 
 impl<'s> Walk<'s, '_, '_> {
+    /// The blocks made from `from` up to `to`, in the order they were made, but the footnotes
+    /// among them: those are read once the rest are.
+    fn blocks(&mut self, from: usize, to: usize, tabs: &mut Vec<u32>) {
+        let mut id = from;
+        while id < to {
+            let node = pos(id);
+            let raw = self.doc.nodes[id];
+            id += 1;
+            if matches!(raw.kind, Kind::Footnote) {
+                id = self.end_of(node);
+                continue;
+            }
+            if !has_inlines(&raw) {
+                continue;
+            }
+            if matches!(raw.kind, Kind::Paragraph) {
+                self.paragraph(node, raw.span, tabs);
+            } else if matches!(raw.kind, Kind::Heading(_)) {
+                self.inlines(node, raw.span);
+            } else {
+                self.row(node, raw.span);
+            }
+            self.pace.read += length(&raw);
+        }
+    }
+
+    /// Where the blocks of `node` end among those the block pass made: its last one, the last of
+    /// that and so on was made last, as a block holds only what came while it was open.
+    fn end_of(&self, node: u32) -> usize {
+        let mut last = node;
+        while self.doc.raw(last).last != NONE {
+            last = self.doc.raw(last).last;
+        }
+        at(last) + 1
+    }
+
     fn cut(&self, span: Span) -> &'s str {
         let (start, end) = (at(span.start), at(span.end));
         let edge = self.src.len();
@@ -127,9 +168,19 @@ impl<'s> Walk<'s, '_, '_> {
             pos: 0,
             from: 0,
             runs: super::Runs::Unread,
+            dollar_runs: super::Runs::Unread,
+            no_single: usize::MAX,
+            note_stop: 0,
+            notes: &mut self.notes,
             apart: false,
             pace: self.pace,
-            gfm: self.reads.gfm,
+            marks: if self.reads.math {
+                Marks::Math
+            } else if self.reads.gfm {
+                Marks::Github
+            } else {
+                Marks::CommonMark
+            },
         }
         .run();
     }

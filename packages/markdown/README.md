@@ -130,13 +130,26 @@ forms nest (a tab may hold steps):
 A terminal folds nothing and switches nothing: tabs are drawn one under another, each under a
 rule that holds its label, and a folded section under its title. The tree says only what a form
 is; how it is shown is the renderer's. llx's gives a table's columns room by what they hold and
-rules its rows apart when they hold long text, stands a task's box where its bullet would,
-puts figures on one row (a list where no row holds them) and keeps a code span on one row
+rules its rows apart when they hold long text, stands a task's mark where its bullet would,
+puts figures side by side, each number over what it counts (a list where no row holds them),
+gives a step's name and a source's address a row of their own, and keeps a code span on one row
 where a row holds it.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/report-dark.svg">
   <img src="assets/report-light.svg" alt="Figures, a table, a task list, the case for and against, details and sources" width="580">
+</picture>
+
+What is not a form is drawn as what it is too: a fence that names its file (` ```rust src/lib.rs `,
+or `title="…"`) under the name, a `diff` by what its lines add and take away, a ` ```tree ` fence
+as a file tree, what is said of the names in one column; a formula as the Unicode a terminal has
+(`\frac{ck(k+1)}{2}` is `ck(k+1)/2`, `x^2` is `x²`), one that stands apart set in on rows of its
+own; a footnote as its number where it is named and its text at the end; a quote's last line
+that opens with a dash as its source.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/files-dark.svg">
+  <img src="assets/files-light.svg" alt="A file tree, code under its file's name, a diff, a formula, a footnote and a quote with its source" width="580">
 </picture>
 
 ### Telling the model
@@ -154,8 +167,17 @@ drawn (`apps/server/src/context.rs`).
   GitHub's extensions on, but for the two that are about a bare address.
 - **GitHub's extensions**: tables, strikethrough, task lists, bare links (`https://…`, `www.…`),
   by the examples of GitHub's specification (`data/github.txt`).
-- **Not read**: footnotes, math, definition lists, GitHub's filter of raw HTML tags. Raw HTML is
-  kept as text for the renderer to show or drop; nothing here writes HTML.
+- **Footnotes**, with GitHub's extensions: `[^label]` where a `[^label]: text` defines it, the
+  definition's lines after its first indented by four columns. Each is numbered as it is first
+  referred to (`Kind::FootnoteRef`, its number `start`), and the ones referred to are the
+  document's last block (`Kind::Footnotes`, each a `Kind::Footnote` holding the definition's
+  blocks); a definition leaves the flow where it was written, one never referred to the tree, and
+  a `[^label]` that names none stays text.
+- **Formulas**, in a reply: `$x$` and `$$x$$` in a line (`Kind::Math`), a `$$` fence or a
+  `math` one (`Kind::MathBlock`), `text` the LaTeX. A single `$` follows pandoc's rule, and a
+  dollar sign by its look is none: `$5`, `$1.5M`, `$HOME/bin` and `$PATH` are text.
+- **Not read**: definition lists, GitHub's filter of raw HTML tags. Raw HTML is kept as text for
+  the renderer to show or drop; nothing here writes HTML.
 - **Any text at all**: every example cut at every byte, and pieces put together at random, are
   read (`src/tree_tests.rs`); a code span or a fence left open reads as code to the end, as a
   reply does while it streams.
@@ -208,8 +230,9 @@ built to be slow. What the numbers do not say:
 - Built for size, the tree built and then walked is a little behind `pulldown-cmark`'s events
   dropped (179 against 182 MB/s), and ahead of them kept.
 - On the 512 KB reply the lead is its smallest, 1.1 times.
-- `pulldown-cmark` reads footnotes, math and definition lists, and `comrak` many more
-  extensions and writes HTML; this reads none of those ([What it reads](#what-it-reads)).
+- `pulldown-cmark` reads definition lists, and `comrak` many more extensions and writes HTML;
+  this reads none of those ([What it reads](#what-it-reads)). The numbers were taken before
+  footnotes and formulas were read.
 - The machine was not idle when these were taken (a load average near 4), which is why the
   parsers are timed a round each in turn: the ratios held from run to run, the absolute times
   moved by a tenth.

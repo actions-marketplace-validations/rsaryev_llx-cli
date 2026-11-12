@@ -4,15 +4,15 @@
 <text x="20.0" y="77.0" fill="#1f2328" xml:space="preserve" textLength="59.0" lengthAdjust="spacingAndGlyphs" font-weight="700">Install</text>
 <text x="20.0" y="98.0" fill="#8c959f" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
 <text x="36.9" y="98.0" fill="#1f2328" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-weight="700">curl</text>
-<text x="70.6" y="98.0" fill="#8c959f" xml:space="preserve" textLength="278.2" lengthAdjust="spacingAndGlyphs"> ────────────────────────────────</text>
+<text x="70.6" y="98.0" fill="#8c959f" xml:space="preserve" textLength="286.6" lengthAdjust="spacingAndGlyphs"> ─────────────────────────────────</text>
 <text x="20.0" y="119.0" fill="#1b7c83" xml:space="preserve" textLength="320.3" lengthAdjust="spacingAndGlyphs">curl -fsSL https://llx.sh/install | sh</text>
 <text x="20.0" y="161.0" fill="#8c959f" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
 <text x="36.9" y="161.0" fill="#1f2328" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Docker</text>
-<text x="87.4" y="161.0" fill="#8c959f" xml:space="preserve" textLength="261.3" lengthAdjust="spacingAndGlyphs"> ──────────────────────────────</text>
+<text x="87.4" y="161.0" fill="#8c959f" xml:space="preserve" textLength="269.8" lengthAdjust="spacingAndGlyphs"> ───────────────────────────────</text>
 <text x="20.0" y="182.0" fill="#1b7c83" xml:space="preserve" textLength="362.5" lengthAdjust="spacingAndGlyphs">docker run --rm -it ghcr.io/rsaryev/llx-cli</text>
 <text x="20.0" y="224.0" fill="#8c959f" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
 <text x="36.9" y="224.0" fill="#1f2328" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs" font-weight="700">From source</text>
-<text x="129.6" y="224.0" fill="#8c959f" xml:space="preserve" textLength="219.2" lengthAdjust="spacingAndGlyphs"> ─────────────────────────</text>
+<text x="129.6" y="224.0" fill="#8c959f" xml:space="preserve" textLength="227.6" lengthAdjust="spacingAndGlyphs"> ──────────────────────────</text>
 <text x="20.0" y="245.0" fill="#1f2328" xml:space="preserve" textLength="252.9" lengthAdjust="spacingAndGlyphs">Needs a stable Rust toolchain.</text>
 <text x="20.0" y="287.0" fill="#1b7c83" xml:space="preserve" textLength="244.5" lengthAdjust="spacingAndGlyphs">cargo install --path apps/cli</text>
 <text x="20.0" y="329.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">▌ </text>

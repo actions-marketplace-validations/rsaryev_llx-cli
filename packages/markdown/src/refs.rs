@@ -20,7 +20,7 @@ pub(crate) struct Refs {
 }
 
 /// A label as two labels are compared: its whitespace collapsed, its case folded.
-fn normalize(label: &str) -> String {
+pub(crate) fn normalize(label: &str) -> String {
     let mut out = String::with_capacity(label.len());
     for word in label.split_whitespace() {
         if !out.is_empty() {
@@ -56,6 +56,15 @@ fn folded<'o>(label: &str, out: &'o mut [u8; SHORT]) -> Option<&'o str> {
     str::from_utf8(&out[..len]).ok()
 }
 
+/// What `find` makes of `label` as a key of a table by labels: folded in place when it is short.
+pub(crate) fn keyed<R>(label: &str, find: impl FnOnce(&str) -> R) -> R {
+    let mut short = [0; SHORT];
+    match folded(label, &mut short) {
+        Some(key) => find(key),
+        None => find(&normalize(label)),
+    }
+}
+
 /// Past the spaces that end a line at `at`, when nothing else is left on it.
 fn line_end(text: &[u8], mut at: usize) -> Option<usize> {
     while text.get(at).is_some_and(|byte| is_space(*byte)) {
@@ -77,11 +86,7 @@ impl Refs {
         if self.defs.is_empty() {
             return None;
         }
-        let mut short = [0; SHORT];
-        match folded(label, &mut short) {
-            Some(key) => self.defs.get(key).copied(),
-            None => self.defs.get(normalize(label).as_str()).copied(),
-        }
+        keyed(label, |key| self.defs.get(key).copied())
     }
 
     /// The definition `text` starts with, kept (the first of a label wins), its destination and

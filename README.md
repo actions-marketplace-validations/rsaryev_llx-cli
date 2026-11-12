@@ -32,7 +32,7 @@
 
 <p align="center">
   <a href="https://llx.sh">
-    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh, every step a real run on Claude Haiku 5.5: /model lists 366 models of six providers signed in and picks one; the failing median test in stats.py is fixed without a question (7 seconds, $0.0011); two questions are answered as the terminal draws them, one with numbered steps and a tab for each of pip, uv and Poetry, one with a table; two agents work in parallel, one adding mode() with tests, one writing the README, and their work is checked; then, from the shell as CI calls it, llx decide answers a yes-or-no question about the diff in 482 ms, and llx exec --schema reads the diff and answers with data" width="880">
+    <img src="docs/assets/demo.gif" alt="llx at a terminal, as on llx.sh, every step a real run on Claude Haiku 5.5: /model lists 367 models of six providers signed in and picks one; the failing median test in stats.py is fixed without a question (7 seconds, $0.0012); two questions are answered as the terminal draws them, one with numbered steps and a tab for each of pip, uv and Poetry, one with a table and the formula of the mean written as a terminal can; two agents work in parallel, one adding mode() with tests, one writing the README, and their work is checked; then, from the shell as CI calls it, llx decide answers a yes-or-no question about the diff in 475 ms, and llx exec --schema reads the diff and answers with data" width="880">
   </a>
 </p>
 

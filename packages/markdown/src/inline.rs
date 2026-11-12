@@ -3,16 +3,22 @@
 //! something; emphasis is settled from a stack of delimiter runs, a link from a stack of brackets.
 
 mod auto;
+mod dollars;
 mod emphasis;
 mod links;
+mod math;
+mod note;
+mod runs;
 mod walk;
 
 use crate::entity::{entity, escaped, unescape};
+use crate::notes::Notes;
 use crate::refs::Refs;
-use crate::scan::{is_ascii_punct, is_space, stop};
-use crate::tree::{Document, Kind, NONE, Span, at, pos};
+use crate::scan::{Marks, is_ascii_punct, is_space, stop};
+use crate::tree::{Document, Kind, NONE, Span, pos};
 use emphasis::Delim;
 use links::Brackets;
+use runs::{RUNS, Runs, closer, run_at};
 
 pub(crate) use walk::{Reads, read};
 
@@ -20,8 +26,10 @@ pub(crate) use walk::{Reads, read};
 struct Stacks {
     delims: Vec<Delim>,
     brackets: Brackets,
-    /// Where the last backtick run of each length is, once the text was read to its end for one.
+    /// Where the last backtick run of each length is, once the text was read to its end for one;
+    /// and the last run of dollars.
     ticks: [u32; RUNS],
+    dollars: [u32; RUNS],
 }
 
 impl Stacks {
@@ -30,6 +38,7 @@ impl Stacks {
             delims: Vec::new(),
             brackets: Brackets::default(),
             ticks: [0; RUNS],
+            dollars: [0; RUNS],
         }
     }
 }
@@ -37,6 +46,7 @@ impl Stacks {
 struct Inline<'s, 'd, 'a> {
     doc: &'d mut Document<'a>,
     refs: &'d Refs,
+    notes: &'d mut Notes,
     stacks: &'d mut Stacks,
     text: &'s str,
     bytes: &'s [u8],
@@ -47,12 +57,17 @@ struct Inline<'s, 'd, 'a> {
     pos: usize,
     /// Where the text not yet made a node starts.
     from: usize,
-    /// How far the backtick runs are known: not looked at, some seen, or all to the text's end.
+    /// How far the backtick runs are known, and the runs of dollars.
     runs: Runs,
+    dollar_runs: Runs,
+    /// From where no single `$` can close a formula: the text was read to its end for one.
+    no_single: usize,
+    /// Where the last footnote's label looked for could end.
+    note_stop: usize,
     /// Whether a mark was made a text node of its own (a delimiter run, a bracket): only then
     /// may text nodes be left side by side, to be made one.
     apart: bool,
-    gfm: bool,
+    marks: Marks,
     pace: Pace,
 }
 
@@ -73,26 +88,10 @@ const SPARE: usize = 8;
 /// Room in a stack the first time it is used: a block's inlines seldom nest deeper.
 const STACK: usize = 16;
 
-/// A backtick run this long or longer opens no code span, as in cmark.
-const RUNS: usize = 80;
-
-#[derive(Clone, Copy)]
-enum Runs {
-    Unread,
-    Some,
-    All,
-}
-
-/// How many backticks there are at `at`.
-fn ticks(text: &[u8], at: usize) -> usize {
-    let rest = text.get(at..).unwrap_or_default();
-    rest.iter().take_while(|byte| **byte == b'`').count()
-}
-
 impl Inline<'_, '_, '_> {
     fn run(&mut self) {
         self.room();
-        while let Some(at) = stop(self.bytes, self.pos, self.gfm) {
+        while let Some(at) = stop(self.bytes, self.pos, self.marks) {
             self.pos = at;
             self.room();
             let next = self.bytes.get(at + 1);
@@ -100,9 +99,12 @@ impl Inline<'_, '_, '_> {
                 b'\n' => self.newline(),
                 b'\\' => self.backslash(),
                 b'`' => self.code(),
+                b'$' => self.math(),
                 mark @ (b'*' | b'_' | b'~') => self.delims(mark),
+                b'[' if next == Some(&b'^') => self.note(),
                 b'[' => self.open(1),
-                b'!' if next == Some(&b'[') => self.open(2),
+                // `![^1]` is an exclamation mark and a footnote, not an image: it is text.
+                b'!' if next == Some(&b'[') && !self.noted(at + 2) => self.open(2),
                 b']' => self.close(),
                 b'<' => self.angle(),
                 // A reference starts with a letter, a digit or a `#`: any other `&` is itself.
@@ -242,43 +244,19 @@ impl Inline<'_, '_, '_> {
         self.moved(end);
     }
 
-    /// The run of `run` backticks that closes a code span opened before `start`. The text is
-    /// read to its end for one at most once: from then on where each length's last run is says
-    /// whether to look.
-    fn closer(&mut self, run: usize, start: usize) -> Option<usize> {
-        if run >= RUNS {
-            return None;
-        }
-        match self.runs {
-            Runs::Unread => {
-                self.stacks.ticks = [0; RUNS];
-                self.runs = Runs::Some;
-            }
-            Runs::All if at(self.stacks.ticks[run]) < start => return None,
-            Runs::Some | Runs::All => {}
-        }
-        let mut from = start;
-        loop {
-            let Some(found) = crate::scan::find(self.bytes, from, b'`') else {
-                self.runs = Runs::All;
-                return None;
-            };
-            let len = ticks(self.bytes, found);
-            if len == run {
-                return Some(found);
-            }
-            if len < RUNS {
-                self.stacks.ticks[len] = pos(found);
-            }
-            from = found + len;
-        }
-    }
-
     /// A code span: a run of backticks up to the next run of the same length.
     fn code(&mut self) {
-        let run = ticks(self.bytes, self.pos);
+        let run = run_at(self.bytes, self.pos, b'`');
         let start = self.pos + run;
-        let Some(mut end) = self.closer(run, start) else {
+        let closed = closer(
+            self.bytes,
+            b'`',
+            run,
+            start,
+            &mut self.runs,
+            &mut self.stacks.ticks,
+        );
+        let Some(mut end) = closed else {
             self.pos = start;
             return;
         };
