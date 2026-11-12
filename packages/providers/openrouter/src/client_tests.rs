@@ -371,3 +371,90 @@ fn a_spending_limit_of_a_moment_is_waited_out_and_one_of_the_account_is_not() {
     assert!(client.post("/x", &json!({}), None).is_err());
     assert_eq!(sent.lock().unwrap().len(), 1);
 }
+
+#[test]
+fn a_local_host_takes_its_own_fields_and_a_key_only_when_it_has_one() {
+    let local = OpenRouter::local("http://127.0.0.1:11434/v1/", String::new(), APP, "Ollama");
+    assert_eq!(local.wire(), Wire::Local);
+    assert_eq!(local.name, "Ollama");
+    assert_eq!(
+        local.headers(),
+        [("Content-Type", "application/json".to_string())]
+    );
+    let keyed = OpenRouter::local("http://127.0.0.1:1/v1", "abc".into(), APP, "Localix");
+    assert_eq!(
+        keyed.headers()[0],
+        ("Authorization", "Bearer abc".to_string())
+    );
+}
+
+#[test]
+fn a_field_a_host_refuses_is_left_out_and_the_request_asked_again() {
+    let refused = r#"{"error": {"message": "Unsupported parameter: 'parallel_tool_calls'"}}"#;
+    let renamed = r#"{"error": {"message": "'max_tokens' is not supported with this model. Use 'max_completion_tokens' instead."}}"#;
+    let answers = vec![
+        Ok((400, refused)),
+        Ok((400, renamed)),
+        Ok((200, "{}")),
+        Ok((200, "{}")),
+    ];
+    let (client, sent) = scripted(lab(), answers);
+    let body = json!({"model": "m", "messages": [], "max_tokens": 9, "parallel_tool_calls": true});
+    client.asked("/x", body.clone(), None).unwrap();
+    // Asked without the field it refused, then with the limit under the name it takes.
+    let mended = json!({"model": "m", "messages": [], "max_completion_tokens": 9});
+    assert_eq!(sent.lock().unwrap()[2], mended);
+    // And remembered: the next request goes out mended at once.
+    client.asked("/x", body, None).unwrap();
+    let sent = sent.lock().unwrap();
+    assert_eq!((sent.len(), &sent[3]), (4, &mended));
+}
+
+#[test]
+fn a_refusal_that_names_no_field_of_the_request_is_the_answer() {
+    let other = r#"{"error": {"message": "messages: field required; model unknown"}}"#;
+    let (client, sent) = scripted(lab(), vec![Ok((400, other))]);
+    let body = json!({"model": "m", "messages": [], "stream": true});
+    let error = client.asked("/x", body, None).unwrap_err();
+    assert!(matches!(error, ApiError::Http(400, _)), "{error:?}");
+    assert_eq!(
+        sent.lock().unwrap().len(),
+        1,
+        "what a request cannot go without stays"
+    );
+    // OpenRouter's own fields are its own: nothing is taken out of a request to it.
+    let refused = r#"{"error": {"message": "Unsupported parameter: 'session_id'"}}"#;
+    let (client, sent) = scripted(OpenRouter::new("k".into(), APP), vec![Ok((400, refused))]);
+    assert!(
+        client
+            .asked("/x", json!({"session_id": "s"}), None)
+            .is_err()
+    );
+    assert_eq!(sent.lock().unwrap().len(), 1);
+}
+
+#[test]
+fn a_host_that_refuses_the_cache_marks_is_asked_again_without_them() {
+    let refused = r#"{"error": {"message": "messages.0.content.0.cache_control: Extra inputs are not permitted"}}"#;
+    let (client, sent) = scripted(lab(), vec![Ok((400, refused)), Ok((200, "{}"))]);
+    let part = json!({"type": "text", "text": "hi", "cache_control": {"type": "ephemeral"}});
+    let body = json!({"model": "m", "messages": [{"role": "system", "content": [part]}]});
+    client.asked("/x", body, None).unwrap();
+    let plain = json!([{"role": "system", "content": [{"type": "text", "text": "hi"}]}]);
+    assert_eq!(sent.lock().unwrap()[1]["messages"], plain);
+}
+
+#[test]
+fn a_rate_limit_that_is_an_empty_account_is_said_at_once() {
+    // Hosts answer 429 for a balance that ran out too: no wait mends it.
+    let empty = r#"{"error": {"message": "Insufficient balance or no resource package. Please recharge."}}"#;
+    let (client, sent) = scripted(lab(), vec![Ok((429, empty)), Ok((200, "{}"))]);
+    let error = client.post("/x", &json!({}), None).unwrap_err();
+    assert!(matches!(error, ApiError::Http(429, _)), "{error:?}");
+    assert_eq!(sent.lock().unwrap().len(), 1);
+    // A limit of a moment is still waited out.
+    let busy = r#"{"error": {"message": "Rate limit reached, try again in 1s"}}"#;
+    let (client, sent) = scripted(lab(), vec![Ok((429, busy)), Ok((200, "{}"))]);
+    client.post("/x", &json!({}), None).unwrap();
+    assert_eq!(sent.lock().unwrap().len(), 2);
+}

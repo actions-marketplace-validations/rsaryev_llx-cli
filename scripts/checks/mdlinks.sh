@@ -94,7 +94,8 @@ LC_ALL=C awk '
     }
     line = $0
     gsub(/``[^`]*``|`[^`]*`/, "", line)
-    if (match(line, /^ ? ? ?\[[^]]+\]:[ \t]*[^ \t]+/)) {
+    # (A label that opens with ^ names a footnote: its text follows, not an address.)
+    if (match(line, /^ ? ? ?\[[^]^][^]]*\]:[ \t]*[^ \t]+/)) {
       target = line; sub(/^ *\[[^]]+\]:[ \t]*/, "", target); sub(/[ \t].*$/, "", target)
       link(target, where)
       next

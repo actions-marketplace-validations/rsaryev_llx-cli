@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 670" width="580" height="670" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+<rect x="0.5" y="0.5" width="579" height="669" rx="10" fill="#ffffff" stroke="#d0d7de"/>
+<text x="20.0" y="35.0" fill="#1f2328" xml:space="preserve" textLength="168.6" lengthAdjust="spacingAndGlyphs" font-weight="700">The parser, measured</text>
+<text x="20.0" y="77.0" fill="#1f2328" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-weight="700">1.2x</text>
+<text x="163.3" y="77.0" fill="#1f2328" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs" font-weight="700">5x</text>
+<text x="239.2" y="77.0" fill="#1f2328" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs" font-weight="700">89</text>
+<text x="20.0" y="98.0" fill="#8c959f" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs">pulldown-cmark</text>
+<text x="163.3" y="98.0" fill="#8c959f" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">comrak</text>
+<text x="239.2" y="98.0" fill="#8c959f" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs">allocations</text>
+<text x="20.0" y="140.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="36.9" y="140.0" fill="#1f2328" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Parser</text>
+<text x="163.3" y="140.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="180.2" y="140.0" fill="#1f2328" xml:space="preserve" textLength="42.1" lengthAdjust="spacingAndGlyphs" font-weight="700">Gives</text>
+<text x="239.2" y="140.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="256.0" y="140.0" fill="#1f2328" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-weight="700">MB/s</text>
+<text x="298.2" y="140.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="161.0" fill="#8c959f" xml:space="preserve" textLength="286.6" lengthAdjust="spacingAndGlyphs">├────────────────┼────────┼──────┤</text>
+<text x="20.0" y="182.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="36.9" y="182.0" fill="#1b7c83" xml:space="preserve" textLength="67.4" lengthAdjust="spacingAndGlyphs">markdown</text>
+<text x="163.3" y="182.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="171.7" y="182.0" fill="#1f2328" xml:space="preserve" textLength="67.4" lengthAdjust="spacingAndGlyphs"> a tree </text>
+<text x="239.2" y="182.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="247.6" y="182.0" fill="#1f2328" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">  429 </text>
+<text x="298.2" y="182.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="203.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="36.9" y="203.0" fill="#1b7c83" xml:space="preserve" textLength="118.0" lengthAdjust="spacingAndGlyphs">pulldown-cmark</text>
+<text x="163.3" y="203.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="171.7" y="203.0" fill="#1f2328" xml:space="preserve" textLength="67.4" lengthAdjust="spacingAndGlyphs"> events </text>
+<text x="239.2" y="203.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="247.6" y="203.0" fill="#1f2328" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">  349 </text>
+<text x="298.2" y="203.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="224.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="36.9" y="224.0" fill="#1b7c83" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">comrak</text>
+<text x="163.3" y="224.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="171.7" y="224.0" fill="#1f2328" xml:space="preserve" textLength="67.4" lengthAdjust="spacingAndGlyphs"> a tree </text>
+<text x="239.2" y="224.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="247.6" y="224.0" fill="#1f2328" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs">   87 </text>
+<text x="298.2" y="224.0" fill="#8c959f" xml:space="preserve" textLength="8.4" lengthAdjust="spacingAndGlyphs">│</text>
+<text x="20.0" y="266.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">✓ </text>
+<text x="36.9" y="266.0" fill="#1f2328" xml:space="preserve" textLength="210.8" lengthAdjust="spacingAndGlyphs">CommonMark's 652 examples</text>
+<text x="20.0" y="287.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">✓ </text>
+<text x="36.9" y="287.0" fill="#1f2328" xml:space="preserve" textLength="160.2" lengthAdjust="spacingAndGlyphs">GitHub's extensions</text>
+<text x="20.0" y="308.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">✓ </text>
+<text x="36.9" y="308.0" fill="#1f2328" xml:space="preserve" textLength="185.5" lengthAdjust="spacingAndGlyphs">footnotes and formulas</text>
+<text x="20.0" y="329.0" fill="#8c959f" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">☐ </text>
+<text x="36.9" y="329.0" fill="#1f2328" xml:space="preserve" textLength="134.9" lengthAdjust="spacingAndGlyphs">definition lists</text>
+<text x="20.0" y="371.0" fill="#1f2328" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs" font-weight="700">For</text>
+<text x="20.0" y="392.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">+ </text>
+<text x="36.9" y="392.0" fill="#1f2328" xml:space="preserve" textLength="160.2" lengthAdjust="spacingAndGlyphs">one pass, one arena</text>
+<text x="20.0" y="413.0" fill="#1a7f37" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">+ </text>
+<text x="36.9" y="413.0" fill="#1f2328" xml:space="preserve" textLength="202.3" lengthAdjust="spacingAndGlyphs">forms a reply is made of</text>
+<text x="20.0" y="455.0" fill="#1f2328" xml:space="preserve" textLength="59.0" lengthAdjust="spacingAndGlyphs" font-weight="700">Against</text>
+<text x="20.0" y="476.0" fill="#cf222e" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">- </text>
+<text x="36.9" y="476.0" fill="#1f2328" xml:space="preserve" textLength="160.2" lengthAdjust="spacingAndGlyphs">no definition lists</text>
+<text x="20.0" y="518.0" fill="#1f2328" xml:space="preserve" textLength="177.0" lengthAdjust="spacingAndGlyphs" font-weight="700">▾ How it was measured</text>
+<text x="20.0" y="539.0" fill="#1f2328" xml:space="preserve" textLength="505.8" lengthAdjust="spacingAndGlyphs">  The median of 51 rounds, the parsers a round each in turn.</text>
+<text x="20.0" y="581.0" fill="#8c959f" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs">[1] </text>
+<text x="53.7" y="581.0" fill="#1f2328" xml:space="preserve" textLength="143.3" lengthAdjust="spacingAndGlyphs" text-decoration="underline">CommonMark 0.31.2</text>
+<text x="53.7" y="602.0" fill="#8c959f" xml:space="preserve" textLength="295.1" lengthAdjust="spacingAndGlyphs">https://spec.commonmark.org/0.31.2/</text>
+<text x="20.0" y="623.0" fill="#8c959f" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs">[2] </text>
+<text x="53.7" y="623.0" fill="#1f2328" xml:space="preserve" textLength="202.3" lengthAdjust="spacingAndGlyphs" text-decoration="underline">GitHub Flavored Markdown</text>
+<text x="53.7" y="644.0" fill="#8c959f" xml:space="preserve" textLength="252.9" lengthAdjust="spacingAndGlyphs">https://github.github.com/gfm/</text>
+</svg>

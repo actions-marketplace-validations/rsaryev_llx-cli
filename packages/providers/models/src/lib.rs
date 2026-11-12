@@ -123,6 +123,23 @@ impl Catalog {
         found.is_some_and(|p| p.models().any(|(_, m)| calls(m, CHAT_COMPLETIONS)))
     }
 
+    /// The provider llx can call whose API is at `base`'s host: a host the settings name there
+    /// is that provider under another name. Each provider is asked by its first model with an
+    /// address, so none is decoded whole.
+    pub fn at(&self, base: &str) -> Option<&str> {
+        let host = authority(base)?;
+        self.ids().into_iter().find(|id| {
+            let models = self.provider(id).into_iter().flat_map(Provider::models);
+            let mut hosts =
+                models.map(|(_, m)| m.api.values().filter_map(|api| authority(&api.base_url)));
+            hosts.find_map(|mut hosts| {
+                hosts
+                    .next()
+                    .map(|first| first == host || hosts.any(|h| h == host))
+            }) == Some(true)
+        })
+    }
+
     /// Provider `id`: this catalog's, else the built-in one.
     pub fn provider(&self, id: &str) -> Option<&Provider> {
         (self.providers.get(id)).or_else(|| self.under()?.provider(id))
@@ -168,6 +185,39 @@ impl Catalog {
         self.model(provider, id).map(|model| entry(id, model))
     }
 
+    /// Model `id` as a host the catalog does not know names it, when the catalog has the model
+    /// under any provider: by the whole id (a router's `vendor/model`), else by its vendor's
+    /// own provider, else, with no vendor named, by the bare id. The entry keeps the host's id.
+    pub fn known(&self, id: &str) -> Option<ModelEntry> {
+        let (model, marked) = self.find(id)?;
+        let mut entry = entry(id, model);
+        // A vendor's model under its bare id is marked as under the router's.
+        entry.marks = entry.marks || marked;
+        Some(entry)
+    }
+
+    /// The model [`Catalog::known`] finds for `id`, itself: what a host that says no cost is
+    /// priced by.
+    pub fn anywhere(&self, id: &str) -> Option<&Model> {
+        self.find(id).map(|(model, _)| model)
+    }
+
+    /// The model a host's `id` names, as [`Catalog::known`] says, and whether its provider's
+    /// models take cache marks.
+    fn find(&self, id: &str) -> Option<(&Model, bool)> {
+        let under = self.under().into_iter().flat_map(|u| u.providers.keys());
+        let providers: Vec<&str> = (self.providers.keys().chain(under))
+            .map(String::as_str)
+            .collect();
+        let has = |provider: &str, id: &str| self.model(provider, id).filter(|m| m.usable());
+        let anywhere = |id: &str| providers.iter().find_map(|p| Some((*p, has(p, id)?)));
+        let (provider, model) = anywhere(id).or_else(|| match id.split_once('/') {
+            Some((vendor, bare)) => Some((vendor, has(vendor, bare)?)),
+            None => None,
+        })?;
+        Some((model, takes_marks(&format!("{provider}/"))))
+    }
+
     /// The catalog's own providers as a document to keep, cut down to those llx can call, their
     /// chat models and the decision models.
     pub(crate) fn kept(&self) -> String {
@@ -198,6 +248,12 @@ fn entry(id: &str, model: &Model) -> ModelEntry {
         output: limit.and_then(|l| l.output).unwrap_or(0),
         marks: takes_marks(id),
     }
+}
+
+/// The host an address names (`api.acme.dev`, with its port when it has one), in lower case.
+fn authority(url: &str) -> Option<String> {
+    let host = url.split_once("://")?.1.split('/').next()?;
+    (!host.is_empty()).then(|| host.to_ascii_lowercase())
 }
 
 /// Whether model `id` caches a prompt only where told to: Anthropic and Qwen take

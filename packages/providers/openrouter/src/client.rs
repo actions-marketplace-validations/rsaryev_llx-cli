@@ -3,13 +3,16 @@
 //! kit's [`Http`]. Its one agent keeps the connection alive across steps, so a decision costs a
 //! request, not a handshake.
 
+use std::sync::{Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use provider_kit::App;
-use provider_kit::failure::{ApiError, message_of, reported, said, transient};
+use provider_kit::failure::{ApiError, message_of, reported, said, spent, transient};
 use provider_kit::http::{Http, HttpError, Web};
 use provider_kit::retry::{Attempt, PAUSE, Resend, after, retried};
 use serde_json::Value;
+
+use crate::mend::Mend;
 
 const BASE_URL: &str = "https://openrouter.ai/api/v1";
 /// OpenAI's own API: it takes a prompt cache key, and its own name for the output limit.
@@ -20,6 +23,10 @@ const TIMEOUT: Duration = Duration::from_secs(600);
 /// network change left dead. It sends a comment while a model thinks, so a live one is not quiet
 /// this long; another host's answer is sent whole, silent until it is ready, and has no such limit.
 const IDLE: Duration = Duration::from_secs(300);
+/// A reply from a model on the person's own machine: a long prompt is read at a few hundred tokens
+/// a second, in silence, and a long reply written at tens. No silence limit: the host is not
+/// streaming while it reads.
+const LOCAL: Duration = Duration::from_secs(1800);
 /// A decision is short and cheap: one that hangs is given up on sooner, and asked once more.
 const DECIDING: Duration = Duration::from_secs(90);
 
@@ -33,6 +40,9 @@ pub(crate) enum Wire {
     OpenAi,
     /// Any other host: `reasoning_effort` only; a field it does not know may be refused.
     Plain,
+    /// A server on the person's own machine (llama.cpp's, Ollama, LM Studio): the plain fields, a
+    /// streamed reply and its usage, which such a host reports only when the stream is asked.
+    Local,
 }
 
 /// A client of OpenRouter's API, or of another host's chat completions, with its key.
@@ -46,6 +56,8 @@ pub struct OpenRouter {
     wire: Wire,
     /// Who it calls, for errors: `OpenRouter`, `DeepSeek`.
     pub(crate) name: String,
+    /// What this host refused of earlier requests: the next ones go out mended at once.
+    refused: Mutex<Vec<Mend>>,
     /// A request sent and not answered is sent once more (decisions); otherwise never: a reply
     /// being written is billed, and asking again would pay for it twice.
     resend: Resend,
@@ -65,6 +77,16 @@ impl OpenRouter {
             wire: Wire::OpenRouter,
             http: Box::new(Web::new(app, TIMEOUT).idle(IDLE)),
             ..Self::at(base, key, app, crate::NAME)
+        }
+    }
+
+    /// A server on the person's own machine at `base`, called `name`; `key` empty when it asks
+    /// for none.
+    pub fn local(base: &str, key: String, app: App, name: &str) -> Self {
+        Self {
+            wire: Wire::Local,
+            http: Box::new(Web::new(app, LOCAL)),
+            ..Self::at(base, key, app, name)
         }
     }
 
@@ -95,6 +117,7 @@ impl OpenRouter {
             app,
             wire,
             name: name.to_string(),
+            refused: Mutex::new(vec![]),
             resend: Resend::Never,
             pause: PAUSE,
         }
@@ -102,6 +125,51 @@ impl OpenRouter {
 
     pub(crate) fn wire(&self) -> Wire {
         self.wire
+    }
+
+    /// What goes with every request: the key where there is one (a local host asks for none),
+    /// and OpenRouter's attribution: its logs and rankings name the app; the title alone makes
+    /// no app page, only beside the referer.
+    fn headers(&self) -> Vec<(&'static str, String)> {
+        let mut headers = vec![("Content-Type", "application/json".to_string())];
+        if !self.key.is_empty() {
+            headers.insert(0, ("Authorization", format!("Bearer {}", self.key)));
+        }
+        if self.wire == Wire::OpenRouter {
+            headers.extend([
+                ("HTTP-Referer", self.app.site.to_string()),
+                ("X-OpenRouter-Title", self.app.name.to_string()),
+            ]);
+        }
+        headers
+    }
+
+    /// [`OpenRouter::post`] for a host that may not take every field: one it refuses by name is
+    /// left out (the reply's limit renamed) and the request asked again, and its later requests
+    /// go out so. OpenRouter's own fields are its own, and nothing is taken out of them.
+    pub(crate) fn asked(
+        &self,
+        path: &str,
+        mut body: Value,
+        deadline: Option<Instant>,
+    ) -> Result<(Value, u64), ApiError> {
+        let mends = matches!(self.wire, Wire::Plain | Wire::Local);
+        let refused = || self.refused.lock().unwrap_or_else(PoisonError::into_inner);
+        refused().iter().for_each(|mend| mend.apply(&mut body));
+        loop {
+            let answer = self.post(path, &body, deadline);
+            let mend = match &answer {
+                Err(ApiError::Http(400 | 422, message)) if mends => Mend::of(&body, message),
+                Ok(_) | Err(_) => None,
+            };
+            // Each mend takes a field out or renames the limit once: the loop ends.
+            let Some(mend) = mend else {
+                return answer;
+            };
+            log::info!("{} refused a field: asked again with {mend:?}", self.name);
+            mend.apply(&mut body);
+            refused().push(mend);
+        }
     }
 
     /// POST `body` to `path`, asked again on an answer a moment's wait may mend.
@@ -113,19 +181,10 @@ impl OpenRouter {
     ) -> Result<(Value, u64), ApiError> {
         let started = Instant::now();
         let url = format!("{}{path}", self.base);
-        let bearer = format!("Bearer {}", self.key);
-        let mut headers = vec![
-            ("Authorization", bearer.as_str()),
-            ("Content-Type", "application/json"),
-        ];
-        // OpenRouter's attribution: its logs and rankings name the app; the title alone makes
-        // no app page, only beside the referer.
-        if self.wire == Wire::OpenRouter {
-            headers.extend([
-                ("HTTP-Referer", self.app.site),
-                ("X-OpenRouter-Title", self.app.name),
-            ]);
-        }
+        let headers = self.headers();
+        let headers: Vec<(&str, &str)> = (headers.iter())
+            .map(|(name, value)| (*name, value.as_str()))
+            .collect();
         let body = body.to_string();
         retried(self.pause, deadline, self.resend, || {
             let (status, text, asked) = match self.http.post(&url, &headers, &body, deadline) {
@@ -144,6 +203,10 @@ impl OpenRouter {
             let parsed: Option<Value> =
                 (serde_json::from_str(&text).ok()).or_else(|| crate::stream::assembled(&text));
             let failed = |code: u16, message: String| {
+                // An account with nothing left answers as a rate limit does: said at once.
+                if spent(&message) {
+                    return Attempt::Done(Err(ApiError::Http(code, message)));
+                }
                 let error = ApiError::Http(code, message);
                 // A 402 with a wait is OpenRouter's in-flight budget, of a moment; one with none,
                 // the account's credits.

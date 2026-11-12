@@ -93,4 +93,7 @@ pub struct Adjustment {
 pub struct Group {
     pub name: String,
     pub rows: usize,
+    /// What the group is one of, said before the first of them (`Cloud`, `Local`); empty for
+    /// none. A group with no rows is its section's note, not a tab.
+    pub section: String,
 }

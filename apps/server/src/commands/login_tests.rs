@@ -166,8 +166,12 @@ fn every_provider_is_offered_with_the_signed_in_marked_and_none_typed_by_id() {
     let (chosen, _) = steps(&openrouter(), true, &mut terminal);
     assert_eq!(chosen, Ok(Ended::Nothing));
     let (_, items) = &terminal.shown[0];
-    assert_eq!(items.len(), Provider::all().len());
-    assert!(!items.iter().any(|item| item.label.starts_with("Another")));
+    // Every provider at once, none behind a row to open; then the one row that adds a host.
+    assert_eq!(items.len(), Provider::all().len() + 1);
+    let added: Vec<usize> = (0..items.len())
+        .filter(|at| items[*at].label.starts_with("Another"))
+        .collect();
+    assert_eq!(added, [items.len() - 1]);
     let labels: Vec<&str> = items.iter().map(|item| item.label.as_str()).collect();
     assert_eq!(labels[..2], ["OpenAI ✓", "Anthropic"], "{labels:?}");
     // The id leads the detail: a search finds a provider by it.

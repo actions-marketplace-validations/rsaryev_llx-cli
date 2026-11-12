@@ -589,13 +589,28 @@ mod dialogue {
 
     #[test]
     fn a_long_dialogue_stays_within_the_limit_and_keeps_the_cache() {
+        dialogue("Working directory: /work");
+    }
+
+    /// A size was once counted rounded down, twice (the conversation's, the specs'): with a
+    /// context of these lengths a request went a token past the limit.
+    #[test]
+    fn the_limit_holds_to_the_token_whatever_the_conversation_starts_with() {
+        for longer in [88, 204, 376] {
+            dialogue(&format!("Working directory: /work{}", "x".repeat(longer)));
+        }
+    }
+
+    /// A dialogue of `TURNS` turns after `context`: every request within the limit, the cache
+    /// kept between passes.
+    fn dialogue(context: &str) {
         let model = Model::default();
         let tools: [&dyn Tool; 1] = [&Shell];
         let pipeline = Pipeline::default();
         let agent = Agent {
             chat: &model,
             tools: &tools,
-            context: "Working directory: /work",
+            context,
             max_turns: TURNS + 5,
             observer: &Silent,
             schema: None,

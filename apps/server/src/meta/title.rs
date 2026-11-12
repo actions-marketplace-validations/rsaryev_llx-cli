@@ -41,6 +41,11 @@ pub(crate) type Namer = Arc<dyn Fn(&Choice) -> Option<Arc<dyn Chat>> + Send + Sy
 pub(crate) fn namer(vars: crate::providers::Vars) -> Namer {
     let vars = vars.map(<[_]>::to_vec);
     Arc::new(move |choice: &Choice| {
+        // A server on the person's machine answers one request at a time, from one cache: a
+        // title asked beside the task's first request would wait for it or take its place.
+        if choice.provider.on_this_machine(vars.as_deref()) {
+            return None;
+        }
         let chat = (choice.provider).chat_in(&lowest(&choice.selection), vars.as_deref())?;
         Some(Arc::from(chat))
     })

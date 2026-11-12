@@ -52,6 +52,19 @@ pub(crate) fn doctor(args: &DoctorArgs) -> Result<i32, Failure> {
             None => {}
         }
     }
+    // The servers on this machine that answer, and the one in use when it does not.
+    for (provider, base, models) in Provider::local_report() {
+        match models {
+            Some(models) => line(
+                Mark::Pass,
+                &format!("{}: answers at {base}, models: {models}", provider.name()),
+            )?,
+            None if provider == choice.provider => {
+                line(Mark::Fail, &provider.how_to_sign_in())?;
+            }
+            None => {}
+        }
+    }
     match choice.provider.chat(&choice.selection) {
         Some(chat) => ok &= report(agent_model(chat.as_ref(), &choice.label()))?,
         None => ok = false,

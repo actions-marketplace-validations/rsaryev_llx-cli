@@ -1,11 +1,27 @@
 //! Styled lines wrapped to a width by display columns, at word boundaries, with a prefix for the
 //! first row and another for the rest (a hanging indent), so a long command or a paragraph never
-//! breaks mid-word and its continuation sits under its own start. A word wider than the row is
-//! split; nothing is ever wider than `width`.
+//! breaks mid-word and its continuation sits under its own start. A word and the punctuation that
+//! runs into it, and the words of a code span, keep to one row where a row holds them. A word wider
+//! than the row is split; nothing is ever wider than `width`.
 
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
 use unicode_width::UnicodeWidthChar;
+
+/// A space a row is not broken at while a row holds what it joins: the spaces of code. Drawn as
+/// a space, so what is copied from the screen is what was written.
+pub(crate) const NO_BREAK: char = '\u{a0}';
+
+/// What follows a word.
+#[derive(Clone, Copy, PartialEq)]
+enum After {
+    /// A space, where a row may end.
+    Space,
+    /// A space that keeps its words on one row when a row holds them.
+    Joint,
+    /// The next word, with nothing between: "`code`," or "a**b**".
+    Nothing,
+}
 
 /// The columns `text` takes.
 pub(crate) fn width(text: &str) -> usize {
@@ -30,7 +46,17 @@ pub(crate) fn wrap(
     let room = width.max(indent + 1);
     let mut pending_space: Option<Style> = None;
     let mut fresh = true;
-    for (mut word, style, space_after) in words(line) {
+    let words = words(line);
+    let runs = runs(&words);
+    for ((mut word, style, after, space), run) in words.into_iter().zip(runs) {
+        // A word and what runs into it ("`code`," or "(**b**)"), and the words of a code span,
+        // go to the next row together when a row holds them: no row starts with the comma.
+        let gap = usize::from(pending_space.is_some());
+        if !fresh && used + gap + run > room && indent + run <= room {
+            rows.push(std::mem::replace(&mut row, rest.clone()));
+            used = indent;
+            fresh = true;
+        }
         loop {
             let gap = usize::from(pending_space.is_some() && !fresh);
             let w = self::width(&word);
@@ -59,7 +85,7 @@ pub(crate) fn wrap(
                 break;
             }
         }
-        pending_space = space_after.then_some(style);
+        pending_space = (after != After::Nothing).then_some(space);
     }
     if !fresh || rows.is_empty() {
         rows.push(row);
@@ -67,27 +93,74 @@ pub(crate) fn wrap(
     rows
 }
 
-/// The words of `line` with their style and whether a space followed them.
-fn words(line: &Line) -> Vec<(String, Style, bool)> {
-    let mut out: Vec<(String, Style, bool)> = vec![];
+/// A word, its style, what follows it, and the style of the space that does: the span's the
+/// space is written in, so a link's underline ends with its last word.
+type Word = (String, Style, After, Style);
+
+/// The words of `line`, and what follows each.
+fn words(line: &Line) -> Vec<Word> {
+    let mut out: Vec<Word> = vec![];
     for span in &line.spans {
         let style = line.style.patch(span.style);
         let mut word = String::new();
         for c in span.content.chars() {
             if c.is_whitespace() {
+                let after = if c == NO_BREAK {
+                    After::Joint
+                } else {
+                    After::Space
+                };
                 if !word.is_empty() {
-                    out.push((std::mem::take(&mut word), style, true));
+                    out.push((std::mem::take(&mut word), style, after, style));
                 } else if let Some(last) = out.last_mut() {
-                    last.2 = true;
+                    (last.2, last.3) = (after, style);
                 }
             } else {
                 word.push(c);
             }
         }
         if !word.is_empty() {
-            // A word that runs into the next span ("`code`," or "a**b**") stays joined to it.
-            out.push((word, style, false));
+            out.push((word, style, After::Nothing, style));
         }
+    }
+    out
+}
+
+/// For each word, the columns kept on one row from it on: the words that run into it, and where
+/// a code span starts, the span. A span no row holds is then broken at its spaces, as words are.
+fn runs(words: &[Word]) -> Vec<usize> {
+    let mut runs = vec![0; words.len()];
+    let (mut glued, mut whole) = (0, 0);
+    for (at, (word, _, after, _)) in words.iter().enumerate().rev() {
+        let width = width(word);
+        (glued, whole) = match after {
+            After::Space => (width, width),
+            After::Joint => (width, width + 1 + whole),
+            After::Nothing => (width + glued, width + whole),
+        };
+        let before = at.checked_sub(1).and_then(|at| words.get(at));
+        runs[at] = match before.map(|word| word.2) {
+            None | Some(After::Space) => whole,
+            Some(After::Joint) => glued,
+            Some(After::Nothing) => 0,
+        };
+    }
+    runs
+}
+
+/// A line of code with each tab run out to the next fourth column: a terminal's own stops are
+/// eight wide, and an escaped tab is not what was written.
+pub(crate) fn untabbed(line: &str) -> String {
+    let mut out = String::with_capacity(line.len());
+    let mut column = 0;
+    for (at, piece) in line.split('\t').enumerate() {
+        if at > 0 {
+            let pad = 4 - column % 4;
+            out.extend(std::iter::repeat_n(' ', pad));
+            column += pad;
+        }
+        out.push_str(piece);
+        column += width(piece);
     }
     out
 }

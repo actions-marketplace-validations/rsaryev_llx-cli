@@ -75,11 +75,16 @@ struct Shared {
     titled: Vec<String>,
     /// Every decision asked of `/systemone`, scripted or refused.
     advised: Vec<Value>,
+    /// Whether a completion's usage leaves out what it cost, as most hosts' does.
+    unbilled: bool,
 }
 
 /// How the title's request starts (`meta::title::INSTRUCTIONS`), its task after `User prompt:\n`:
 /// both mirror `apps/server/src/meta/title.rs`, and change with it.
 const TITLE: &str = "Generate a concise, single-line task title";
+
+/// The model the server says it runs, asked as a server on the person's machine is.
+pub(crate) const LOCAL_MODEL: &str = "local-model";
 
 /// The server; it stops with the test process.
 pub(crate) struct Model {
@@ -108,6 +113,13 @@ impl Model {
             })
             .unwrap();
         Self { base, shared }
+    }
+
+    /// The same, its completions saying no cost: a host that bills elsewhere.
+    pub(crate) fn unbilled(script: Vec<Reply>) -> Self {
+        let model = Self::start(script);
+        model.shared.lock().unwrap().unbilled = true;
+        model
     }
 
     /// The same, answering a title's request with `title`.
@@ -154,6 +166,13 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
     }
     let mut body = vec![0; length];
     let _ = reader.read_exact(&mut body);
+    // What a server on the person's machine is asked: the models it runs, and nothing else.
+    if let Some(path) = line.strip_prefix("GET ") {
+        return match path.starts_with("/v1/models ") {
+            true => respond(stream, 200, &json!({"data": [{"id": LOCAL_MODEL}]})),
+            false => respond(stream, 404, &json!({"error": "not found"})),
+        };
+    }
     let request: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
     if content(&request["messages"][0]).starts_with(TITLE) {
         let asked = content(&request["messages"][1]);
@@ -185,7 +204,7 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
         shared.requests.push(request.clone());
         (shared.script.pop_front(), shared.requests.len())
     };
-    let (status, body) = loop {
+    let (status, mut body) = loop {
         let message = match next {
             Some(Reply::After(file, reply)) => {
                 let (wait, every) = (Duration::from_secs(30), Duration::from_millis(20));
@@ -219,6 +238,11 @@ fn answer(stream: TcpStream, shared: &Mutex<Shared>) {
         };
         break (200, completion(&message, n, &request));
     };
+    if shared.lock().unwrap().unbilled
+        && let Some(usage) = body["usage"].as_object_mut()
+    {
+        usage.remove("cost");
+    }
     if status == 200 && request["stream"] == json!(true) {
         return respond_streamed(stream, &body);
     }

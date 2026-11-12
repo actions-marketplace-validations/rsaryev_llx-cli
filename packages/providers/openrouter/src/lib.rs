@@ -9,6 +9,7 @@ mod carry;
 pub mod chat;
 pub mod client;
 pub mod level;
+mod mend;
 mod stream;
 pub mod system_one;
 

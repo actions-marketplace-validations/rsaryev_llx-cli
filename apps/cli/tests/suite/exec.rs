@@ -482,16 +482,16 @@ fn the_trace_is_coloured_where_colour_is_forced() {
     insta::assert_snapshot!(trace, @"
     llx: reading additional input from stdin (</dev/null to skip it)
     ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
-    ␛[32m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0mecho hi
+    ␛[32m• ␛[0m␛[1mRan␛[0m echo hi
     ␛[2m  └ ␛[0m␛[2mhi␛[0m
     ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
 
-    ␛[31m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0mecho oops; exit 3
+    ␛[31m• ␛[0m␛[1mRan␛[0m echo oops; exit 3
     ␛[2m  └ ␛[0m␛[2moops␛[0m
     ␛[2m    ␛[0m␛[31mExit code: 3␛[0m
     ␛[2m  · anthropic/claude-haiku-5.5 · 1,000 in · 20 out · $0.0001 · N.Ns␛[0m
 
-    ␛[31m• ␛[0m␛[1mRan␛[0m␛[1m ␛[0msleep 10
+    ␛[31m• ␛[0m␛[1mRan␛[0m sleep 10
     ␛[2m  └ ␛[0m␛[31mStopped: by the person (the command and everything it started were killed)␛[0m
 
     ␛[2m─ Ran out after N.Ns · 3 turns · $0.0003 ───────────────────────────────────────────────────────────␛[0m
@@ -521,5 +521,196 @@ fn a_deny_on_a_command_refuses_a_monitor_that_runs_it_too() {
     assert!(
         answered.contains("refused by the rule `bash(touch *)`"),
         "{answered}"
+    );
+}
+
+#[test]
+fn a_server_on_this_machine_is_called_with_no_key_for_the_model_it_runs() {
+    let (home, model) = (Home::new(), one_command());
+    home.with_local(&model);
+    // No key at all: the host asks for none.
+    let command = home.llx(&["exec", "-y", "--provider", "box", "check it"]);
+    let out = home.exec_command(command, "");
+    let stderr = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{stderr}");
+    assert_eq!(text(&out.stdout), "All good.\n");
+    let requests = model.requests();
+    let first = &requests[0];
+    // The model the host says it runs, streamed with its usage asked for, and none of another
+    // host's fields.
+    assert_eq!(first["model"], crate::common::model::LOCAL_MODEL);
+    assert_eq!(first["stream"], json!(true));
+    assert_eq!(first["stream_options"], json!({"include_usage": true}));
+    assert_eq!(first["max_tokens"], json!(8_192));
+    assert_eq!(first.get("session_id"), None);
+    assert_eq!(first.get("usage"), None);
+    assert!(names(first).contains(&"apply_patch".to_string()));
+}
+
+#[test]
+fn a_host_anywhere_is_called_as_a_plain_host_of_chat_completions() {
+    let (home, model) = (Home::new(), one_command());
+    home.with_host(&model);
+    let command = home.llx(&["exec", "-y", "--provider", "box", "check it"]);
+    let out = home.exec_command(command, "");
+    let stderr = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(0), "{stderr}");
+    assert_eq!(text(&out.stdout), "All good.\n");
+    let requests = model.requests();
+    let first = &requests[0];
+    // The model it lists, and none of what only a server on this machine is asked: no stream,
+    // and a reply as long as any host's.
+    assert_eq!(first["model"], crate::common::model::LOCAL_MODEL);
+    assert_eq!(first.get("stream"), None);
+    assert_eq!(first.get("stream_options"), None);
+    assert_eq!(first["max_tokens"], json!(32_000));
+    assert_eq!(first.get("session_id"), None);
+}
+
+#[test]
+fn a_host_at_a_catalog_providers_address_is_called_as_that_provider() {
+    let (home, model) = (Home::new(), one_command());
+    // The catalog knows a provider at this address: what it says of the model holds for the
+    // host the settings name there, under whatever name.
+    let catalog = json!({"acme": {"id": "acme", "name": "Acme", "env": ["ACME_API_KEY"], "models": {
+        "big": {"name": "Big", "release_date": "2026-09-01", "modalities": {"output": ["text"]},
+          "capabilities": {"tools": {"supported": true},
+            "reasoning": {"supported": true, "effort": ["low", "medium", "high"]}},
+          "limit": {"context": 200_000, "output": 20_000},
+          "api": {"chat-completions": {"base_url": model.base}}}}}});
+    let config = home.path().join("config/llx");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(config.join("models.json"), catalog.to_string()).unwrap();
+    home.with_settings(&json!({"hosts": [{"name": "mine", "url": model.base, "key": "sk-mine"}]}));
+    let command = home.llx(&[
+        "exec",
+        "-y",
+        "--no-advice",
+        "--provider",
+        "mine",
+        "check it",
+    ]);
+    let out = home.exec_command(command, "");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let first = &model.requests()[0];
+    // The catalog's model, not the one the host lists, at a level the catalog says it takes.
+    assert_eq!(first["model"], "big");
+    assert!(first.get("reasoning_effort").is_some(), "{first}");
+}
+
+#[test]
+fn a_hosts_model_the_catalog_knows_is_called_with_what_the_catalog_says_of_it() {
+    let (home, model) = (Home::new(), one_command());
+    // The host is nobody the catalog knows; the model it serves is, under its vendor's name.
+    let catalog = json!({"anthropic": {"id": "anthropic", "name": "Anthropic", "models": {
+        "big": {"name": "Big", "release_date": "2026-09-01", "modalities": {"output": ["text"]},
+          "capabilities": {"tools": {"supported": true},
+            "reasoning": {"supported": true, "effort": ["low", "medium", "high"]}},
+          "limit": {"context": 200_000, "output": 20_000},
+          "api": {"chat-completions": {"base_url": "https://api.vendor.test/v1"}}}}}});
+    let config = home.path().join("config/llx");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(config.join("models.json"), catalog.to_string()).unwrap();
+    let host = json!({"name": "proxy", "url": model.base, "models": ["anthropic/big", "own"]});
+    home.with_settings(&json!({"hosts": [host]}));
+    let run = |id: &str| {
+        let command = home.llx(&[
+            "exec",
+            "-y",
+            "--no-advice",
+            "--provider",
+            "proxy",
+            "-m",
+            id,
+            "go",
+        ]);
+        let out = home.exec_command(command, "");
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    };
+    run("anthropic/big");
+    let known = &model.requests()[0];
+    // Its level, its reply's limit, and the cache marks its vendor's models need.
+    assert_eq!(known["model"], "anthropic/big");
+    assert!(known.get("reasoning_effort").is_some(), "{known}");
+    assert_eq!(known["max_tokens"], json!(20_000));
+    assert!(
+        known["messages"][0]["content"][0]
+            .get("cache_control")
+            .is_some(),
+        "{known}"
+    );
+    run("own");
+    let unknown = model.requests().last().unwrap().clone();
+    assert!(unknown.get("reasoning_effort").is_none(), "{unknown}");
+    assert!(unknown["messages"][0]["content"].is_string(), "{unknown}");
+}
+
+#[test]
+fn a_host_that_says_no_cost_is_priced_from_the_catalog_where_it_knows_the_model() {
+    let script = || {
+        vec![
+            Reply::call("bash", json!({"command": "echo hi"})),
+            Reply::done("Ok."),
+        ]
+    };
+    let (home, model) = (Home::new(), Model::unbilled(script()));
+    // $1 a million tokens in, $5 out: 1,000 in and 20 out a request is $0.0011, twice.
+    let catalog = json!({"anthropic": {"id": "anthropic", "name": "Anthropic", "models": {
+        "big": {"name": "Big", "release_date": "2026-09-01", "modalities": {"output": ["text"]},
+          "capabilities": {"tools": {"supported": true}},
+          "limit": {"context": 200_000, "output": 20_000},
+          "cost": {"text": {"input": {"price": 1.0}, "output": {"price": 5.0}}},
+          "api": {"chat-completions": {"base_url": "https://api.vendor.test/v1"}}}}}});
+    let config = home.path().join("config/llx");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::write(config.join("models.json"), catalog.to_string()).unwrap();
+    let host = json!({"name": "proxy", "url": model.base, "models": ["anthropic/big", "own"]});
+    home.with_settings(&json!({"hosts": [host]}));
+    let run = |id: &str| {
+        let args = [
+            "exec",
+            "-y",
+            "--no-advice",
+            "--provider",
+            "proxy",
+            "-m",
+            id,
+            "go",
+        ];
+        let out = home.exec_command(home.llx(&args), "");
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        text(&out.stderr)
+    };
+    let known = run("anthropic/big");
+    assert!(known.contains("$0.0022"), "{known}");
+    // A model the catalog has nothing of costs what the host said: nothing.
+    let unknown = run("own");
+    assert!(unknown.contains("$0.0000"), "{unknown}");
+}
+
+#[test]
+fn a_host_whose_models_the_settings_list_is_called_for_the_one_named() {
+    let (home, model) = (Home::new(), one_command());
+    let host = json!({"name": "box", "url": model.base, "models": ["mine", "other"],
+        "context": 100_000, "output": 5_000});
+    home.with_settings(&json!({"hosts": [host]}));
+    let command = home.llx(&["exec", "-y", "--provider", "box", "-m", "other", "check it"]);
+    let out = home.exec_command(command, "");
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    let first = &model.requests()[0];
+    assert_eq!(first["model"], "other");
+    assert_eq!(first["max_tokens"], json!(5_000));
+}
+
+#[test]
+fn a_server_on_this_machine_that_does_not_answer_is_said_so() {
+    let home = Home::new();
+    home.with_settings(&json!({"local": [{"name": "box", "url": "http://127.0.0.1:1"}]}));
+    let out = home.run(&["exec", "--provider", "box", "hi"]);
+    let stderr = text(&out.stderr);
+    assert_eq!(out.status.code(), Some(3), "{stderr}");
+    assert!(
+        stderr.contains("box does not answer at http://127.0.0.1:1/v1: start it"),
+        "{stderr}"
     );
 }

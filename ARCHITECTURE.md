@@ -35,7 +35,7 @@ does is known above the server.
                 │                 │        packages/agent                  the core
                 │                 │        packages/tools, session, providers/*   adapters
                 │                 │
-          packages/protocol                 packages/contracts, queue, schema, providers/kit
+          packages/protocol                 packages/contracts, queue, schema, markdown, providers/kit
           the seam's types only             vocabulary: ports, primitives
 ```
 
@@ -44,21 +44,22 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
 
 | Layer | Crates | Knows |
 |---|---|---|
-| Vocabulary | `contracts` (ports, no logic), `queue`, `schema`, `providers/kit` | no workspace crate |
+| Vocabulary | `contracts` (ports, no logic), `queue`, `schema`, `markdown`, `providers/kit` | no workspace crate |
 | Seam | `protocol` | no crate at all |
 | Core | `agent` | `contracts` |
 | Adapters | `tools`, `session` | `contracts` |
-| Adapters | `providers/{models,anthropic,openai,openrouter}` | `contracts`, `kit` |
+| Adapters | `providers/{models,local,anthropic,openai,openrouter}` | `contracts`, `kit` |
 | Server | `apps/server` (library `llx`) | every package |
-| Interface | `apps/tui` (its client to the server a module, `client.rs`) | `protocol` |
+| Interface | `apps/tui` (its client to the server a module, `client.rs`) | `protocol`, `markdown` |
 | Binary | `apps/cli` | `server`, `tui`, `protocol` (the frames and the offer it hands over, P7) |
 
 ## Dependency rules
 
 - **L1** _checked_: `contracts` depends on no workspace crate.
 - **L2** _checked_: `agent` depends only on `contracts`.
-- **L3** _checked_: tools and stores depend only on `contracts`; primitives (`queue`, and
-  `schema`: data checked against a JSON Schema given at run time) and the provider kit on nothing; providers on `contracts` and the kit. A tool knows nothing of the
+- **L3** _checked_: tools and stores depend only on `contracts`; primitives (`queue`,
+  `schema`: data checked against a JSON Schema given at run time, and `markdown`: the Markdown a
+  model writes read into a tree) and the provider kit on nothing; providers on `contracts` and the kit. A tool knows nothing of the
   agent, the models or the other tools; a provider nothing of tools or other providers.
 - **L4** _checked_: only apps compose packages. Nothing depends on an app, but the binary on the
   server and the interface; the server and the interface depend on no app in any section (the
@@ -71,7 +72,8 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
   domain's: the server maps its values onto them (`server/wire.rs`), and the protocol never
   re-exports one.
 - **L7** _checked_ on `apps/tui`'s manifest and sources: the interface depends only on
-  `protocol`: never on
+  `protocol`, and on `markdown`, the primitive that reads what it draws (the model's words reach
+  it as text; how they read is not the server's to say): never on
   the agent, tools, providers, the session store or the server, nor on the app's other modules.
   What it needs to show, the protocol carries.
 - **L8**: the server is the only crate that serves the protocol and the only one that knows
@@ -143,7 +145,11 @@ The server's package is `server`, its library `llx`: the log's targets (`llx::se
   never opened without it.
 - **A4**: one source of truth for models: every model fact comes from `providers/models`. No
   provider keeps its own list; no app code hard-codes a model, window or level. A default is a
-  policy the app states by a catalog id.
+  policy the app states by a catalog id. The one exception is a host the catalog cannot know
+  (`providers/local`): a server on the person's own machine (Ollama, LM Studio, llama.cpp's,
+  the settings' own) or any other host of chat completions the settings name. What it runs and
+  with what context only the host or the person can say, so the host is asked, each time, and
+  the settings are read; nothing of it is kept or built in.
 - **A5**: how to call a provider (wire, auth, retries) lives in its package; which provider a
   choice uses, in `apps/server/src/providers.rs` only.
 - **A6**: a data file (JSON, TOML) lives in the package that owns its meaning.
@@ -369,6 +375,10 @@ command is cut.
 - **A provider:** an entry in the catalog (`providers/models`, from models.dev), a wire in a
   provider package if none fits, one arm in `providers.rs`.
 - **A model:** nothing in llx: it arrives with the catalog's refresh.
+- **A local host:** where it listens by default in `providers/local`'s `hosts.rs`, and how it
+  says a loaded model's context in `probe.rs`, when it has a dialect of its own; one that only
+  speaks chat completions needs nothing: the person names it in `settings.json`, under `local`
+  when it is a server on their machine, under `hosts` when it is any other.
 - **A tool capability:** an `action` of an existing tool, or the shell (B1). A new tool is a
   decision recorded here.
 - **Something that reaches a run:** a kind in `arrivals.rs` and a post to the lane's queue (K4).

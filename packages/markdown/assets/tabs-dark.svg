@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 376" width="580" height="376" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14">
+<rect x="0.5" y="0.5" width="579" height="375" rx="10" fill="#0d1117" stroke="#30363d"/>
+<text x="20.0" y="35.0" fill="#e6edf3" xml:space="preserve" textLength="413.1" lengthAdjust="spacingAndGlyphs">Install it whichever way the machine already has.</text>
+<text x="20.0" y="77.0" fill="#e6edf3" xml:space="preserve" textLength="59.0" lengthAdjust="spacingAndGlyphs" font-weight="700">Install</text>
+<text x="20.0" y="98.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
+<text x="36.9" y="98.0" fill="#e6edf3" xml:space="preserve" textLength="33.7" lengthAdjust="spacingAndGlyphs" font-weight="700">curl</text>
+<text x="70.6" y="98.0" fill="#7d8590" xml:space="preserve" textLength="286.6" lengthAdjust="spacingAndGlyphs"> ─────────────────────────────────</text>
+<text x="20.0" y="119.0" fill="#39c5cf" xml:space="preserve" textLength="320.3" lengthAdjust="spacingAndGlyphs">curl -fsSL https://llx.sh/install | sh</text>
+<text x="20.0" y="161.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
+<text x="36.9" y="161.0" fill="#e6edf3" xml:space="preserve" textLength="50.6" lengthAdjust="spacingAndGlyphs" font-weight="700">Docker</text>
+<text x="87.4" y="161.0" fill="#7d8590" xml:space="preserve" textLength="269.8" lengthAdjust="spacingAndGlyphs"> ───────────────────────────────</text>
+<text x="20.0" y="182.0" fill="#39c5cf" xml:space="preserve" textLength="362.5" lengthAdjust="spacingAndGlyphs">docker run --rm -it ghcr.io/rsaryev/llx-cli</text>
+<text x="20.0" y="224.0" fill="#7d8590" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">─ </text>
+<text x="36.9" y="224.0" fill="#e6edf3" xml:space="preserve" textLength="92.7" lengthAdjust="spacingAndGlyphs" font-weight="700">From source</text>
+<text x="129.6" y="224.0" fill="#7d8590" xml:space="preserve" textLength="227.6" lengthAdjust="spacingAndGlyphs"> ──────────────────────────</text>
+<text x="20.0" y="245.0" fill="#e6edf3" xml:space="preserve" textLength="252.9" lengthAdjust="spacingAndGlyphs">Needs a stable Rust toolchain.</text>
+<text x="20.0" y="287.0" fill="#39c5cf" xml:space="preserve" textLength="244.5" lengthAdjust="spacingAndGlyphs">cargo install --path apps/cli</text>
+<text x="20.0" y="329.0" fill="#3fb950" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">▌ </text>
+<text x="36.9" y="329.0" fill="#3fb950" xml:space="preserve" textLength="25.3" lengthAdjust="spacingAndGlyphs" font-weight="700">Tip</text>
+<text x="20.0" y="350.0" fill="#3fb950" xml:space="preserve" textLength="16.9" lengthAdjust="spacingAndGlyphs">▌ </text>
+<text x="36.9" y="350.0" fill="#39c5cf" xml:space="preserve" textLength="84.3" lengthAdjust="spacingAndGlyphs">llx doctor</text>
+<text x="121.2" y="350.0" fill="#e6edf3" xml:space="preserve" textLength="362.5" lengthAdjust="spacingAndGlyphs"> says what is missing once it is installed.</text>
+</svg>

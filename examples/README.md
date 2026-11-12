@@ -6,6 +6,7 @@ Ready-made uses of llx, by where they run. Each was run for real before it was p
 | --- | --- |
 | GitHub Actions | [the workflows below](#github-workflows), through the action `rsaryev/llx-cli@v0`: review, `@llx` in a comment, triage, a failed run explained, a described pull request, a draft release, a daily gate, a weekly audit, a Jira work item made a draft pull request, a dependency update read |
 | Any CI | [breaking-changes/](breaking-changes/README.md): what a change does to an HTTP API's clients, the spec's structure and what no spec diff can see (units, boundaries, the code behind the endpoints), as a script with a GitLab job, a GitHub job, a demo and its recorded run |
+| An agent, a commit, any CI | [secrets/](secrets/README.md): secrets kept out of an agent's context, a commit and a pull request. Known token formats are masked on your machine (`[REDACTED:NAME]`), and `llx decide` is asked about what no format gives away; as a Claude Code hook, a git `pre-commit` hook and a CI job, with a demo and its recorded run |
 
 ## GitHub workflows
 

@@ -23,10 +23,11 @@ pub(crate) fn run(rig: &mut Rig, ui: &Ui, first: Option<&str>) -> i32 {
     // The banner's line for a session signed out.
     let provider = &rig.choice.provider;
     if provider.signed_in_by(rig.shared.workspace.env()).is_none() {
-        let name = provider.name();
-        ui.send(Event::Note(format!(
-            "Not signed in to {name}: type /login.\n"
-        )));
+        let note = match provider.host(None) {
+            Some(_) => format!("{}, or type /model.\n", provider.how_to_sign_in()),
+            None => format!("Not signed in to {}: type /login.\n", provider.name()),
+        };
+        ui.send(Event::Note(note));
     }
     if let Some(first) = first
         && !carry_out(rig, ui, first)

@@ -41,6 +41,21 @@ pub fn transient(status: u16) -> bool {
     status == 429 || TRANSIENT.contains(&status)
 }
 
+/// Whether a failure's `message` says the account has nothing left to spend: hosts answer it
+/// with a rate limit's 429 (Moonshot, Z.AI, OpenAI's `insufficient_quota`), and no wait mends it.
+#[must_use]
+pub fn spent(message: &str) -> bool {
+    let message = message.to_ascii_lowercase();
+    [
+        "insufficient balance",
+        "insufficient_quota",
+        "recharge",
+        "exceeded your current quota",
+    ]
+    .iter()
+    .any(|said| message.contains(said))
+}
+
 /// The error a reply reports, where it reports one: an `error` that is `null` is none, as a
 /// compatible host may send it beside a completion that went well.
 #[must_use]

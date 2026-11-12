@@ -439,3 +439,9 @@ pub(crate) fn normalize(text: &str) -> String {
     }
     out
 }
+
+/// What the model wrote, as the terminal draws it in colour, at most `width` columns a row: what
+/// the `markdown` package's pictures are made from (`packages/markdown/bench`).
+pub fn markdown(text: &str, width: usize) -> String {
+    style::rows(&crate::markdown::render(text, width), true)
+}

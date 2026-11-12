@@ -39,7 +39,7 @@ expect() {
   fi
 }
 
-core="-p agent -p anthropic -p contracts -p llx-cli -p models -p openai -p openrouter -p server -p session -p tools"
+core="-p agent -p anthropic -p contracts -p llx-cli -p local -p models -p openai -p openrouter -p server -p session -p tools"
 
 expect "a core crate: it and every dependent, tested" "" "fmt
 clippy $core
@@ -213,7 +213,8 @@ cat >"$sample/a.md" <<'EOF'
 ```
 <img src="sub/none.png">
 EOF
-printf '# B\n\n## Second\n' >"$sample/sub/b.md"
+# A footnote's definition is no link: what follows its colon is its text.
+printf '# B\n\n## Second\n\nSaid.[^1]\n\n[^1]: The note.\n' >"$sample/sub/b.md"
 if found=$(sh scripts/checks/mdlinks.sh "$sample/a.md" "$sample/sub/b.md"); then
   found_status=0
 else

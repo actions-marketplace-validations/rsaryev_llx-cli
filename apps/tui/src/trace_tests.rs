@@ -94,7 +94,7 @@ fn colour_is_drawn_as_the_terminal_reads_it() {
     let trace = drawn(&mut Trace::new(true, 100), &[call, result]);
     assert_eq!(
         trace,
-        "\u{1b}[32m• \u{1b}[0m\u{1b}[1mRan\u{1b}[0m\u{1b}[1m \u{1b}[0mecho hi\n\
+        "\u{1b}[32m• \u{1b}[0m\u{1b}[1mRan\u{1b}[0m echo hi\n\
          \u{1b}[2m  └ \u{1b}[0m\u{1b}[2m(no output)\u{1b}[0m\n"
     );
 }
@@ -114,4 +114,24 @@ fn a_call_is_read_from_the_project_without_its_own_cd_there() {
     let mut trace = Trace::new(false, 100).within(Path::new("/home/me/project"));
     let drawn = drawn(&mut trace, &events);
     assert!(drawn.starts_with("• Ran cat src/a.rs\n"), "{drawn}");
+}
+
+#[test]
+fn an_answer_drawn_first_is_a_blank_row_from_how_the_task_ended() {
+    // No call came before: the answer on stdout is the first thing drawn.
+    let mut trace = Trace::new(false, 40);
+    let answer = trace.answer();
+    let end = Event::TaskEnded {
+        status: "done".into(),
+        millis: 10,
+        turns: 1,
+        cost: 0.0,
+    };
+    let shown = answer("Four.") + &trace.draw(&end);
+    insta::assert_snapshot!(shown, @"
+
+    Four.
+
+    ─ Worked for 0.0s · 1 turn · $0.0000 ───
+    ");
 }

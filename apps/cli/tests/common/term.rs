@@ -22,6 +22,7 @@ const ROWS: u16 = 40;
 pub(crate) mod key {
     pub(crate) const ENTER: &str = "\r";
     pub(crate) const TAB: &str = "\t";
+    pub(crate) const BACK_TAB: &str = "\x1b[Z";
     pub(crate) const ESC: &str = "\x1b";
     pub(crate) const DOWN: &str = "\x1b[B";
     pub(crate) const LEFT: &str = "\x1b[D";
@@ -68,6 +69,29 @@ impl Term {
         let term = Self::spawn_at(home, model, &["resume", id], &[]);
         term.wait_for("❯", Duration::from_secs(10));
         term
+    }
+
+    /// A session whose settings name `model` as a server on this machine too (`box`).
+    pub(crate) fn with_local(model: &Model) -> Self {
+        let home = place();
+        home.with_local(model);
+        let term = Self::spawn_at(home, model, &[], &[]);
+        term.wait_for("❯", Duration::from_secs(10));
+        term
+    }
+
+    /// A session whose settings name `model` as a host anywhere too (`box`).
+    pub(crate) fn with_host(model: &Model) -> Self {
+        let home = place();
+        home.with_host(model);
+        let term = Self::spawn_at(home, model, &[], &[]);
+        term.wait_for("❯", Duration::from_secs(10));
+        term
+    }
+
+    /// The session's home: what it saved is read there.
+    pub(crate) fn home(&self) -> &std::path::Path {
+        self.home.path()
     }
 
     /// `llx` with `args` and the variables `env`, not waited on.

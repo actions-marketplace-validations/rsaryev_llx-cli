@@ -43,8 +43,8 @@ fn a_task_from_question_to_end() {
 
     The page is in site/index.html:
 
-    - a hero with three phones
-    - a contact form
+    • a hero with three phones
+    • a contact form
 
     ─ Worked for 48s · 6 turns · $0.0087 ───────────────────────
     ■ the model is unreachable: timed out after 90s

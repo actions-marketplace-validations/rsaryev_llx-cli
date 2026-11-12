@@ -391,6 +391,27 @@ fn a_withheld_reply_is_an_error_and_a_hosts_own_cache_count_is_read() {
 }
 
 #[test]
+fn what_the_cache_read_and_wrote_is_taken_from_wherever_a_host_says_it() {
+    let usage = |usage: Value| {
+        let reply = json!({"choices": [{"message": {"content": "ok"}}], "usage": usage});
+        read(&reply, "m", 0).unwrap().usage
+    };
+    // DeepSeek's own API.
+    let deepseek = usage(json!({"prompt_tokens": 100, "prompt_cache_hit_tokens": 70,
+        "prompt_cache_miss_tokens": 30, "completion_tokens": 1}));
+    assert_eq!(deepseek.cached_tokens, 70);
+    // A relay that passes on Anthropic's own counts.
+    let relayed = usage(json!({"prompt_tokens": 100, "cache_read_input_tokens": 80,
+        "cache_creation_input_tokens": 15, "completion_tokens": 1}));
+    assert_eq!((relayed.cached_tokens, relayed.written_tokens), (80, 15));
+    // A zero in the usual place hides no count said elsewhere.
+    let twice = usage(json!({"prompt_tokens": 100, "prompt_cache_hit_tokens": 70,
+        "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0},
+        "cache_creation_input_tokens": 9}));
+    assert_eq!((twice.cached_tokens, twice.written_tokens), (70, 9));
+}
+
+#[test]
 fn cache_marks_go_only_to_the_models_that_take_explicit_breakpoints() {
     let marked = |id: &str| {
         let sent = request_body(
@@ -645,4 +666,49 @@ fn a_reply_on_the_persons_own_provider_key_costs_what_the_provider_charged_too()
             "cost_details": {"upstream_inference_cost": 0.002}}});
     let cost = read(&reply, "m", 0).unwrap().usage.cost;
     assert!((cost - 0.0021).abs() < 1e-9, "{cost}");
+}
+
+#[test]
+fn a_local_host_is_asked_to_stream_with_its_usage_and_no_other_hosts_field() {
+    let model = contracts::catalog::ModelEntry {
+        id: "gemma-4-12b".into(),
+        name: "gemma-4-12b".into(),
+        efforts: vec![],
+        default: Effort::Off,
+        context: 16_384,
+        output: 4_096,
+        marks: false,
+    };
+    let sent = request_body(Wire::Local, &Selection::new(model), Calling::Any);
+    // Streamed: a reply the limit cuts keeps its last call's text (B7), and the usage comes only
+    // when the stream is asked for it.
+    assert_eq!(sent["stream"], json!(true));
+    assert_eq!(sent["stream_options"], json!({"include_usage": true}));
+    assert_eq!(sent["max_tokens"], json!(4_096), "the host's own limit");
+    for other in ["usage", "session_id", "reasoning", "prompt_cache_key"] {
+        assert_eq!(sent.get(other), None, "{other}");
+    }
+    assert_eq!(sent["messages"][0]["content"], "rules", "no cache mark");
+    assert_eq!(sent["tools"][0]["function"]["name"], "read");
+}
+
+#[test]
+fn a_local_hosts_stream_is_read_with_its_usage_and_what_it_took_from_its_cache() {
+    // As llama.cpp's server streams it: the deltas, the finish with its timings, then the usage
+    // alone in an event with no choice.
+    let stream = concat!(
+        "data: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"role\":\"assistant\",\"content\":null}}],\"model\":\"gemma-4-12b\"}\n\n",
+        "data: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"bash\",\"arguments\":\"{\"}}]}}]}\n\n",
+        "data: {\"choices\":[{\"finish_reason\":null,\"index\":0,\"delta\":{\"tool_calls\":[{\"index\":0,\"function\":{\"arguments\":\"\\\"command\\\":\\\"ls\\\"}\"}}]}}]}\n\n",
+        "data: {\"choices\":[{\"finish_reason\":\"tool_calls\",\"index\":0,\"delta\":{}}],\"timings\":{\"cache_n\":3900,\"prompt_n\":90,\"predicted_n\":30}}\n\n",
+        "data: {\"choices\":[],\"usage\":{\"completion_tokens\":30,\"prompt_tokens\":3990,\"total_tokens\":4020}}\n\n",
+        "data: [DONE]\n\n",
+    );
+    let whole = crate::stream::assembled(stream).unwrap();
+    let completion = read(&whole, "gemma-4-12b", 5).unwrap();
+    assert_eq!(completion.calls[0].arguments, json!({"command": "ls"}));
+    assert_eq!(completion.usage.input_tokens, 3_990);
+    assert_eq!(completion.usage.output_tokens, 30);
+    assert_eq!(completion.usage.cached_tokens, 3_900);
+    assert_eq!(completion.ending, Ending::Whole);
 }
