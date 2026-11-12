@@ -181,7 +181,7 @@ unicode-width = "0.2"
 # Tests of what the terminal shows (dev only): snapshots, and a terminal emulator the tests draw
 # into.
 insta = "1.46"
-vt100 = "0.16.2"
+vt100 = "0.18.1"
 serde = { version = "1.0.229", features = ["derive"] }
 # The schema primitive's fallback for a pattern its automaton cannot take.
 regex-lite = "0.1.9"
