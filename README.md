@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="site/public/logo.svg" width="72" height="72" alt="Localix CLI">
+  <img src="https://raw.githubusercontent.com/localixai/.github/main/profile/logo.svg" width="72" height="72" alt="Localix CLI">
 </p>
 
 <h1 align="center">Localix CLI</h1>
