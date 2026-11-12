@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: rsaryev/llx-cli@v0
+      - uses: rsaryev/localix-cli@v0
         id: llx
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}

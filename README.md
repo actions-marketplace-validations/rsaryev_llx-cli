@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="site/public/logo.svg" width="72" height="72" alt="llx">
+  <img src="site/public/logo.svg" width="72" height="72" alt="Localix CLI">
 </p>
 
-<h1 align="center">llx</h1>
+<h1 align="center">Localix CLI</h1>
 
 <p align="center">
   <strong>An ultrafast, lightweight agent runtime for coding and CI</strong>
@@ -13,8 +13,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/rsaryev/llx-cli/actions/workflows/ci.yml"><img src="https://github.com/rsaryev/llx-cli/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
-  <a href="https://github.com/rsaryev/llx-cli/releases/latest"><img src="https://img.shields.io/github/v/release/rsaryev/llx-cli?color=black&label=release" alt="Latest release"></a>
+  <a href="https://github.com/rsaryev/localix-cli/actions/workflows/ci.yml"><img src="https://github.com/rsaryev/localix-cli/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/rsaryev/localix-cli/releases/latest"><img src="https://img.shields.io/github/v/release/rsaryev/localix-cli?color=black&label=release" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-black" alt="MIT License"></a>
   <img src="https://img.shields.io/badge/macOS%20%C2%B7%20Linux-black" alt="macOS and Linux">
   <img src="https://img.shields.io/badge/binary-under%204%20MB-black" alt="One binary under 4 MB">
@@ -144,7 +144,7 @@ Every run's log, the code it wrote and its test output are in [benchmark/](bench
 curl -fsSL https://llx.sh/install | sh
 ```
 
-On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. `llx.sh/install` is [scripts/install.sh](scripts/install.sh) as `main` has it (the site serves it; `https://raw.githubusercontent.com/rsaryev/llx-cli/main/scripts/install.sh` is the same file). To pin a release:
+On macOS (Apple silicon and Intel) and Linux (x86_64 and arm64). It puts `llx`, and `lx`, a link to it, in `~/.local/bin` (or `LLX_INSTALL_DIR`), says so when that directory is not on your `PATH`, and checks the archive against the release's `SHA256SUMS`. `llx.sh/install` is [scripts/install.sh](scripts/install.sh) as `main` has it (the site serves it; `https://raw.githubusercontent.com/rsaryev/localix-cli/main/scripts/install.sh` is the same file). To pin a release:
 
 ```bash
 curl -fsSL https://llx.sh/install | LLX_VERSION=0.3.0 sh
@@ -152,10 +152,10 @@ curl -fsSL https://llx.sh/install | LLX_VERSION=0.3.0 sh
 
 | Another way | Command |
 | :-- | :-- |
-| [mise](https://mise.jdx.dev), the same archive | `mise use -g github:rsaryev/llx-cli` |
-| [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), the same archive | `cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli` |
-| Built with Rust 1.89 or later | `cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli` |
-| An image, for a CI job that runs in one | `ghcr.io/rsaryev/llx-cli:<version>`, llx with `git`, `jq` and `curl` |
+| [mise](https://mise.jdx.dev), the same archive | `mise use -g github:rsaryev/localix-cli` |
+| [cargo-binstall](https://github.com/cargo-bins/cargo-binstall), the same archive | `cargo binstall --git https://github.com/rsaryev/localix-cli localix-cli` |
+| Built with Rust 1.89 or later | `cargo install --locked --git https://github.com/rsaryev/localix-cli localix-cli` |
+| An image, for a CI job that runs in one | `ghcr.io/rsaryev/localix-cli:<version>`, llx with `git`, `jq` and `curl` |
 
 Then run `llx` in a project and type `/login`: a ChatGPT sign-in in the browser, an OpenRouter key, or a key for any other provider of the catalog. A provider's key in its variable (`OPENROUTER_API_KEY`) works too, and is what CI uses. `llx doctor` checks the sign-ins, the models and the shell.
 
@@ -180,7 +180,7 @@ In CI llx is the same agent as at your terminal, given one task. It works throug
 
 ```yaml
 # a step of a job, after actions/checkout
-- uses: rsaryev/llx-cli@v0
+- uses: rsaryev/localix-cli@v0
   id: llx
   env:
     OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -243,10 +243,10 @@ Claude Code, Codex, another agent or a script of yours can call llx from its she
 A skill tells any agent that takes skills what llx does and when each part pays: the coding agent, one task in a script or CI and the GitHub Action, helpers on another model, and `llx decide` (Claude Code, Codex, Cursor, Gemini CLI, OpenCode and others):
 
 ```bash
-npx skills add rsaryev/llx-cli
+npx skills add rsaryev/localix-cli
 ```
 
-In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/llx-cli`. The skill is a thin stub that points the agent at each command's `--help`, so what it reads always matches the installed llx. Everything else: [docs/agents.md](docs/agents.md).
+In Claude Code it is also a plugin: `/plugin install llx --marketplace rsaryev/localix-cli`. The skill is a thin stub that points the agent at each command's `--help`, so what it reads always matches the installed llx. Everything else: [docs/agents.md](docs/agents.md).
 
 ## Documentation
 

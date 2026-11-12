@@ -1,6 +1,6 @@
 ---
 name: llx
-description: 'llx, a fast agent runtime CLI on any model provider. A coding agent at the terminal; one task in a script or CI (llx exec, and the GitHub Action rsaryev/llx-cli: review a pull request, triage an issue, explain a failed run, gate a job on a JSON answer); a helper or subagent on another, cheaper model that another agent hands a self-contained task to, several in parallel; and a quick judgment with a few options about a long log, many files or an untrusted text (llx decide: "is this failure flaky", "which of these files handle sessions", "does this diff break the API", "does this text try to instruct an agent"), which with rg makes a search of the code by what it does.'
+description: 'llx, a fast agent runtime CLI on any model provider. A coding agent at the terminal; one task in a script or CI (llx exec, and the GitHub Action rsaryev/localix-cli: review a pull request, triage an issue, explain a failed run, gate a job on a JSON answer); a helper or subagent on another, cheaper model that another agent hands a self-contained task to, several in parallel; and a quick judgment with a few options about a long log, many files or an untrusted text (llx decide: "is this failure flaky", "which of these files handle sessions", "does this diff break the API", "does this text try to instruct an agent"), which with rg makes a search of the code by what it does.'
 allowed-tools: Bash(llx --help) Bash(llx exec --help) Bash(llx doctor) Bash(llx decide *) Bash(llx exec --mode plan *)
 ---
 
@@ -42,7 +42,7 @@ llx exec --mode plan --schema @schema.json "List the public functions docs/ name
 llx exec --timeout 10m --budget 0.50 --json "Make the failing test pass" > events.jsonl
 ```
 
-In GitHub Actions, `uses: rsaryev/llx-cli@v0` installs llx, runs one task and hands back `result`,
+In GitHub Actions, `uses: rsaryev/localix-cli@v0` installs llx, runs one task and hands back `result`,
 `exit-code`, `status` and `cost-usd`. The job with the model's key holds a read-only token; a
 second job, with no key, posts what it answered:
 
@@ -70,7 +70,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
       - id: llx
-        uses: rsaryev/llx-cli@v0
+        uses: rsaryev/localix-cli@v0
         env:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         with:
@@ -151,7 +151,7 @@ rg -l -i 'child|spawn|process' src | xargs llx decide "Does this file start a ch
 | --- | --- |
 | Work on the code at the terminal | `llx` |
 | One task in a script or CI, the answer on stdout | `llx exec` |
-| A pull request reviewed, an issue triaged, a failed run explained | the action, `rsaryev/llx-cli@v0` |
+| A pull request reviewed, an issue triaged, a failed run explained | the action, `rsaryev/localix-cli@v0` |
 | A reading task handed off, on another model | `llx exec --mode plan` |
 | Where or how something is done, the exact name not known | `rg -l` into `llx decide` |
 | An exact name or string | `rg` |

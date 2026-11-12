@@ -28,7 +28,7 @@ jobs:
     outputs:
       labels: ${{ steps.pick.outputs.labels }}
     steps:
-      - uses: rsaryev/llx-cli@v0
+      - uses: rsaryev/localix-cli@v0
         with:
           install-only: 'true' # puts llx on PATH and runs nothing
       - id: pick

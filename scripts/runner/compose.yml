@@ -7,7 +7,7 @@ services:
     image: llx-ci-runner
     env_file: .env # ACCESS_TOKEN=..., mode 0600, never in git
     environment:
-      REPO: rsaryev/llx-cli
+      REPO: rsaryev/localix-cli
       RUNNER_NAME: llx-ci
       LABELS: self-hosted,linux,x64,llx
     volumes:

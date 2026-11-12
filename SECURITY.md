@@ -3,7 +3,7 @@
 ## Reporting a vulnerability
 
 Please report it privately through
-[GitHub's security advisories](https://github.com/rsaryev/llx-cli/security/advisories/new),
+[GitHub's security advisories](https://github.com/rsaryev/localix-cli/security/advisories/new),
 not in a public issue. Say what an attacker can do, and how to reproduce it. You will get an answer
 within a week; a fix goes out as a patch release with credit to you, unless you prefer otherwise.
 
@@ -98,5 +98,5 @@ not point llx at secrets you would not send there.
 
 Release archives are built by GitHub Actions from the tagged commit and published with a
 `SHA256SUMS` file; `install.sh` refuses an archive whose checksum does not match. Each archive's
-provenance is attested: `gh attestation verify llx-cli-<target>.tar.gz --repo rsaryev/llx-cli` checks
+provenance is attested: `gh attestation verify localix-cli-<target>.tar.gz --repo rsaryev/localix-cli` checks
 which workflow and commit built it.

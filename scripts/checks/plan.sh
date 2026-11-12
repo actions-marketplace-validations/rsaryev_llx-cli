@@ -14,7 +14,7 @@
 CHECKS="fmt clippy repo test coverage size site action check-test shellcheck actionlint examples skill mdlinks secrets"
 
 # The crate whose integration tests hold the repository's rules (apps/cli/tests/suite/repo).
-REPO_CRATE=llx-cli
+REPO_CRATE=localix-cli
 
 # `dir<TAB>name<TAB>workspace deps` per crate, sorted by name. The deps are every
 # workspace crate it depends on: normal, build and dev edges alike.

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **The project is Localix CLI, and its repository is `rsaryev/localix-cli`.** The command stays `llx`, and so do the archives of a release (`localix-cli-<target>.tar.gz`), so an installed copy and a pinned action keep finding them. The action is `rsaryev/localix-cli@v0`, and the image of a release is `ghcr.io/rsaryev/localix-cli:<version>`.
 - Examples: `secrets/`, secrets kept out of an agent's context, a commit and a pull request, on two levels: the formats tokens are issued in, masked on your machine as `[REDACTED:NAME]`, then `llx decide` asked about what no format gives away (a password in a config, a token in a URL). As a Claude Code hook on a command's output, a git `pre-commit` hook and a CI job, each run for real.
 
 ## 0.6.0
@@ -80,7 +81,7 @@
 
 ## 0.3.0
 
-- The project is now `llx-cli`: the repository is `rsaryev/llx-cli` (the action `uses: rsaryev/llx-cli@v0`, the skill `npx skills add rsaryev/llx-cli`, the image `ghcr.io/rsaryev/llx-cli`), and the binary's package is `llx-cli` (`cargo install --locked --git https://github.com/rsaryev/llx-cli llx-cli`). The command is still `llx`, inside the release's archives too, now `llx-cli-<target>.tar.gz`. GitHub redirects the old name.
+- The project is now `localix-cli`: the repository is `rsaryev/localix-cli` (the action `uses: rsaryev/localix-cli@v0`, the skill `npx skills add rsaryev/localix-cli`, the image `ghcr.io/rsaryev/localix-cli`), and the binary's package is `localix-cli` (`cargo install --locked --git https://github.com/rsaryev/localix-cli localix-cli`). The command is still `llx`, inside the release's archives too, now `localix-cli-<target>.tar.gz`. GitHub redirects the old name.
 
 - A monitor waits for one thing, as Localix's does: its command is a check run every `every` seconds (10 by default, at least 5) until it exits 0 or its time is up, and the agent is told once how it ended (`met after 4 checks (32 s)`, `timed out after …`, `could not run: Exit code: 127`) with what the last check printed. It no longer hands the agent each line a command prints: a monitor printing every second kept a task going for 22 turns in 32 s. In the list a monitor shows its checks (`≋ ready … 3 checks · 4m 28s left`), opens with Enter to what its last check printed, and stays listed with how it ended, as a command in the background does.
 - A job the agent stops says nothing more of it; one the person stops (`x`) opens no task of its own, and the agent reads it with the person's next task.

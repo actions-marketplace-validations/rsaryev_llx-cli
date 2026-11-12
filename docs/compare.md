@@ -1,6 +1,6 @@
 # llx and other agents' GitHub Actions
 
-What `rsaryev/llx-cli` does next to the agent actions most teams look at first:
+What `rsaryev/localix-cli` does next to the agent actions most teams look at first:
 [anthropics/claude-code-action](https://github.com/anthropics/claude-code-action) and
 [openai/codex-action](https://github.com/openai/codex-action), as their repositories stood on
 2026-11-01. Each is good at what it sets out to do; this page says where they differ, so you can

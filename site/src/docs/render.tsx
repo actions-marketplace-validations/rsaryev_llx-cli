@@ -61,7 +61,7 @@ function NotFound() {
 
 /** 404.html: the docs' template around NotFound, kept out of search results. */
 export function renderNotFound(template: string): string {
-  const meta = ['<title>Page not found · llx</title>', '<meta name="robots" content="noindex">'].join('\n  ');
+  const meta = ['<title>Page not found · Localix CLI</title>', '<meta name="robots" content="noindex">'].join('\n  ');
   const body = renderToStaticMarkup(<Layout missing />);
   return template.replace(HEAD, () => meta).replace(BODY, () => body);
 }
@@ -75,7 +75,7 @@ export function renderDocsPage(route: string, template: string): string | undefi
     if (!template.includes(mark)) throw new Error(`${mark} is missing from docs.html`);
   }
   const meta = page
-    ? { title: `${page.title} · llx docs`, headline: page.title, description: page.description, route }
+    ? { title: `${page.title} · Localix CLI docs`, headline: page.title, description: page.description, route }
     : { ...INDEX, headline: INDEX.title, route };
   const body = renderToStaticMarkup(<Layout page={page} />);
   // Replaced by functions: a `$&` in a page is text, not a pattern.

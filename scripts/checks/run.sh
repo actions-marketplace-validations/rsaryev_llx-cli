@@ -137,7 +137,7 @@ check_actionlint() {
   mkdir -p "$actionlint_scratch/.git" "$actionlint_scratch/.github/workflows"
   cp action.yml "$actionlint_scratch/"
   for example in examples/github/*.yml; do
-    sed 's#uses: rsaryev/llx-cli@v0#uses: ./#' "$example" \
+    sed 's#uses: rsaryev/localix-cli@v0#uses: ./#' "$example" \
       >"$actionlint_scratch/.github/workflows/example-$(basename "$example")"
   done
   echo "the examples against action.yml (example-NAME.yml is examples/github/NAME.yml):"
@@ -157,14 +157,14 @@ check_examples() {
       { echo "$example: a schema is not a JSON object"; return 1; }
     "$yq_bin" -e '[.jobs[] | select(has("timeout-minutes") | not)] | length == 0' "$example" \
       >/dev/null || { echo "$example: a job has no timeout-minutes"; return 1; }
-    "$yq_bin" -e '[.jobs[].steps[] | select(.uses == "rsaryev/llx-cli@v0" and
+    "$yq_bin" -e '[.jobs[].steps[] | select(.uses == "rsaryev/localix-cli@v0" and
       .with.install-only == null and .with.model == null)] | length == 0' "$example" \
       >/dev/null || { echo "$example: an llx step names no model"; return 1; }
     # The two-job split, as each example keeps it: no permission by default, no job that runs the
     # model may write, and no job that may write holds a model's key.
     examples_split=$("$yq_bin" -o=json . "$example" | "$jq_bin" -r '
       def writes: [.permissions // {} | if type == "object" then to_entries[] | select(.value == "write") | .key else . end];
-      def model: [.steps[]? | select(.uses == "rsaryev/llx-cli@v0" and .with["install-only"] == null)] | length > 0;
+      def model: [.steps[]? | select(.uses == "rsaryev/localix-cli@v0" and .with["install-only"] == null)] | length > 0;
       def key: tostring | test("secrets\\.[A-Z_]*API_KEY");
       if .permissions != {} then "the workflow does not start from permissions: {}" else empty end,
       (.jobs | to_entries[] | select(.value | model) | select(.value | writes | length > 0)

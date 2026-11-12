@@ -1,8 +1,8 @@
 [package]
-name = "llx-cli"
+name = "localix-cli"
 description = "An ultrafast, lightweight agent runtime for coding and CI, and a minimal agent for the terminal"
 homepage = "https://llx.sh"
-repository = "https://github.com/rsaryev/llx-cli"
+repository = "https://github.com/rsaryev/localix-cli"
 keywords = ["agent", "agent-runtime", "coding-agent", "cli", "llm"]
 categories = ["command-line-utilities", "development-tools"]
 version.workspace = true
@@ -11,10 +11,10 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
-# `cargo binstall --git https://github.com/rsaryev/llx-cli llx-cli` takes the release's archive for its
-# target (scripts/dist.sh: llx-cli-<target>.tar.gz, llx at its top).
+# `cargo binstall --git https://github.com/rsaryev/localix-cli localix-cli` takes the release's archive for its
+# target (scripts/dist.sh: localix-cli-<target>.tar.gz, llx at its top).
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/llx-cli-{ target }.tar.gz"
+pkg-url = "{ repo }/releases/download/v{ version }/localix-cli-{ target }.tar.gz"
 pkg-fmt = "tgz"
 bin-dir = "{ bin }{ binary-ext }"
 
