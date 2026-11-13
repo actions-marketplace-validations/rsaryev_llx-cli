@@ -155,6 +155,17 @@ jobs:
           cat artifacts/dist-*/SHA256SUMS | sort -k 2 > dist/SHA256SUMS
           (cd dist && sha256sum --check --strict SHA256SUMS)
           test "$(wc -l < dist/SHA256SUMS)" -eq "$(find dist -name 'localix-cli-*' | wc -l)"
+          # Up to 0.6.0 the archives were llx-cli-<target>.tar.gz: an install.sh of then, kept in a
+          # CI or a Dockerfile, still asks releases/latest for that name. Each archive is given once
+          # more under it, the same bytes, with its line in SHA256SUMS; drop this once that has
+          # had time to go (the old names are not documented anywhere now).
+          for archive in dist/localix-cli-*; do
+            old="dist/llx-cli-${archive#dist/localix-cli-}"
+            cp "$archive" "$old"
+            (cd dist && sha256sum "${old#dist/}") >> dist/SHA256SUMS
+          done
+          sort -k 2 -o dist/SHA256SUMS dist/SHA256SUMS
+          (cd dist && sha256sum --check --strict SHA256SUMS)
           # The installers of this version, for `releases/download/vX.Y.Z/install.sh`.
           cp scripts/install.sh dist/
           ls -l dist

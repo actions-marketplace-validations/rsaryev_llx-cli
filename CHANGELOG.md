@@ -2,7 +2,15 @@
 
 ## Unreleased
 
-- **The project is Localix CLI, and its repository is `localixai/localix-cli`.** The command stays `llx`, and so do the archives of a release (`localix-cli-<target>.tar.gz`), so an installed copy and a pinned action keep finding them. The action is `localixai/localix-cli@v0`, and the image of a release is `ghcr.io/localixai/localix-cli:<version>`.
+## 0.6.1
+
+- **The project is Localix CLI, and its repository is `localixai/localix-cli`.** The command stays
+  `llx`. A release's archives are `localix-cli-<target>.tar.gz`, and each is also given under its
+  former name, `llx-cli-<target>.tar.gz`, so an installer of an earlier version still finds it.
+  The action is `localixai/localix-cli@v0` (`rsaryev/llx-cli@v0` forwards to it), and the image of
+  a release is `ghcr.io/localixai/localix-cli:<version>`.
+- **`curl -fsSL https://llx.sh/install | sh` installs again.** Since the site's installer looked
+  for the new archive names, it found none in 0.6.0; this release has them.
 - Examples: `secrets/`, secrets kept out of an agent's context, a commit and a pull request, on two levels: the formats tokens are issued in, masked on your machine as `[REDACTED:NAME]`, then `llx decide` asked about what no format gives away (a password in a config, a token in a URL). As a Claude Code hook on a command's output, a git `pre-commit` hook and a CI job, each run for real.
 
 ## 0.6.0
