@@ -8,9 +8,9 @@ Thanks for helping. llx is meant to stay small and fast: five tools (`bash`, `ap
 
 Read [ARCHITECTURE.md](ARCHITECTURE.md) and [AGENTS.md](AGENTS.md). ARCHITECTURE.md is binding:
 it fixes the layers, what may know what, and every rule by id (L, C, P, A, K, W, B, R, S).
-AGENTS.md says what each file is, with the behaviour and code rules. They apply to people as
-much as to coding agents, and the tests in `apps/cli/tests/suite/repo/` check the layering and
-the size budgets. A change that does not fit a rule is redesigned, or the rule is changed first,
+AGENTS.md has the behaviour and code rules, and [LAYOUT.md](LAYOUT.md) says what each file is.
+They apply to people as much as to coding agents, and the tests in `apps/cli/tests/suite/repo/`
+check the layering and the size budgets. A change that does not fit a rule is redesigned, or the rule is changed first,
 in its own commit.
 
 For a larger change, open an issue first to agree on the shape.
