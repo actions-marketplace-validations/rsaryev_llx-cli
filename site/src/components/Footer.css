@@ -10,6 +10,27 @@
   color: var(--muted);
   font-size: 0.8125rem;
 }
+/* The maker signs first, in the text's own colour, set off from the line by a hairline. The
+   padding makes the target tall without making the line so. */
+.foot-maker {
+  margin-right: 0.75rem;
+  padding-block: 0.75rem;
+  color: var(--white);
+  font-weight: 500;
+  transition: color 160ms ease;
+}
+.foot-maker::after {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 1em;
+  margin-left: 0.75rem;
+  vertical-align: -0.15em;
+  background: var(--line-strong);
+}
+.foot-maker:hover {
+  color: var(--soft);
+}
 .foot nav {
   display: flex;
   gap: 0.25rem 1.5rem;

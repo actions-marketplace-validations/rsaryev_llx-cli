@@ -1,6 +1,6 @@
 # ARCHITECTURE.md
 
-The architecture of llx, as binding rules. Every change follows them, strictly; AGENTS.md says
+The architecture of llx, as binding rules. Every change follows them, strictly; LAYOUT.md says
 what each file is, this says where a thing goes and what may know what. When a change does not
 fit, the change is wrong, not the rules: fix the design, or change this file first, in its own
 commit that says why. An exception is never made in code.
